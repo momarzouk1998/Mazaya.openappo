@@ -356,4 +356,56 @@ a48696a - chore: force fresh build to flush stale client bundle
 
 ---
 
+## 13. المحاولة 8 (AI — 22 يونيو 2026): إصلاح Race Condition + Middleware Bug
+
+### التشخيص
+المستخدم بيدخل بيانات صحيحة، الـ `signInWithPassword` بيرجع `hasUser: true`، بس الصفحة تفضل تحمل ومش بتفتح الداشبورد.
+
+### المشكلة 1: `router.refresh()` بعد `router.push()` في `login/page.tsx`
+- `router.push("/dashboard")` بيبدا navigation للداشبورد
+- بعدها بـ 1 ميلي `router.refresh()` بيطلب re-fetch لصفحة `/login` الحالية
+- **النتيجة:** Race condition — الـ Router يتعلق وما بيكملش navigation
+
+**الحل:** شيل الـ `router.refresh()` خالص (السطر 60).
+
+### المشكلة 2: Middleware Cookie Check غلط في `middleware.ts`
+الكود القديم:
+```ts
+const hasSession = Object.keys(request.cookies.getAll()).some(name =>
+    name.includes("auth-token") && request.cookies.get(name)?.value
+);
+```
+`request.cookies.getAll()` بترجع `Array<{name, value}>`. `Object.keys()` على array بترجع array indices (`"0"`, `"1"`, ...). يبقى `name.includes("auth-token")` دايمًا `false`.
+
+**النتيجة:** `hasSession` دايمًا `false`، فـ:
+- أي طلب لـ `/dashboard` الـ middleware بيرجع redirect لـ `/login`
+- المستخدم بيدخل في loop: `/dashboard` → `/login` → `/dashboard` → ...
+
+**الحل:**
+```ts
+const cookies = request.cookies.getAll();
+const hasSession = cookies.some(c =>
+    c.name.includes("auth-token") && c.value
+);
+```
+
+### التعديلات
+| الملف | التغيير |
+|---|---|
+| `src/app/login/page.tsx` | شيل `router.refresh()` من السطر 60 |
+| `src/lib/supabase/middleware.ts` | غير `Object.keys(...)` إلى `cookies.some(...)` |
+
+### Commit
+```
+f21ce29 - fix: remove router.refresh() after push() causing race condition, fix middleware cookie check using Object.keys on array
+```
+
+### النتيجة
+✅ Login → Dashboard navigation مبقاش فيه race condition
+✅ الـ middleware بقى يكتشف الكوكيز صح
+❓ لازم يتعمل Redeploy على Vercel مع تعطيل Build Cache عشان الـ client bundle يتجدد
+❓ محلياً لو شغال `npm run dev`، تأكد من وجود `.env.local` بالقيم الصحيحة
+
+---
+
 © 2026 Mazaya Furniture — للمتابعة مع AI جديد
