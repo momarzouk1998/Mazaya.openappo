@@ -57,24 +57,23 @@ jobs:
           script: |
             IMAGE="ghcr.io/${{ github.repository }}:latest"
             LOCAL_TAG="furniture-xhl2yk:latest"
+            SERVICE="furniture-xhl2yk"
 
             docker pull "$IMAGE"
             docker tag "$IMAGE" "$LOCAL_TAG"
 
-            # Update Docker Swarm service (managed by Dokploy)
-            docker service update --image "$LOCAL_TAG" furniture-xhl2yk 2>/dev/null || \
-              docker service update --image "$LOCAL_TAG" mazaya-xhl2yk 2>/dev/null || \
-              echo "SERVICE_UPDATE_FAILED"
+            # Get correct Postgres host from running container
+            PG_HOST=$(docker ps --filter name=mazaya-postgres --format '{{.Names}}' | head -1)
+            PG_HOST="${PG_HOST%.*}"  # strip .1.xxx suffix
+            PG_HOST="${PG_HOST%%.*}"
+            PG_HOST="${PG_HOST:-mazaya-postgres}"
 
-            # Also update the dedicated container if it exists
-            docker stop furniture-xhl2yk 2>/dev/null || true
-            docker rm furniture-xhl2yk 2>/dev/null || true
+            DATABASE_URL="postgres://mazaya:mazaya_pass_123@${PG_HOST}:5432/mazaya_factory"
 
-            # Extract env vars from old Swarm task
-            SWARM_TASK=$(docker ps --filter name=furniture --format '{{.Names}}' | head -1)
-            if [ -n "$SWARM_TASK" ]; then
-              NET=$(docker inspect "$SWARM_TASK" --format '{{(index .NetworkSettings.Networks "dokploy-network").IPAddress}}' 2>/dev/null || echo dokploy-network)
-            else
-              NET="dokploy-network"
-            fi
+            # Update Swarm service with env var and new image
+            docker service update \
+              --image "$LOCAL_TAG" \
+              --env-add "DATABASE_URL=$DATABASE_URL" \
+              --force \
+              "$SERVICE" 2>/dev/null || echo "SERVICE_UPDATE_FAILED"
 
