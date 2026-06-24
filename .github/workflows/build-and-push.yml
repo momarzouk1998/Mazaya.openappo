@@ -55,9 +55,28 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            echo "=== SSH connected ==="
-            whoami
-            docker --version
-            docker ps -a --filter name=furniture-xhl2yk
-            python3 --version 2>&1 || echo "NO_PYTHON3"
+            IMAGE="ghcr.io/${{ github.repository }}:latest"
+            CONTAINER="furniture-xhl2yk"
+
+            docker pull "$IMAGE"
+
+            NET="bridge"
+            if docker inspect "$CONTAINER" > /tmp/ci.json 2>/dev/null; then
+              NET=$(python3 -c 'import json;d=json.load(open("/tmp/ci.json"));print(list(d[0]["NetworkSettings"]["Networks"].keys())[0])' 2>/dev/null || echo bridge)
+              python3 -c 'import json,sys;d=json.load(open("/tmp/ci.json"));[print(e) for e in d[0]["Config"]["Env"]]' > /tmp/ci.env 2>/dev/null || true
+            fi
+
+            docker stop "$CONTAINER" 2>/dev/null || true
+            docker rm "$CONTAINER" 2>/dev/null || true
+
+            ENVFILE="/tmp/ci.env"
+            test -f "$ENVFILE" || ENVFILE="/dev/null"
+
+            docker run -d --name "$CONTAINER" --restart unless-stopped \
+              --network "${NET:-bridge}" \
+              -p 3000:3000 \
+              --env-file "$ENVFILE" \
+              "$IMAGE"
+
+            rm -f /tmp/ci.json /tmp/ci.env
 
