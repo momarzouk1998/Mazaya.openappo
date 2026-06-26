@@ -12,8 +12,14 @@ export async function proxy(request: NextRequest) {
   }
 
   const { pathname } = request.nextUrl;
-  const publicPaths = ['/login', '/register', '/auth', '/api/auth'];
+  const publicPaths = ['/login', '/register', '/auth'];
+  const apiAuthPaths = ['/api/auth'];
   const isPublicPath = publicPaths.some((p) => pathname.startsWith(p));
+  const isApiAuthPath = apiAuthPaths.some((p) => pathname.startsWith(p));
+
+  if (isApiAuthPath) {
+    return response;
+  }
 
   if (isPublicPath) {
     if (userId) {
