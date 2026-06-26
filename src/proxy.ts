@@ -12,7 +12,7 @@ export async function proxy(request: NextRequest) {
   }
 
   const { pathname } = request.nextUrl;
-  const publicPaths = ['/login', '/register', '/auth'];
+  const publicPaths = ['/login', '/register', '/auth', '/manifest.json', '/sw.js'];
   const apiAuthPaths = ['/api/auth'];
   const isPublicPath = publicPaths.some((p) => pathname.startsWith(p));
   const isApiAuthPath = apiAuthPaths.some((p) => pathname.startsWith(p));
@@ -38,5 +38,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 };
