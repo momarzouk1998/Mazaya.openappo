@@ -50,7 +50,8 @@ export async function POST(request: NextRequest) {
       branch_id: user.branch_id,
     });
 
-    const isSecure = request.url.startsWith('https:');
+    const proto = request.headers.get('x-forwarded-proto') || '';
+    const isSecure = request.url.startsWith('https:') || proto === 'https';
     const response = NextResponse.json({
       ok: true,
       data: {
