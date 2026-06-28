@@ -25,87 +25,78 @@ export async function GET(request: NextRequest) {
     const hasDates = params.length > 0;
 
     if (monthly) {
-      // Revenue by month
-      const revWhere = "WHERE status IN ('completed', 'delivered')"
-        + (date_from ? ` AND created_at >= $1` : '')
-        + (date_to ? ` AND created_at <= $${date_from ? 2 : 1}` : '');
       const revenueR = await prisma.$queryRawUnsafe<any[]>(
         `SELECT
            TO_CHAR(created_at, 'YYYY-MM') as month,
-           SUM(order_total) as revenue
+           SUM(order_total)::float8 as revenue
          FROM mazaya.v_order_totals
-         ${revWhere}
+         WHERE status IN ('مكتمل', 'تم التسليم')
+         ${date_from ? ` AND created_at >= $1::timestamp` : ''}
+         ${date_to ? ` AND created_at <= $${date_from ? 2 : 1}::timestamp` : ''}
          GROUP BY TO_CHAR(created_at, 'YYYY-MM')
          ORDER BY month`,
         ...(hasDates ? params : [])
       );
 
-      // Material costs by month
-      const matWhere = 'WHERE 1=1'
-        + (date_from ? ` AND created_at >= $1` : '')
-        + (date_to ? ` AND created_at <= $${date_from ? 2 : 1}` : '');
       const materialCostR = await prisma.$queryRawUnsafe<any[]>(
         `SELECT
            TO_CHAR(created_at, 'YYYY-MM') as month,
-           SUM(boards_cost) as boards_cost,
-           SUM(accessories_cost) as accessories_cost
+           SUM(boards_cost)::float8 as boards_cost,
+           SUM(accessories_cost)::float8 as accessories_cost
          FROM mazaya.order_costs
-         ${matWhere}
+         WHERE 1=1
+         ${date_from ? ` AND created_at >= $1::timestamp` : ''}
+         ${date_to ? ` AND created_at <= $${date_from ? 2 : 1}::timestamp` : ''}
          GROUP BY TO_CHAR(created_at, 'YYYY-MM')
          ORDER BY month`,
         ...(hasDates ? params : [])
       );
 
-      // External work costs by month
-      const extWhere = 'WHERE 1=1'
-        + (date_from ? ` AND created_at >= $1` : '')
-        + (date_to ? ` AND created_at <= $${date_from ? 2 : 1}` : '');
       const externalWorkR = await prisma.$queryRawUnsafe<any[]>(
         `SELECT
            TO_CHAR(created_at, 'YYYY-MM') as month,
-           COALESCE(SUM(amount), 0) as external_work_cost
+           COALESCE(SUM(amount), 0)::float8 as external_work_cost
          FROM mazaya.order_external_work
-         ${extWhere}
+         WHERE 1=1
+         ${date_from ? ` AND created_at >= $1::timestamp` : ''}
+         ${date_to ? ` AND created_at <= $${date_from ? 2 : 1}::timestamp` : ''}
          GROUP BY TO_CHAR(created_at, 'YYYY-MM')
          ORDER BY month`,
         ...(hasDates ? params : [])
       );
 
-      // Overhead costs by month
-      const ohWhere = 'WHERE 1=1'
-        + (date_from ? ` AND date >= $1` : '')
-        + (date_to ? ` AND date <= $${date_from ? 2 : 1}` : '');
       const overheadR = await prisma.$queryRawUnsafe<any[]>(
         `SELECT
            TO_CHAR(date, 'YYYY-MM') as month,
-           COALESCE(SUM(amount), 0) as overhead_cost
+           COALESCE(SUM(amount), 0)::float8 as overhead_cost
          FROM mazaya.overhead_expenses
-         ${ohWhere}
+         WHERE 1=1
+         ${date_from ? ` AND date >= $1::date` : ''}
+         ${date_to ? ` AND date <= $${date_from ? 2 : 1}::date` : ''}
          GROUP BY TO_CHAR(date, 'YYYY-MM')
          ORDER BY month`,
         ...(hasDates ? params : [])
       );
 
-      // Merge all months into a unified map
       const monthMap = new Map<string, any>();
 
       for (const row of revenueR) {
-        monthMap.set(row.month, { month: row.month, revenue: parseFloat(row.revenue), boards_cost: 0, accessories_cost: 0, external_work_cost: 0, overhead_cost: 0 });
+        monthMap.set(row.month, { month: row.month, revenue: row.revenue, boards_cost: 0, accessories_cost: 0, external_work_cost: 0, overhead_cost: 0 });
       }
       for (const row of materialCostR) {
         const entry = monthMap.get(row.month) || { month: row.month, revenue: 0, boards_cost: 0, accessories_cost: 0, external_work_cost: 0, overhead_cost: 0 };
-        entry.boards_cost = parseFloat(row.boards_cost);
-        entry.accessories_cost = parseFloat(row.accessories_cost);
+        entry.boards_cost = row.boards_cost;
+        entry.accessories_cost = row.accessories_cost;
         monthMap.set(row.month, entry);
       }
       for (const row of externalWorkR) {
         const entry = monthMap.get(row.month) || { month: row.month, revenue: 0, boards_cost: 0, accessories_cost: 0, external_work_cost: 0, overhead_cost: 0 };
-        entry.external_work_cost = parseFloat(row.external_work_cost);
+        entry.external_work_cost = row.external_work_cost;
         monthMap.set(row.month, entry);
       }
       for (const row of overheadR) {
         const entry = monthMap.get(row.month) || { month: row.month, revenue: 0, boards_cost: 0, accessories_cost: 0, external_work_cost: 0, overhead_cost: 0 };
-        entry.overhead_cost = parseFloat(row.overhead_cost);
+        entry.overhead_cost = row.overhead_cost;
         monthMap.set(row.month, entry);
       }
 
@@ -134,46 +125,46 @@ export async function GET(request: NextRequest) {
     }
 
     // Non-monthly: overall totals
-    const revWhere = "WHERE status IN ('completed', 'delivered')"
-      + (date_from ? ' AND created_at >= $1' : '')
-      + (date_to ? ` AND created_at <= $${date_from ? 2 : 1}` : '');
     const revenueR = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT COALESCE(SUM(order_total), 0) as total_revenue FROM mazaya.v_order_totals ${revWhere}`,
+      `SELECT COALESCE(SUM(order_total), 0)::float8 as total_revenue FROM mazaya.v_order_totals
+       WHERE status IN ('مكتمل', 'تم التسليم')
+       ${date_from ? ' AND created_at >= $1::timestamp' : ''}
+       ${date_to ? ` AND created_at <= $${date_from ? 2 : 1}::timestamp` : ''}`,
       ...(hasDates ? params : [])
     );
 
-    const matWhere = 'WHERE 1=1'
-      + (date_from ? ' AND created_at >= $1' : '')
-      + (date_to ? ` AND created_at <= $${date_from ? 2 : 1}` : '');
     const materialCostR = await prisma.$queryRawUnsafe<any[]>(
       `SELECT
-         COALESCE(SUM(boards_cost), 0) as total_boards_cost,
-         COALESCE(SUM(accessories_cost), 0) as total_accessories_cost
-       FROM mazaya.order_costs ${matWhere}`,
+         COALESCE(SUM(boards_cost), 0)::float8 as total_boards_cost,
+         COALESCE(SUM(accessories_cost), 0)::float8 as total_accessories_cost
+       FROM mazaya.order_costs
+       WHERE 1=1
+       ${date_from ? ' AND created_at >= $1::timestamp' : ''}
+       ${date_to ? ` AND created_at <= $${date_from ? 2 : 1}::timestamp` : ''}`,
       ...(hasDates ? params : [])
     );
 
-    const extWhere = 'WHERE 1=1'
-      + (date_from ? ' AND created_at >= $1' : '')
-      + (date_to ? ` AND created_at <= $${date_from ? 2 : 1}` : '');
     const externalWorkR = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT COALESCE(SUM(amount), 0) as total_external_work FROM mazaya.order_external_work ${extWhere}`,
+      `SELECT COALESCE(SUM(amount), 0)::float8 as total_external_work FROM mazaya.order_external_work
+       WHERE 1=1
+       ${date_from ? ' AND created_at >= $1::timestamp' : ''}
+       ${date_to ? ` AND created_at <= $${date_from ? 2 : 1}::timestamp` : ''}`,
       ...(hasDates ? params : [])
     );
 
-    const ohWhere = 'WHERE 1=1'
-      + (date_from ? ' AND date >= $1' : '')
-      + (date_to ? ` AND date <= $${date_from ? 2 : 1}` : '');
     const overheadR = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT COALESCE(SUM(amount), 0) as total_overhead FROM mazaya.overhead_expenses ${ohWhere}`,
+      `SELECT COALESCE(SUM(amount), 0)::float8 as total_overhead FROM mazaya.overhead_expenses
+       WHERE 1=1
+       ${date_from ? ' AND date >= $1::date' : ''}
+       ${date_to ? ` AND date <= $${date_from ? 2 : 1}::date` : ''}`,
       ...(hasDates ? params : [])
     );
 
-    const totalRevenue = parseFloat(revenueR[0].total_revenue);
-    const totalBoardsCost = parseFloat(materialCostR[0].total_boards_cost);
-    const totalAccessoriesCost = parseFloat(materialCostR[0].total_accessories_cost);
-    const totalExternalWork = parseFloat(externalWorkR[0].total_external_work);
-    const totalOverhead = parseFloat(overheadR[0].total_overhead);
+    const totalRevenue = revenueR[0].total_revenue;
+    const totalBoardsCost = materialCostR[0].total_boards_cost;
+    const totalAccessoriesCost = materialCostR[0].total_accessories_cost;
+    const totalExternalWork = externalWorkR[0].total_external_work;
+    const totalOverhead = overheadR[0].total_overhead;
     const totalCosts = totalBoardsCost + totalAccessoriesCost + totalExternalWork + totalOverhead;
     const profit = totalRevenue - totalCosts;
 

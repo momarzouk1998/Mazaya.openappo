@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
 
     // Query the v_inventory_value view grouped by inventory_type
     const totalsR = await prisma.$queryRaw<any[]>`
-      SELECT inventory_type, SUM(total_value) as total_value
+      SELECT inventory_type, SUM(total_value)::float8 as total_value
       FROM mazaya.v_inventory_value
       GROUP BY inventory_type
       ORDER BY inventory_type
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     // Breakdown by material_type within each inventory_type
     const breakdownR = await prisma.$queryRaw<any[]>`
-      SELECT inventory_type, material_type, SUM(total_value) as total_value, COUNT(*) as item_count
+      SELECT inventory_type, material_type, SUM(total_value)::float8 as total_value, COUNT(*)::int as item_count
       FROM mazaya.v_inventory_value
       GROUP BY inventory_type, material_type
       ORDER BY inventory_type, total_value DESC
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     // Grand total
     const grandTotalR = await prisma.$queryRaw<any[]>`
-      SELECT COALESCE(SUM(total_value), 0) as grand_total FROM mazaya.v_inventory_value
+      SELECT COALESCE(SUM(total_value), 0)::float8 as grand_total FROM mazaya.v_inventory_value
     `;
 
     return NextResponse.json({
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       data: {
         totals: totalsR,
         breakdown: breakdownR,
-        grand_total: parseFloat(grandTotalR[0].grand_total),
+        grand_total: grandTotalR[0].grand_total,
       },
     });
   } catch (e: any) {
