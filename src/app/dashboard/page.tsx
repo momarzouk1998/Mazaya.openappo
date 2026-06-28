@@ -58,7 +58,7 @@ export default async function DashboardPage() {
     weekly[key] = { day: dayNames[d.getDay()], income: 0, expense: 0, net: 0 };
   }
   for (const j of (journal ?? []) as any[]) {
-    const k = j.date;
+    const k = j.date instanceof Date ? j.date.toISOString().slice(0, 10) : String(j.date ?? '');
     if (weekly[k]) {
       if (j.entry_type === "income" && !j.is_pass_through) weekly[k].income += j.amount;
       if (["expense", "purchase", "overhead"].includes(j.entry_type)) weekly[k].expense += j.amount;
@@ -179,7 +179,7 @@ export default async function DashboardPage() {
                   <div className={`font-bold ${j.entry_type === "income" ? "text-green-600" : "text-red-600"}`}>
                     {formatCurrency(j.amount)}
                   </div>
-                  <div className="text-xs text-gray-400">{j.date}</div>
+                  <div className="text-xs text-gray-400">{j.date instanceof Date ? j.date.toISOString().slice(0, 10) : String(j.date ?? '')}</div>
                 </div>
               </div>
             ))}
