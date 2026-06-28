@@ -19,18 +19,13 @@ export default function UsersPage() {
   const router = useRouter();
   const { user: profile } = useUserStore();
   const { data: usersData, loading, refetch } = useApi<{ items: any[] }>('/api/admin/users?limit=500');
-  const { data: branchesData } = useApi<{ items: any[] }>('/api/branches?limit=500');
   const [users, setUsers] = useState<UserRow[]>([]);
-  const [branches, setBranches] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<UserRow | null>(null);
 
   useEffect(() => {
     if (usersData?.items) setUsers(usersData.items as UserRow[]);
   }, [usersData]);
-  useEffect(() => {
-    if (branchesData?.items) setBranches(branchesData.items);
-  }, [branchesData]);
 
   async function toggleModule(u: UserRow, modKey: string) {
     const newMods = u.visible_modules.includes(modKey)
@@ -140,8 +135,8 @@ export default function UsersPage() {
         </table>
       </div>
 
-      {showAdd && <AddUserModal branches={branches} onClose={() => setShowAdd(false)} onSuccess={() => { setShowAdd(false); refetch(); }} />}
-      {editing && <EditUserModal user={editing} branches={branches} onClose={() => setEditing(null)} onSuccess={() => { setEditing(null); refetch(); }} />}
+      {showAdd && <AddUserModal onClose={() => setShowAdd(false)} onSuccess={() => { setShowAdd(false); refetch(); }} />}
+      {editing && <EditUserModal user={editing} onClose={() => setEditing(null)} onSuccess={() => { setEditing(null); refetch(); }} />}
     </DashboardLayout>
   );
 }
@@ -156,7 +151,7 @@ function StatCard({ label, value, icon, color }: { label: string; value: number;
   );
 }
 
-function AddUserModal({ branches, onClose, onSuccess }: { branches: any[]; onClose: () => void; onSuccess: () => void }) {
+function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [form, setForm] = useState({
     username: "", email_or_phone: "", password: "",
     role: "branch_user", branch_id: "",
@@ -194,9 +189,6 @@ function AddUserModal({ branches, onClose, onSuccess }: { branches: any[]; onClo
         <Input label="البريد أو الهاتف *" value={form.email_or_phone} onChange={e => setForm({ ...form, email_or_phone: e.target.value })} hint="لو رقم هاتف، بيتسجل كـ @mazaya.local في Auth" />
         <Input label="كلمة السر *" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
         <Select label="الدور" value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} options={[{ value: "admin", label: "مدير المصنع (يشوف كل حاجة)" }, { value: "branch_user", label: "موظف (حسب الـ Checkboxes)" }]} />
-        {form.role === "branch_user" && (
-          <Select label="المعرض" value={form.branch_id} onChange={e => setForm({ ...form, branch_id: e.target.value })} options={[{ value: "", label: "— اختر —" }, ...branches.map(b => ({ value: b.id, label: b.name }))]} />
-        )}
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm font-medium">الصفحات المرئية</label>
@@ -225,7 +217,7 @@ function AddUserModal({ branches, onClose, onSuccess }: { branches: any[]; onClo
   );
 }
 
-function EditUserModal({ user, branches, onClose, onSuccess }: { user: UserRow; branches: any[]; onClose: () => void; onSuccess: () => void }) {
+function EditUserModal({ user, onClose, onSuccess }: { user: UserRow; onClose: () => void; onSuccess: () => void }) {
   const [form, setForm] = useState({
     username: user.username, email_or_phone: user.email_or_phone,
     role: user.role, branch_id: user.branch_id ? String(user.branch_id) : "",
@@ -254,9 +246,6 @@ function EditUserModal({ user, branches, onClose, onSuccess }: { user: UserRow; 
         <Input label="البريد/الهاتف" value={form.email_or_phone} onChange={e => setForm({ ...form, email_or_phone: e.target.value })} />
         <Input label="كلمة سر جديدة (اتركها فارغة لو مش عايز تغير)" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
         <Select label="الدور" value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} options={[{ value: "admin", label: "مدير" }, { value: "branch_user", label: "موظف" }]} />
-        {form.role === "branch_user" && (
-          <Select label="المعرض" value={form.branch_id} onChange={e => setForm({ ...form, branch_id: e.target.value })} options={[{ value: "", label: "— اختر —" }, ...branches.map(b => ({ value: b.id, label: b.name }))]} />
-        )}
         <label className="flex items-center gap-2"><input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} className="accent-brand-orange" /><span className="text-sm">مفعّل</span></label>
         {error && <div className="bg-red-50 text-red-700 p-2 rounded text-sm">{error}</div>}
       </div>

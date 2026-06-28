@@ -27,20 +27,20 @@ export default function DashboardLayout({ profile, children }: Props) {
   return (
     <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar */}
-      <aside className={`fixed lg:sticky top-0 right-0 h-screen w-64 bg-brand-black text-white z-40 transition-transform ${sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}>
-        <div className="p-5 border-b border-white/10">
+      <aside className={`fixed lg:sticky top-0 right-0 h-screen w-64 bg-brand-black text-white z-40 transition-transform flex flex-col ${sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}>
+        <div className="p-5 border-b border-white/10 shrink-0">
           <div className="bg-white rounded-lg p-2 inline-block">
             <Logo size={32} withText={false} />
           </div>
           <div className="mt-3 text-xs text-white/60">لوحة الإدارة</div>
         </div>
-        <nav className="p-3 space-y-1 overflow-y-auto h-[calc(100vh-180px)]">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {visible.map(m => (
             <Link
               key={m.key}
               href={(m as any).path || `/${m.key}`}
               onClick={() => setSidebarOpen(false)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm shrink-0 ${
                 isActive(m)
                   ? "bg-brand-orange text-white font-semibold shadow-md"
                   : "text-white/80 hover:bg-white/5 hover:text-white"
@@ -51,7 +51,7 @@ export default function DashboardLayout({ profile, children }: Props) {
             </Link>
           ))}
         </nav>
-        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-white/10 bg-brand-black">
+        <div className="shrink-0 p-3 border-t border-white/10 bg-brand-black">
           <Link
             href="/profile"
             onClick={() => setSidebarOpen(false)}
