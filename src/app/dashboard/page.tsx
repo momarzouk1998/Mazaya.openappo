@@ -28,7 +28,7 @@ export default async function DashboardPage() {
     safeQuery<any>(supabase.from("mazaya_boards_inventory").select("unit_price, quantity_remaining")),
     safeQuery<any>(supabase.from("mazaya_accessories_inventory").select("unit_price, quantity_remaining")),
     safeQuery<any>(supabase.from("mazaya_orders").select("status, created_at")),
-    safeQuery<any>(supabase.from("mazaya_journal_entries").select("entry_type, amount, entry_date, is_passthrough").order("entry_date", { ascending: false }).limit(200)),
+    safeQuery<any>(supabase.from("mazaya_journal_entries").select("entry_type, amount, date, is_pass_through").order("date", { ascending: false }).limit(200)),
     safeQuery<any>(supabase.from("mazaya_suppliers").select("id")),
   ]);
   const boards = boardsR.data, accessories = accessoriesR.data, orders = ordersR.data, journal = journalR.data, suppliers = suppliersR.data;
@@ -45,7 +45,7 @@ export default async function DashboardPage() {
   ).length;
 
   // Balance
-  const income = (journal ?? []).filter((j: any) => j.entry_type === "income" && !j.is_passthrough).reduce((s: number, j: any) => s + j.amount, 0);
+  const income = (journal ?? []).filter((j: any) => j.entry_type === "income" && !j.is_pass_through).reduce((s: number, j: any) => s + j.amount, 0);
   const spent = (journal ?? []).filter((j: any) => j.entry_type === "expense" || j.entry_type === "purchase" || j.entry_type === "overhead").reduce((s: number, j: any) => s + j.amount, 0);
   const balance = income - spent;
 
@@ -58,9 +58,9 @@ export default async function DashboardPage() {
     weekly[key] = { day: dayNames[d.getDay()], income: 0, expense: 0, net: 0 };
   }
   for (const j of (journal ?? []) as any[]) {
-    const k = j.entry_date;
+    const k = j.date;
     if (weekly[k]) {
-      if (j.entry_type === "income" && !j.is_passthrough) weekly[k].income += j.amount;
+      if (j.entry_type === "income" && !j.is_pass_through) weekly[k].income += j.amount;
       if (["expense", "purchase", "overhead"].includes(j.entry_type)) weekly[k].expense += j.amount;
       weekly[k].net = weekly[k].income - weekly[k].expense;
     }
@@ -179,7 +179,7 @@ export default async function DashboardPage() {
                   <div className={`font-bold ${j.entry_type === "income" ? "text-green-600" : "text-red-600"}`}>
                     {formatCurrency(j.amount)}
                   </div>
-                  <div className="text-xs text-gray-400">{j.entry_date}</div>
+                  <div className="text-xs text-gray-400">{j.date}</div>
                 </div>
               </div>
             ))}

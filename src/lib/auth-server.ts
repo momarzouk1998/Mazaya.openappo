@@ -12,14 +12,17 @@ export async function getCurrentProfile(): Promise<CurrentProfile | null> {
   if (!payload) return null;
 
   const r = await query(
-    `SELECT id, name AS username, email AS email_or_phone, role, branch_id,
-            COALESCE(visible_modules, '{}') AS visible_modules,
-            COALESCE(is_active, true) AS is_active
+    `SELECT id, name AS username, email AS email_or_phone, role, branch_id
      FROM mazaya.users WHERE id = $1`,
     [payload.userId]
   );
   if (r.rows.length === 0) return null;
-  return r.rows[0] as CurrentProfile;
+
+  const row = r.rows[0] as any;
+  // Add defaults for fields not in DB
+  row.visible_modules = [];
+  row.is_active = true;
+  return row as CurrentProfile;
 }
 
 export async function requireAdmin() {
