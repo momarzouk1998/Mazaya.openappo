@@ -27,7 +27,7 @@ export default function DashboardLayout({ profile, children }: Props) {
   return (
     <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar */}
-      <aside className={`fixed lg:sticky top-0 right-0 h-screen w-64 bg-brand-black text-white z-40 transition-transform flex flex-col ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+      <aside className={`fixed lg:sticky top-0 start-0 h-screen w-64 bg-brand-black text-white z-40 transition-transform flex flex-col ${sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}>
         <div className="p-5 border-b border-white/10 shrink-0">
           <div className="bg-white rounded-lg p-2 inline-block">
             <Logo size={32} withText={false} />
