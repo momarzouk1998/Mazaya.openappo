@@ -1,7 +1,7 @@
 # 🚀 DEPLOY — Mazaya System
 
 > **القاعدة الذهبية:** مفيش deploy مباشر على السيرفر.
-> الكود بيرفع على GitHub الأول، وبعدها CI/CD يبني Docker image ويرفعها على GHCR، والسيرفر يسحبها.
+> الكود بيرفع على GitHub الأول، وبعدها CI/CD يبني Docker image ويرفعها على GHCR، والسيرفر يحدث الخدمة أوتوماتيك.
 
 ---
 
@@ -10,11 +10,12 @@
 ```
 جهازك (تعديل الكود)  →  GitHub (المصدر الرسمي)  →  GitHub Actions (CI/CD)
                                                        ↓
-السيرفر (docker pull)  ←  GHCR (GitHub Container Registry)  ←  بناء Docker image
+السيرفر (docker service update)  ←  GHCR (GitHub Container Registry)  ←  بناء Docker image
 ```
 
 - ✅ لو السيرفر وقع، الكود آمن على GitHub + الصورة على GHCR.
 - ✅ الـ build مبيستهلكش موارد السيرفر (بيحصل على GitHub).
+- ✅ الـ deploy كامل أوتوماتيك — **مافيش داعي تدخل على السيرفر يدوي**.
 - ✅ تاريخ كامل لكل تعديل.
 
 ---
@@ -44,57 +45,18 @@ git push origin main          # ارفع لـ GitHub
 - `feat:` لميزة جديدة، `fix:` لإصلاح، `style:` للشكل.
 - مثال: `feat: إضافة تقرير الأرباح مع الفلترة بالشهر`
 
-### الخطوة 3: استنى CI/CD
+### الخطوة 3: استنى CI/CD (2-3 دقايق)
 
 GitHub Actions بيشتغل تلقائياً:
 1. يبني Docker image
 2. يرفعها على `ghcr.io/momarzouk1998/mazaya.openappo:latest`
+3. SSH على السيرفر → `docker service update --force furniture-xhl2yk`
+
+**خلاص — الموقع اتحدث.** مش محتاج تفتح SSH خالص.
 
 تقدر تتابع الشغل من هنا: https://github.com/momarzouk1998/Mazaya.openappo/actions
 
-### الخطوة 4: ادخل على السيرفر ونزّل الصورة الجديدة
-
-```bash
-ssh root@64.226.118.40
-```
-
-### الخطوة 5: اسحب الصورة الجديدة وشغّلها
-
-```bash
-# سحب أحدث صورة
-docker pull ghcr.io/momarzouk1998/mazaya.openappo:latest
-
-# وقف ومسح الكونتينر القديم
-docker stop mazaya
-docker rm mazaya
-
-# تشغيل الكونتينر الجديد
-docker run -d \
-  --name mazaya \
-  --restart unless-stopped \
-  --network host \
-  --env-file /opt/mazaya/.env \
-  ghcr.io/momarzouk1998/mazaya.openappo:latest
-```
-
-> **مهم:** `--network host` عشان الكونتينر يوصل PostgreSQL على localhost:5432.
-> **مهم:** `--env-file /opt/mazaya/.env` عشان يدخل DATABASE_URL والـ secrets.
-
-### الخطوة 6: تأكد إنه شغّال
-
-```bash
-docker ps --filter name=mazaya          # لازم يشوفك الكونتينر
-docker logs mazaya --tail 10            # آخر لوج — مفروض مفيش errors
-```
-
-المفروض تشوف:
-```
-▲ Next.js 16.2.9
-- Local: http://localhost:3001
-✓ Ready in 0ms
-```
-
-### الخطوة 7: اختبر الموقع
+### الخطوة 4: تأكد إن الموقع شغّال
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}" https://mazaya.openappo.com/
@@ -106,25 +68,17 @@ curl -s -o /dev/null -w "%{http_code}" https://mazaya.openappo.com/
 
 ---
 
-## ⚡ الاختصار (كوبي-بيست من جهازك)
+## ⚡ الاختصار (كوبي-بيست)
 
 ```bash
-# === على جهازك ===
+# === على جهازك — commit و push ===
 cd "D:/OPEN APPS/DigitalOcian Projects/mazaya-system"
 git add -A && git commit -m "وصف" && git push origin main
 
-# استنى شوية (2-3 دقايق عشان CI/CD يخلص)
+# استنى 2-3 دقايق — CI/CD يعمل build + deploy أوتوماتيك
 
-# === على السيرفر ===
-ssh root@64.226.118.40
-docker pull ghcr.io/momarzouk1998/mazaya.openappo:latest
-docker stop mazaya && docker rm mazaya
-docker run -d --name mazaya --restart unless-stopped \
-  --network host \
-  --env-file /opt/mazaya/.env \
-  ghcr.io/momarzouk1998/mazaya.openappo:latest
-sleep 5
-docker logs mazaya --tail 5
+# === اتأكد ===
+curl -s -o /dev/null -w "%{http_code}" https://mazaya.openappo.com/
 ```
 
 ---
@@ -136,16 +90,18 @@ docker logs mazaya --tail 5
 - **NODE_OPTIONS محدودة:** وقت الـ build 1280MB (على GitHub وليس السيرفر)، وقت التشغيل 512MB.
 - **Swap file 2GB:** عشان لو حصل زيادة استهلاك.
 
-### أوامر مراقبة
+### أوامر مراقبة (لو احتجت تدخل)
 ```bash
-free -h                              # استهلاك RAM
-docker stats mazaya --no-stream      # استهلاك الكونتينر
-docker system df                      # مساحة الـ Docker
+ssh root@64.226.118.40
+docker service ps furniture-xhl2yk      # حالة الخدمة
+docker service logs furniture-xhl2yk    # اللوجز
+free -h                                 # استهلاك RAM
+docker stats --no-stream                # استهلاك الكونتينرات
 ```
 
 ### تنظيف دوري
 ```bash
-docker image prune -a                # امسح الصور القديمة
+docker image prune -a                   # امسح الصور القديمة
 ```
 
 ---
@@ -155,7 +111,6 @@ docker image prune -a                # امسح الصور القديمة
 | الملف | الوظيفة |
 |---|---|
 | `/opt/mazaya/.env` | DATABASE_URL + secrets (ممنوع يرفع على GitHub) |
-| `/opt/mazaya/Dockerfile` | بناء الصورة (multi-stage) |
 | `/etc/nginx/sites-available/mazaya` | Nginx config للـ subdomain |
 
 ### محتويات `.env` على السيرفر
@@ -173,34 +128,33 @@ HOSTNAME=0.0.0.0
 
 ## 🚨 مشاكل وحلول
 
-### `docker pull` بيرفض
-**السبب:** الـ GHCR token منتهي أو مش مضبوط.
+### الموقع راجع 502
+**السبب:** الخدمة وقعت أو لسة متبنية.
 **الحل:**
 ```bash
-echo $GHCR_TOKEN | docker login ghcr.io -u momarzouk1998 --password-stdin
+ssh root@64.226.118.40
+docker service ps furniture-xhl2yk
+docker service logs furniture-xhl2yk --tail 20
+```
+
+### `docker service update` فشل في الـ CI/CD
+**السبب:** الـ Swarm service مش موجود أو فيه مشكلة في SSH key.
+**الحل:** ادخل على السيرفر واعمل:
+```bash
+docker service create --name furniture-xhl2yk --restart-condition any --network host --env-file /opt/mazaya/.env ghcr.io/momarzouk1998/mazaya.openappo:latest
 ```
 
 ### الكونتينر بيرجع 500
 **السبب:** خطأ في الكود.
 **الحل:**
 ```bash
-docker logs mazaya --tail 50 | grep "⨯"
+ssh root@64.226.118.40
+docker service logs furniture-xhl2yk --tail 50 | grep "Error\|⨯"
 ```
 
 ### السيرفر مش بيرد على SSH
 **السبب:** RAM خلصت.
 **الحل:** ادخل DigitalOcean Dashboard → Reboot.
-
-### عاوز تجرب API من السيرفر
-```bash
-# تسجيل دخول
-curl -s -c /tmp/jar -X POST http://localhost:3001/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}'
-
-# تجربة API
-curl -s -b /tmp/jar http://localhost:3001/api/reports/inventory | python3 -m json.tool
-```
 
 ---
 
@@ -211,10 +165,11 @@ curl -s -b /tmp/jar http://localhost:3001/api/reports/inventory | python3 -m jso
 3. **متشغّلش `npm run build` على السيرفر** — البناء يحصل في GitHub Actions.
 4. **اعمل backup دوري:**
    ```bash
-   sudo -u postgres pg_dump mazaya > /root/backup-$(date +%Y%m%d).sql
+   ssh root@64.226.118.40
+   docker exec mazaya-postgres pg_dump -U mazaya mazaya | gzip > /root/backup-$(date +%Y%m%d).sql.gz
    ```
 5. **لو مش متأكد → اسأل** قبل ما تكسر الـ production.
 
 ---
 
-*آخر تحديث: 2026-06-28*
+*آخر تحديث: 2026-06-30*

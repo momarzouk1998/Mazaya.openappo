@@ -3,29 +3,33 @@ import { requireAdmin } from '@/lib/auth-server';
 import prisma from '@/lib/db/prisma';
 import { auditLog } from '@/lib/audit';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     await requireAdmin();
 
     const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '500');
     const category = searchParams.get('category') || '';
-
-    if (category && !['board', 'accessory'].includes(category)) {
-      return NextResponse.json(
-        { ok: false, error: { code: 'VALIDATION_ERROR', message: 'التصنيف يجب أن يكون board أو accessory' } },
-        { status: 400 }
-      );
-    }
 
     const where: any = {};
     if (category) where.category = category;
 
-    const materialTypes = await prisma.material_types.findMany({
-      where,
-      orderBy: { name: 'asc' },
-    });
+    const offset = (page - 1) * limit;
 
-    return NextResponse.json({ ok: true, data: materialTypes });
+    const [items, total] = await Promise.all([
+      prisma.material_types.findMany({
+        where,
+        orderBy: [{ sort_order: 'asc' }, { name: 'asc' }],
+        skip: offset,
+        take: limit,
+      }),
+      prisma.material_types.count({ where }),
+    ]);
+
+    return NextResponse.json({ ok: true, data: { items, total, page, limit } });
   } catch (e: any) {
     if (e.status === 401) return NextResponse.json({ ok: false, error: { code: 'UNAUTHORIZED', message: 'غير مسجل الدخول' } }, { status: 401 });
     if (e.status === 403) return NextResponse.json({ ok: false, error: { code: 'FORBIDDEN', message: 'غير مصرح' } }, { status: 403 });
@@ -39,7 +43,8 @@ export async function POST(request: NextRequest) {
     const admin = await requireAdmin();
 
     const body = await request.json();
-    const { name, category } = body;
+    const name = body.name || body.value;
+    const category = body.category || body.list_key;
 
     if (!name || name.trim() === '') {
       return NextResponse.json(
@@ -67,8 +72,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const sort_order = body.sort_order ?? null;
+
     const materialType = await prisma.material_types.create({
-      data: { name: name.trim(), category },
+      data: { name: name.trim(), category, sort_order },
     });
     auditLog({ user_id: admin.id, action: 'create', table_name: 'material_types', row_id: materialType.id, after: materialType });
 
