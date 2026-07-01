@@ -59,4 +59,5 @@ USER nextjs
 
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+# Use -H 0.0.0.0 explicitly — Swarm sets HOSTNAME=<task-name> which would otherwise bind to 127.0.1.1
+CMD ["sh", "-c", "HOSTNAME=0.0.0.0 node server.js"]
