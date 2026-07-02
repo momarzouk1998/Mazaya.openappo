@@ -1,4 +1,4 @@
-﻿name: Deploy to Server
+name: Deploy to Server
 
 on:
   workflow_dispatch:
@@ -9,8 +9,36 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger deploy
-        run: |
-          echo "Image built and pushed by build-and-push workflow. Run deploy manually on the server."
-          echo "Server: ${{ secrets.SSH_HOST }}"
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            echo "=== Pulling latest image from GHCR ==="
+            docker pull ghcr.io/momarzouk1998/mazaya.openappo:latest
 
+            echo "=== Tagging local image ==="
+            docker tag ghcr.io/momarzouk1998/mazaya.openappo:latest furniture-xhl2yk:latest
+
+            echo "=== Updating swarm service ==="
+            docker service update --image furniture-xhl2yk:latest --force furniture-xhl2yk
+
+            echo "=== Waiting 8s for service to settle ==="
+            sleep 8
+
+            echo "=== Service status ==="
+            docker service ps furniture-xhl2yk --no-trunc
+
+            echo "=== Container logs (last 30 lines) ==="
+            CONTAINER_ID=$(docker ps --filter name=furniture-xhl2yk -q | head -1)
+            if [ -n "$CONTAINER_ID" ]; then
+              docker logs "$CONTAINER_ID" --tail 30
+            else
+              docker service logs furniture-xhl2yk --tail 30
+            fi
+
+            echo "=== Health check ==="
+            curl -s -o /dev/null -w "HTTP: %{http_code} | Time: %{time_total}s\n" http://127.0.0.1:3001/ || echo "Internal health check failed"
