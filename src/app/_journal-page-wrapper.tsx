@@ -93,6 +93,14 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
   const totalIncome = calcIncome(filtered);
   const totalExpense = calcExpense(filtered);
 
+  // ====== الرصيد الجاري (Running Balance) ======
+  // رصيد أول اليوم = (الوارد التراكمي − المصروف التراكمي) لكل الأيام قبل اليوم.
+  // رصيد آخر اليوم = رصيد الأول + وارد اليوم − مصروف اليوم (ده اللي يبدأ بيه بكره).
+  const beforeTodayRows = rows.filter(r => r.date < todayKey);
+  const openingBalance = calcIncome(beforeTodayRows) - calcExpense(beforeTodayRows);
+  const todayNet = todayIncome - todayExpense;
+  const closingBalance = openingBalance + todayNet;
+
   // ====== تفاصيل اليوم لجدول "تقرير اليوم" ======
   const todayDetail = todayRows.slice().reverse(); // الأحدث أولاً
   const dayNames = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
@@ -128,28 +136,29 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
             {/* تقرير اليوم */}
             <div className="card border-2 border-cyan-300 bg-gradient-to-br from-cyan-50 to-white">
               <div className="text-xs font-bold text-cyan-700 mb-2">📅 تقرير اليوم ({formatDate(todayKey)})</div>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div><div className="text-[10px] text-gray-500">وارد</div><div className="font-bold text-green-600 text-sm">{formatCurrency(todayIncome)}</div></div>
-                <div><div className="text-[10px] text-gray-500">مصروف</div><div className="font-bold text-red-600 text-sm">{formatCurrency(todayExpense)}</div></div>
-                <div><div className="text-[10px] text-gray-500">الصافي</div><div className={`font-bold text-sm ${todayIncome - todayExpense >= 0 ? "text-blue-700" : "text-red-700"}`}>{formatCurrency(todayIncome - todayExpense)}</div></div>
+              <div className="grid grid-cols-2 gap-2 text-center">
+                <div className="bg-white/60 rounded p-1.5"><div className="text-[10px] text-gray-500">رصيد أول اليوم</div><div className="font-bold text-gray-700 text-sm">{formatCurrency(openingBalance)}</div></div>
+                <div className="bg-green-50 rounded p-1.5"><div className="text-[10px] text-gray-500">+ وارد اليوم</div><div className="font-bold text-green-600 text-sm">{formatCurrency(todayIncome)}</div></div>
+                <div className="bg-red-50 rounded p-1.5"><div className="text-[10px] text-gray-500">− مصروف اليوم</div><div className="font-bold text-red-600 text-sm">{formatCurrency(todayExpense)}</div></div>
+                <div className={`rounded p-1.5 ${closingBalance >= 0 ? "bg-blue-50" : "bg-red-100"}`}><div className="text-[10px] text-gray-500">= المتبقي (آخر اليوم)</div><div className={`font-bold text-sm ${closingBalance >= 0 ? "text-blue-700" : "text-red-700"}`}>{formatCurrency(closingBalance)}</div></div>
               </div>
             </div>
             {/* تقرير آخر 7 أيام */}
             <div className="card border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-white">
               <div className="text-xs font-bold text-blue-700 mb-2">📆 آخر 7 أيام</div>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div><div className="text-[10px] text-gray-500">وارد</div><div className="font-bold text-green-600 text-sm">{formatCurrency(weekIncome)}</div></div>
-                <div><div className="text-[10px] text-gray-500">مصروف</div><div className="font-bold text-red-600 text-sm">{formatCurrency(weekExpense)}</div></div>
-                <div><div className="text-[10px] text-gray-500">الصافي</div><div className={`font-bold text-sm ${weekIncome - weekExpense >= 0 ? "text-blue-700" : "text-red-700"}`}>{formatCurrency(weekIncome - weekExpense)}</div></div>
+              <div className="grid grid-cols-2 gap-2 text-center">
+                <div className="bg-green-50 rounded p-1.5"><div className="text-[10px] text-gray-500">وارد</div><div className="font-bold text-green-600 text-sm">{formatCurrency(weekIncome)}</div></div>
+                <div className="bg-red-50 rounded p-1.5"><div className="text-[10px] text-gray-500">مصروف</div><div className="font-bold text-red-600 text-sm">{formatCurrency(weekExpense)}</div></div>
+                <div className="col-span-2 bg-blue-50 rounded p-1.5"><div className="text-[10px] text-gray-500">صافي الأسبوع</div><div className={`font-bold text-sm ${weekIncome - weekExpense >= 0 ? "text-blue-700" : "text-red-700"}`}>{formatCurrency(weekIncome - weekExpense)}</div></div>
               </div>
             </div>
             {/* التقرير العام (التراكمي) */}
             <div className="card border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-white">
               <div className="text-xs font-bold text-purple-700 mb-2">📊 التقرير العام (تراكمي)</div>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div><div className="text-[10px] text-gray-500">وارد</div><div className="font-bold text-green-600 text-sm">{formatCurrency(totalIncome)}</div></div>
-                <div><div className="text-[10px] text-gray-500">مصروف</div><div className="font-bold text-red-600 text-sm">{formatCurrency(totalExpense)}</div></div>
-                <div><div className="text-[10px] text-gray-500">الصافي</div><div className={`font-bold text-sm ${totalIncome - totalExpense >= 0 ? "text-blue-700" : "text-red-700"}`}>{formatCurrency(totalIncome - totalExpense)}</div></div>
+              <div className="grid grid-cols-2 gap-2 text-center">
+                <div className="bg-green-50 rounded p-1.5"><div className="text-[10px] text-gray-500">إجمالي الوارد</div><div className="font-bold text-green-600 text-sm">{formatCurrency(totalIncome)}</div></div>
+                <div className="bg-red-50 rounded p-1.5"><div className="text-[10px] text-gray-500">إجمالي المصروف</div><div className="font-bold text-red-600 text-sm">{formatCurrency(totalExpense)}</div></div>
+                <div className="col-span-2 bg-purple-50 rounded p-1.5"><div className="text-[10px] text-gray-500">الرصيد الكلي الحالي</div><div className={`font-bold text-sm ${closingBalance >= 0 ? "text-blue-700" : "text-red-700"}`}>{formatCurrency(closingBalance)}</div></div>
               </div>
             </div>
           </div>
@@ -184,30 +193,71 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
                 {activePanel === "workers" && <WorkersReportPanel />}
                 {activePanel === "today" && (
                   <div>
-                    <div className="grid grid-cols-3 gap-3 mb-4">
-                      <div className="bg-green-50 p-3 rounded-lg text-center"><div className="text-xs text-gray-600">إجمالي الوارد اليوم</div><div className="font-bold text-green-700 text-lg">{formatCurrency(todayIncome)}</div></div>
-                      <div className="bg-red-50 p-3 rounded-lg text-center"><div className="text-xs text-gray-600">إجمالي المصروف اليوم</div><div className="font-bold text-red-700 text-lg">{formatCurrency(todayExpense)}</div></div>
-                      <div className="bg-blue-50 p-3 rounded-lg text-center"><div className="text-xs text-gray-600">الصافي اليوم</div><div className={`font-bold text-lg ${todayIncome - todayExpense >= 0 ? "text-blue-700" : "text-red-700"}`}>{formatCurrency(todayIncome - todayExpense)}</div></div>
+                    {/* ملخص الرصيد الجاري */}
+                    <div className="bg-gradient-to-l from-cyan-50 to-white border-2 border-cyan-200 rounded-xl p-4 mb-4">
+                      <div className="text-sm font-bold text-cyan-800 mb-3">💰 الرصيد الجاري — {formatDate(todayKey)} ({dayNames[new Date().getDay()]})</div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="bg-white rounded-lg p-3 text-center border">
+                          <div className="text-xs text-gray-500 mb-1">رصيد أول اليوم</div>
+                          <div className="font-bold text-gray-700">{formatCurrency(openingBalance)}</div>
+                          <div className="text-[10px] text-gray-400 mt-1">المتبقي من الأيام السابقة</div>
+                        </div>
+                        <div className="bg-green-50 rounded-lg p-3 text-center border border-green-200">
+                          <div className="text-xs text-green-600 mb-1">+ وارد اليوم</div>
+                          <div className="font-bold text-green-700">{formatCurrency(todayIncome)}</div>
+                          <div className="text-[10px] text-gray-400 mt-1">تحويلات من المعرض</div>
+                        </div>
+                        <div className="bg-red-50 rounded-lg p-3 text-center border border-red-200">
+                          <div className="text-xs text-red-600 mb-1">− مصروف اليوم</div>
+                          <div className="font-bold text-red-700">{formatCurrency(todayExpense)}</div>
+                          <div className="text-[10px] text-gray-400 mt-1">مشتريات + نثريات</div>
+                        </div>
+                        <div className={`rounded-lg p-3 text-center border-2 ${closingBalance >= 0 ? "bg-blue-50 border-blue-300" : "bg-red-100 border-red-300"}`}>
+                          <div className={`text-xs mb-1 ${closingBalance >= 0 ? "text-blue-600" : "text-red-600"}`}>= المتبقي (آخر اليوم)</div>
+                          <div className={`font-bold text-lg ${closingBalance >= 0 ? "text-blue-700" : "text-red-700"}`}>{formatCurrency(closingBalance)}</div>
+                          <div className="text-[10px] text-gray-400 mt-1">ده اللي هتبدأ بيه بكره</div>
+                        </div>
+                      </div>
+                      {todayNet !== 0 && (
+                        <div className="mt-3 text-center text-sm">
+                          <span className="text-gray-500">صافي حركة اليوم: </span>
+                          <span className={`font-bold ${todayNet >= 0 ? "text-green-700" : "text-red-700"}`}>{todayNet >= 0 ? "+" : ""}{formatCurrency(todayNet)}</span>
+                        </div>
+                      )}
                     </div>
+
+                    {/* تفاصيل حركات اليوم */}
+                    <h4 className="font-bold mb-2 text-gray-700">📋 تفاصيل حركات اليوم ({todayDetail.length})</h4>
                     <div className="border rounded-lg overflow-hidden">
                       <table className="w-full text-sm">
                         <thead className="bg-gray-50"><tr>
                           <th className="p-2 text-right">النوع</th>
                           <th className="p-2 text-right">البيان</th>
+                          <th className="p-2 text-right">الجهة</th>
                           <th className="p-2 text-right">الطريقة</th>
                           <th className="p-2 text-right">المبلغ</th>
                         </tr></thead>
                         <tbody className="divide-y">
-                          {todayDetail.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-gray-400">لا توجد حركات اليوم بعد</td></tr>}
+                          {todayDetail.length === 0 && <tr><td colSpan={5} className="p-4 text-center text-gray-400">لا توجد حركات اليوم بعد</td></tr>}
                           {todayDetail.map(r => (
                             <tr key={r.id} className="hover:bg-gray-50">
                               <td className="p-2"><span className={`badge ${ENTRY_TYPE_COLORS[r.entry_type] || ""}`}>{ENTRY_TYPE_LABELS[r.entry_type] || r.entry_type}</span></td>
-                              <td className="p-2">{r.description}{r.party_name ? <span className="text-gray-400 text-xs"> ({r.party_name})</span> : null}</td>
+                              <td className="p-2">{r.description}</td>
+                              <td className="p-2 text-xs text-gray-500">{r.party_name || "-"}</td>
                               <td className="p-2 text-xs">{PAYMENT_METHOD_LABELS[r.payment_method] || "-"}</td>
                               <td className={`p-2 font-bold ${r.entry_type === "دفعة واردة من معرض" ? "text-green-600" : "text-red-600"}`}>{formatCurrency(r.amount)}</td>
                             </tr>
                           ))}
                         </tbody>
+                        {todayDetail.length > 0 && (
+                          <tfoot className="bg-gray-100 font-bold">
+                            <tr>
+                              <td colSpan={2} className="p-2">الإجمالي</td>
+                              <td colSpan={2} className="p-2 text-green-700">وارد: {formatCurrency(todayIncome)}</td>
+                              <td className="p-2 text-red-700">مصروف: {formatCurrency(todayExpense)}</td>
+                            </tr>
+                          </tfoot>
+                        )}
                       </table>
                     </div>
                     <div className="mt-3 text-right">
