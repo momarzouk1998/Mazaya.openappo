@@ -201,7 +201,7 @@ export default function NewOrderForm() {
     }
     let orderId: string
     if (editingId) {
-      const { error: err } = await mutate("PUT", "/api/orders/" + editingId, payload)
+      const { error: err } = await mutate("PATCH", "/api/orders/" + editingId, payload)
       if (err) { setError(err); return }
       orderId = editingId
       await fetch("/api/orders/" + orderId + "/materials?material_id=all", { method: "DELETE" })
@@ -222,7 +222,7 @@ export default function NewOrderForm() {
       await mutate("POST", "/api/orders/" + orderId + "/materials", mats)
     }
 
-    await mutate("PUT", "/api/orders/" + orderId, { costs })
+    await mutate("PATCH", "/api/orders/" + orderId, costs)
 
     if (editingId) await fetch("/api/orders/" + orderId + "/external-work?external_id=all", { method: "DELETE" })
     if (externalWorks.length > 0) {

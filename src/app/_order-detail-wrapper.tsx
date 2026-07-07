@@ -16,7 +16,7 @@ export default function OrderDetailPage() {
   const { user: profile } = useUserStore();
   const { mutate } = useApiMutation();
 
-  const { data: order, loading, refetch: refetchOrder } = useApi<any>(`/api/orders/${id}`);
+  const { data: order, loading, error, refetch: refetchOrder } = useApi<any>(`/api/orders/${id}`);
   const { data: materialsData } = useApi<any[]>(`/api/orders/${id}/materials`);
   const { data: externalData } = useApi<any[]>(`/api/orders/${id}/external-work`);
   const { data: extraCostsData } = useApi<any[]>(`/api/orders/${id}/extra-costs`);
@@ -53,7 +53,7 @@ export default function OrderDetailPage() {
   }
 
   if (!profile) return null;
-  if (!order && !loading) return <DashboardLayout profile={profile}><div className="card">الأوردر غير موجود</div></DashboardLayout>;
+  if (!order && !loading) return <DashboardLayout profile={profile}><div className="card">⚠️ الأوردر غير موجود {error && <span className="text-sm text-red-500">— {error}</span>}</div></DashboardLayout>;
 
   const isAdmin = profile.role === "admin";
   const showTransfers = canSeeModule(profile, "journal");
@@ -103,9 +103,9 @@ export default function OrderDetailPage() {
         rows={materials as any[]}
         emptyMessage="لا توجد مواد"
         columns={[
-          { key: "name", label: "الصنف", render: (r: any) => r.mazaya_boards_inventory?.item_name || r.mazaya_accessories_inventory?.item_name || "-" },
-          { key: "code", label: "الكود", render: (r: any) => r.mazaya_boards_inventory?.code || r.mazaya_accessories_inventory?.code || "-" },
-          { key: "type", label: "النوع", render: (r: any) => r.board_id ? "لوح" : "اكسسوار" },
+          { key: "name", label: "الصنف", render: (r: any) => r.item_name || r.mazaya_boards_inventory?.item_name || r.mazaya_accessories_inventory?.item_name || "-" },
+          { key: "code", label: "الكود", render: (r: any) => r.item_code || r.mazaya_boards_inventory?.code || r.mazaya_accessories_inventory?.code || "-" },
+          { key: "type", label: "النوع", render: (r: any) => r.item_category === "boards_inventory" || r.board_id ? "لوح" : "اكسسوار" },
           { key: "quantity_used", label: "الكمية" },
           { key: "unit_price_snapshot", label: "السعر", render: (r: any) => formatCurrency(r.unit_price_snapshot) },
           { key: "line_total", label: "الإجمالي", render: (r: any) => <span className="font-bold">{formatCurrency(r.line_total)}</span> },
@@ -152,7 +152,7 @@ export default function OrderDetailPage() {
             emptyMessage="—"
             columns={[
               { key: "type", label: "النوع", render: (r: any) => r.work_type },
-              { key: "contractor", label: "المقاول", render: (r: any) => r.mazaya_contractors?.name ?? "-" },
+              { key: "contractor", label: "المقاول", render: (r: any) => r.contractor_name ?? r.mazaya_contractors?.name ?? "-" },
               { key: "amount", label: "القيمة", render: (r: any) => formatCurrency(r.amount) },
               { key: "notes", label: "ملاحظات" },
             ]}

@@ -21,7 +21,7 @@ interface ApiState<T> {
 export function useApi<T>(path: string | null) {
   const [state, setState] = useState<ApiState<T>>({
     data: null,
-    loading: false,
+    loading: !!path,
     error: null,
   })
   const abortRef = useRef<AbortController | null>(null)

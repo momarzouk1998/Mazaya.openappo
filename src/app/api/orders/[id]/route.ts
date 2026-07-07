@@ -32,24 +32,24 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         LEFT JOIN mazaya.boards_inventory bi ON om.item_category = 'boards_inventory' AND om.item_id = bi.id
         LEFT JOIN mazaya.accessories_inventory ai ON om.item_category = 'accessories_inventory' AND om.item_id = ai.id
         WHERE om.order_id = $1::uuid
-      `, orderId),
+      `, orderId).catch(() => []),
       prisma.$queryRawUnsafe<any[]>(`
         SELECT oew.*, co.name as contractor_name
         FROM mazaya.order_external_work oew
         LEFT JOIN mazaya.contractors co ON oew.contractor_id = co.id
         WHERE oew.order_id = $1::uuid
-      `, orderId),
+      `, orderId).catch(() => []),
       prisma.$queryRawUnsafe<any[]>(`
         SELECT
           COALESCE(SUM(CASE WHEN om.item_category = 'boards_inventory' THEN om.line_total ELSE 0 END), 0) as boards_cost,
           COALESCE(SUM(CASE WHEN om.item_category = 'accessories_inventory' THEN om.line_total ELSE 0 END), 0) as accessories_cost
         FROM mazaya.order_materials om
         WHERE om.order_id = $1::uuid
-      `, orderId),
+      `, orderId).catch(() => [{ boards_cost: 0, accessories_cost: 0 }]),
       prisma.$queryRawUnsafe<any[]>(
         `SELECT * FROM mazaya.order_extra_costs WHERE order_id = $1::uuid ORDER BY created_at ASC`,
         orderId,
-      ),
+      ).catch(() => []),
     ]);
 
     const totals = totalsR[0];

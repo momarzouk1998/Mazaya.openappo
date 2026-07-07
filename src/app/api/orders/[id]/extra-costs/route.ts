@@ -11,10 +11,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     await requireAuth();
     const { id } = await params;
 
-    const items = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT * FROM mazaya.order_extra_costs WHERE order_id = $1::uuid ORDER BY created_at ASC`,
-      id,
-    );
+    const items = await prisma.order_extra_costs.findMany({
+      where: { order_id: id },
+      orderBy: { created_at: 'asc' },
+    });
 
     return NextResponse.json({
       ok: true,
