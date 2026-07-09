@@ -39,20 +39,30 @@ export async function GET(request: NextRequest) {
       aMats.forEach(a => legacyNames.add((a.material_type || "").trim()))
     }
     const existingNames = new Set(items.map(i => i.name.trim().toLowerCase()))
-    let virtualId = -1
+    
+    // Auto-create missing legacy materials in the DB so they show up everywhere
+    const newItemsToInsert: any[] = []
     legacyNames.forEach(name => {
       if (name && !existingNames.has(name.toLowerCase())) {
-        items.push({
-          id: `legacy-${virtualId--}` as any,
+        newItemsToInsert.push({
           name,
           category: category || "board",
           is_active: true,
-          sort_order: 99,
-          created_at: new Date(),
+          sort_order: 99
         })
         existingNames.add(name.toLowerCase())
       }
     })
+
+    if (newItemsToInsert.length > 0) {
+      await prisma.material_types.createMany({ data: newItemsToInsert, skipDuplicates: true })
+      // Refetch to get the real UUIDs
+      const [newItems, newTotal] = await Promise.all([
+        prisma.material_types.findMany({ where, orderBy: [{ sort_order: "asc" }, { name: "asc" }], skip: offset, take: limit }),
+        prisma.material_types.count({ where }),
+      ])
+      return NextResponse.json({ ok: true, data: { items: newItems, total: newTotal, page, limit } })
+    }
     // ---------------------------------------------
 
     return NextResponse.json({ ok: true, data: { items, total, page, limit } })
