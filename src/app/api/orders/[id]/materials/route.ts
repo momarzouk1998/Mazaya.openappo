@@ -48,7 +48,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
 }
 
-/** POST — add material to order (triggers deduct_inventory) */
+/** POST — add material to order (deduct from inventory) */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await requireAuth();
@@ -110,6 +110,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       },
     });
 
+    // خصم من المخزون
+    if (item_category === 'boards_inventory') {
+      await prisma.$executeRawUnsafe(`
+        UPDATE mazaya.boards_inventory
+        SET quantity_used = quantity_used + $1,
+            quantity_remaining = quantity_in - quantity_used - $1,
+            total_price = (quantity_in - quantity_used - $1) * unit_price
+        WHERE id = $2::uuid AND deleted_at IS NULL
+      `, quantity_used, item_id);
+    } else {
+      await prisma.$executeRawUnsafe(`
+        UPDATE mazaya.accessories_inventory
+        SET quantity_used = quantity_used + $1,
+            quantity_remaining = quantity_in - quantity_used - $1,
+            total_price = (quantity_in - quantity_used - $1) * unit_price
+        WHERE id = $2::uuid AND deleted_at IS NULL
+      `, quantity_used, item_id);
+    }
+
     auditLog({ user_id: user.id, action: 'create', table_name: 'order_materials', row_id: r.id, after: r });
     return NextResponse.json({ ok: true, data: r }, { status: 201 });
   } catch (e: any) {
@@ -119,7 +138,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 }
 
-/** DELETE — remove material from order (triggers restore_inventory) */
+/** DELETE — remove material from order (restore inventory) */
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await requireAuth();
@@ -142,6 +161,31 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     await prisma.order_materials.delete({
       where: { id: materialId },
     });
+
+    // رجع الكمية للمخزون
+    const cat = before.item_category as string;
+    const itemId = before.item_id as string;
+    const qty = Number(before.quantity_used ?? 0);
+    if (qty > 0) {
+      if (cat === 'boards_inventory') {
+        await prisma.$executeRawUnsafe(`
+          UPDATE mazaya.boards_inventory
+          SET quantity_used = GREATEST(quantity_used - $1, 0),
+              quantity_remaining = LEAST(quantity_in - GREATEST(quantity_used - $1, 0), quantity_in),
+              total_price = LEAST(quantity_in - GREATEST(quantity_used - $1, 0), quantity_in) * unit_price
+          WHERE id = $2::uuid AND deleted_at IS NULL
+        `, qty, itemId);
+      } else {
+        await prisma.$executeRawUnsafe(`
+          UPDATE mazaya.accessories_inventory
+          SET quantity_used = GREATEST(quantity_used - $1, 0),
+              quantity_remaining = LEAST(quantity_in - GREATEST(quantity_used - $1, 0), quantity_in),
+              total_price = LEAST(quantity_in - GREATEST(quantity_used - $1, 0), quantity_in) * unit_price
+          WHERE id = $2::uuid AND deleted_at IS NULL
+        `, qty, itemId);
+      }
+    }
+
     auditLog({ user_id: user.id, action: 'delete', table_name: 'order_materials', row_id: materialId, before });
 
     return NextResponse.json({ ok: true, data: { message: 'تم حذف المادة' } });
