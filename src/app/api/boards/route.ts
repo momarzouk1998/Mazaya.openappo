@@ -73,6 +73,7 @@ export async function POST(request: Request) {
       }
     }
 
+    const qty = quantity_in || 0;
     const item = await prisma.boards_inventory.create({
       data: {
         item_name: item_name.trim(),
@@ -80,7 +81,9 @@ export async function POST(request: Request) {
         code: autoCode,
         supplier_id: supplier_id || null,
         unit_price,
-        quantity_in: quantity_in || 0,
+        quantity_in: qty,
+        quantity_remaining: qty,
+        total_price: qty * unit_price,
         date_added: date_added ? new Date(date_added) : new Date(),
         linked_order_id: linked_order_id || null,
         notes: notes || null,
