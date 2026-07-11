@@ -103,9 +103,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           item_id,
           quantity_used,
           unit_price_snapshot,
-          // حساب line_total هنا (SSoT) عشان كل القراءات
-          // اللي بتعتمد عليه متضمناه
-          line_total: Number(quantity_used) * Number(unit_price_snapshot),
+          // line_total هو GENERATED ALWAYS column في الـ DB
+          // بيتحسب تلقائياً كـ (quantity_used * unit_price_snapshot)
         },
       });
 
@@ -240,12 +239,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     // Update the material record
+    // line_total هو GENERATED ALWAYS column — بيتحسب تلقائياً من الـ DB
     await prisma.order_materials.update({
       where: { id: materialId },
       data: {
         quantity_used: newQty,
-        // نحسب line_total على الـ spot عشان الـ view يطلع رقم صحيح
-        line_total: newQty * Number(before.unit_price_snapshot ?? 0),
       },
     });
 
