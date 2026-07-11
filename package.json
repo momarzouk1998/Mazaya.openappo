@@ -7,7 +7,8 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:inventory": "node --experimental-strip-types --no-warnings=ExperimentalWarning tests/inventory-flow.test.ts"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

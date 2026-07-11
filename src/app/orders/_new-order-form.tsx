@@ -119,7 +119,8 @@ export default function NewOrderForm() {
         })
         setCosts({
           installation_cost: Number(ord.installation_cost ?? 0),
-          installation_travel_days: 0,
+          // (F6) نقرأ القيمة الحقيقية من الـ API بدل ما نبقيها 0
+          installation_travel_days: Number(ord.installation_travel_days ?? 0),
           internal_transport_cost: Number(ord.internal_transport_cost ?? 0),
           external_transport_cost: Number(ord.external_transport_cost ?? 0),
           factory_commission: Number(ord.factory_commission ?? 0),
@@ -189,13 +190,21 @@ export default function NewOrderForm() {
     if (!order.order_name.trim()) { setError("اسم الأوردر مطلوب"); setTab("info"); return }
     const payload: any = {
       order_name: order.order_name,
-      customer_id: order.customer_id ? Number(order.customer_id) : null,
-      branch_id: order.branch_id ? Number(order.branch_id) : null,
+      // branch_id و customer_id في الـ DB نوعهم UUID (مش int)
+      customer_id: order.customer_id || null,
+      branch_id: order.branch_id || null,
       order_type: order.order_type,
-      parent_order_id: order.parent_order_id ? Number(order.parent_order_id) : null,
+      parent_order_id: order.parent_order_id || null,
       start_date: order.start_date || null,
       end_date: order.end_date || null,
       status: order.status,
+      // (F6) — لازم نبعت كل التكاليف في الـ payload وإلا الـ PATCH
+      // هيتجاهلها بسبب الـ allowed list
+      installation_cost: Number(costs.installation_cost ?? 0),
+      installation_travel_days: Number(costs.installation_travel_days ?? 0),
+      internal_transport_cost: Number(costs.internal_transport_cost ?? 0),
+      external_transport_cost: Number(costs.external_transport_cost ?? 0),
+      factory_commission: Number(costs.factory_commission ?? 0),
       workers_count: order.workers_count ? Number(order.workers_count) : 0,
       notes: order.notes || null,
     }

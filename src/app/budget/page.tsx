@@ -9,6 +9,7 @@ import { SearchBox, FilterBar } from "@/components/SearchFilter";
 import { Button } from "@/components/ui/Button";
 import { formatCurrency, formatDate, ENTRY_TYPE_LABELS, ENTRY_TYPE_COLORS, PAYMENT_METHOD_LABELS } from "@/lib/format";
 import { exportToExcel } from "@/lib/excel";
+import { calcIncome, calcExpense, calcPayout, calcPassthrough } from "@/lib/finance";
 
 export default function BudgetPage() {
   const { user: profile } = useUserStore();
@@ -33,11 +34,8 @@ export default function BudgetPage() {
   }), [rows, search, typeFilter, payFilter, fromDate, toDate]);
 
   // ====== حسابات الكاردات من filtered ======
-  const calcIncome = (arr: any[]) => arr.filter(r => r.entry_type === "دفعة واردة من معرض" && !r.is_passthrough).reduce((s, r) => s + Number(r.amount), 0);
-  const calcExpense = (arr: any[]) => arr.filter(r => ["مشتريات", "نثريات"].includes(r.entry_type)).reduce((s, r) => s + Number(r.amount), 0);
-  const calcPayout = (arr: any[]) => arr.filter(r => r.entry_type === "دفعة صادرة لمورد" && !r.is_passthrough).reduce((s, r) => s + Number(r.amount), 0);
-  const calcPassthrough = (arr: any[]) => arr.filter(r => r.is_passthrough).reduce((s, r) => s + Number(r.amount), 0);
-
+  // (SSoT — F2) كل الحسابات من src/lib/finance.ts عشان نضمن
+  // نفس القيم في كل الصفحات.
   const fIncome = calcIncome(filtered);
   const fExpense = calcExpense(filtered);
   const fPayout = calcPayout(filtered);

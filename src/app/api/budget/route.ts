@@ -20,15 +20,16 @@ export async function GET(request: Request) {
     const monthEndStr = monthEnd.toISOString().slice(0, 10);
 
     // ===== أوردرات الشهر =====
+    // (P4) نستخدم parameterized queries بدل string interpolation
     const orders = await prisma.$queryRawUnsafe<any[]>(`
       SELECT status, boards_cost, accessories_cost, installation_cost,
              internal_transport_cost, external_transport_cost,
              factory_commission, order_total
       FROM mazaya.orders
       WHERE deleted_at IS NULL
-        AND created_at >= '${monthStartStr}'
-        AND created_at <= '${monthEndStr}'
-    `).catch(() => []);
+        AND created_at >= $1::timestamptz
+        AND created_at <= $2::timestamptz
+    `, monthStartStr, monthEndStr).catch(() => []);
 
     const completedOrders = orders.filter(o => o.status === "مكتمل" || o.status === "تم التسليم");
     const openOrders = orders.filter(o => o.status === "مفتوح" || o.status === "قيد التنفيذ");
@@ -50,9 +51,9 @@ export async function GET(request: Request) {
       SELECT entry_type, amount, is_passthrough
       FROM mazaya.journal_entries
       WHERE deleted_at IS NULL
-        AND date >= '${monthStartStr}'
-        AND date <= '${monthEndStr}'
-    `).catch(() => []);
+        AND date >= $1::date
+        AND date <= $2::date
+    `, monthStartStr, monthEndStr).catch(() => []);
 
     const income = journal
       .filter(j => j.entry_type === "دفعة واردة من معرض" && !j.is_passthrough)

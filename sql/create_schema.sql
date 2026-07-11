@@ -286,6 +286,11 @@ CREATE INDEX IF NOT EXISTS idx_users_username ON mazaya.users(username);
 -- ============================================
 -- VIEWS
 -- ============================================
+--
+-- ملحوظة: v_order_totals و order_costs هنا معرّفين في
+-- prisma/migrations/20260711_financial_sso_views/migration.sql
+-- للحفاظ على الـ Single Source of Truth. لا تعدّلهم هنا
+-- بدون تعديل المايقريشن.
 
 CREATE OR REPLACE VIEW mazaya.v_inventory_value AS
 SELECT

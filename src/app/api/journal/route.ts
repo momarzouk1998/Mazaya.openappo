@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-server';
 import prisma from '@/lib/db/prisma';
 import { auditLog } from '@/lib/audit';
+import { VALID_ENTRY_TYPES, VALID_PAYMENT_METHODS } from '@/lib/finance';
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAuth();
+    const user = await requireAuth();
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
@@ -60,6 +61,17 @@ export async function GET(request: NextRequest) {
     if (order_id) {
       conditions.push(`je.order_id = $${paramIdx++}::uuid`);
       rawParams.push(order_id);
+    }
+
+    // F10 — Branch scoping: لو المستخدم مش admin، نقتصر على القيود
+    // المرتبطة بأوردرات في فروعه (عن طريق order_id). باقي القيود
+    // (التمريرية، النثريات بدون أوردر) لا تظهر للمستخدمين غير الإداريين
+    // لأن جدول journal_entries مافيش فيه branch_id في الـ schema الحالي.
+    if (user.role !== 'admin' && user.branch_id) {
+      conditions.push(`(je.order_id IS NULL OR je.order_id IN (
+        SELECT o.id FROM mazaya.orders o WHERE o.branch_id = $${paramIdx++}::uuid
+      ))`);
+      rawParams.push(user.branch_id);
     }
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
@@ -126,15 +138,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const validEntryTypes = ['مشتريات', 'دفعة واردة من معرض', 'دفعة صادرة لمورد', 'تحويل تمريري', 'نثريات', 'purchase', 'incoming_from_branch', 'outgoing_to_supplier', 'transfer', 'overhead', 'income', 'expense'];
-    if (!entry_type || !validEntryTypes.includes(entry_type)) {
+    // SSoT (F8) — مصدر واحد لـ entry_types من src/lib/finance.ts
+    // لا نقبل المفاتيح الإنجليزية بعد الآن.
+    if (!entry_type || !(VALID_ENTRY_TYPES as readonly string[]).includes(entry_type)) {
       return NextResponse.json(
         { ok: false, error: { code: 'VALIDATION_ERROR', message: 'نوع القيد غير صالح' } },
         { status: 400 }
       );
     }
 
-    if (payment_method && !['نقدي', 'تحويل', 'cash', 'transfer'].includes(payment_method)) {
+    if (payment_method && !(VALID_PAYMENT_METHODS as readonly string[]).includes(payment_method)) {
       return NextResponse.json(
         { ok: false, error: { code: 'VALIDATION_ERROR', message: 'طريقة الدفع غير صالحة' } },
         { status: 400 }

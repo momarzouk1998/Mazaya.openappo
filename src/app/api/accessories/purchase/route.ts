@@ -2,6 +2,7 @@
 import { requireAuth } from "@/lib/auth-server"
 import prisma from "@/lib/db/prisma"
 import { auditLog } from "@/lib/audit"
+import { increaseInventory } from "@/lib/inventory"
 
 export const dynamic = "force-dynamic"
 
@@ -24,12 +25,16 @@ export async function POST(request: NextRequest) {
 
     const result = await prisma.$transaction(async (tx) => {
       const before = { quantity_in: item.quantity_in, quantity_remaining: item.quantity_remaining, unit_price: item.unit_price }
-      const newQtyIn = Number(item.quantity_in) + qty
-      const newRemaining = Number(item.quantity_remaining) + qty
-      const updated = await tx.accessories_inventory.update({
-        where: { id: item_id },
-        data: { quantity_in: newQtyIn, quantity_remaining: newRemaining, unit_price: price, supplier_id: supplier_id || item.supplier_id || null },
-      })
+      // قانون واحد: نفس helper الـ boards عشان كل أنواع المشتريات
+      // بتستخدم نفس المنطق (F7).
+      await increaseInventory(
+        prisma,
+        "accessories_inventory",
+        item_id,
+        qty,
+        { newUnitPrice: price, supplierId: supplier_id || item.supplier_id || null, txClient: tx }
+      );
+      const updated = await tx.accessories_inventory.findUnique({ where: { id: item_id } });
 
       let journal: any = null
       if (create_journal) {

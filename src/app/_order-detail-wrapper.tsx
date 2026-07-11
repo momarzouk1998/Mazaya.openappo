@@ -27,7 +27,8 @@ export default function OrderDetailPage() {
     boards_cost: order.boards_cost ?? 0,
     accessories_cost: order.accessories_cost ?? 0,
     installation_cost: order.installation_cost ?? 0,
-    installation_travel_days: 0,
+    // (F6) — اقرأ القيمة الحقيقية من الأوردر بدل ما تكون ثابت 0
+    installation_travel_days: order.installation_travel_days ?? 0,
     internal_transport_cost: order.internal_transport_cost ?? 0,
     external_transport_cost: order.external_transport_cost ?? 0,
     factory_commission: order.factory_commission ?? 0,

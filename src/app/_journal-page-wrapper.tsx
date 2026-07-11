@@ -9,6 +9,7 @@ import { SearchBox } from "@/components/SearchFilter";
 import { Button } from "@/components/ui/Button";
 import { exportToExcel } from "@/lib/excel";
 import { formatCurrency, formatDate, ENTRY_TYPE_LABELS, ENTRY_TYPE_COLORS, PAYMENT_METHOD_LABELS } from "@/lib/format";
+import { calcIncome, calcExpense, calcPayout, calcOpeningBalance, calcClosingBalance, dateKey } from "@/lib/finance";
 import { canSeeModule } from "@/lib/auth";
 import RowEditor, { type FieldDef } from "@/components/ui/RowEditor";
 import {
@@ -88,16 +89,13 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
   }), [rows, search, typeFilter, payFilter, fromDate, toDate]);
 
   // ====== 3 مستويات للملخص ======
-  const todayKey = new Date().toISOString().slice(0, 10);
+  // (SSoT — F1, F2) كل الحسابات المالية من src/lib/finance.ts
+  const todayKey = dateKey();
   const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - 6);
-  const weekStartKey = weekStart.toISOString().slice(0, 10);
+  const weekStartKey = dateKey(weekStart);
 
   const todayRows = rows.filter(r => r.date === todayKey);
   const weekRows = rows.filter(r => r.date >= weekStartKey);
-
-  const calcIncome = (arr: any[]) => arr.filter(r => r.entry_type === "دفعة واردة من معرض" && !r.is_passthrough).reduce((s, r) => s + Number(r.amount), 0);
-  const calcExpense = (arr: any[]) => arr.filter(r => ["مشتريات", "نثريات"].includes(r.entry_type)).reduce((s, r) => s + Number(r.amount), 0);
-  const calcPayout = (arr: any[]) => arr.filter(r => r.entry_type === "دفعة صادرة لمورد" && !r.is_passthrough).reduce((s, r) => s + Number(r.amount), 0);
 
   const todayIncome = calcIncome(todayRows);
   const todayExpense = calcExpense(todayRows);
@@ -109,12 +107,13 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
   const totalNet = totalIncome - totalExpense - totalPayout;
 
   // ====== الرصيد الجاري (Running Balance) ======
-  // رصيد أول اليوم = (الوارد التراكمي − المصروف التراكمي) لكل الأيام قبل اليوم.
-  // رصيد آخر اليوم = رصيد الأول + وارد اليوم − مصروف اليوم (ده اللي يبدأ بيه بكره).
-  const beforeTodayRows = rows.filter(r => r.date < todayKey);
-  const openingBalance = calcIncome(beforeTodayRows) - calcExpense(beforeTodayRows);
+  // SSoT — يشمل الوارد والمصروف والدفوع (F1).
+  // كان قبل كده بيحسب openingBalance = income_before - expense_before
+  // وبيتجاهل الـ payout، فكان الرقم مش متطابق مع totalNet.
+  const openingBalance = calcOpeningBalance(rows, todayKey);
   const todayNet = todayIncome - todayExpense;
-  const closingBalance = openingBalance + todayNet;
+  // closingBalance = opening + dayNet (نفس المعادلة الموحدة)
+  const closingBalance = calcClosingBalance(rows, todayKey);
 
   // ====== تفاصيل اليوم لجدول "تقرير اليوم" ======
   const todayDetail = todayRows.slice().reverse(); // الأحدث أولاً

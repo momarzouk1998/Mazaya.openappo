@@ -98,6 +98,7 @@ model orders {
   internal_transport_cost Decimal                @default(0)
   external_transport_cost Decimal                @default(0)
   factory_commission      Decimal                @default(0)
+  installation_travel_days Int?                  @default(0)
   order_total             Decimal?
   notes                   String?                @db.Text
   deleted_at              DateTime?              @db.Timestamptz()

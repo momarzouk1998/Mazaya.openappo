@@ -82,7 +82,9 @@ export async function POST(request: NextRequest) {
         const journalEntry = await tx.journal_entries.create({
           data: {
             date: date ? new Date(date) : new Date(),
-            entry_type: 'overhead',
+            // SSoT (F8) — نستخدم المفتاح العربي 'نثريات' بدل 'overhead'
+            // عشان كل الحسابات الموحدة في src/lib/finance.ts تشتغل صح
+            entry_type: 'نثريات',
             description: description.trim(),
             amount,
             payment_method: payment_method || null,

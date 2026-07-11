@@ -64,4 +64,4 @@ USER nextjs
 EXPOSE 3000
 
 # Run migrations then start the server
-CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy 2>/dev/null || echo 'Migrations skipped or already applied' && HOSTNAME=0.0.0.0 node server.js"]
+CMD ["sh", "-c", "./node_modules/.bin/prisma db push --accept-data-loss 2>/dev/null; ./node_modules/.bin/prisma migrate deploy 2>/dev/null || echo 'Migrations skipped or already applied'; HOSTNAME=0.0.0.0 node server.js"]

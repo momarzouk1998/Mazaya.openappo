@@ -5,6 +5,23 @@ import { auditLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * ===========================
+ * Single Source of Truth (SSoT)
+ * ===========================
+ * - قائمة الأوردرات بتيجي من v_order_totals (view) لأنها تحسب
+ *   order_total / boards_cost / accessories_cost من order_materials.line_total.
+ *   عمود order_total في جدول orders بيبقى NULL في كل صف (F3, F13)
+ *   فمفيش صفحة بتحط رقم صفر للإجمالي غير لما تستخدم الجدول مباشرة.
+ * - الـ view ده هو نفس مصدر التقارير (reports/orders, profit-loss)،
+ *   فلو عدّلنا أي عمود في الأوردر (مثلاً installation_cost) الـ view
+ *   بيحسب order_total تاني بشكل صحيح.
+ *
+ * ملحوظة مهمة بخصوص branch_id:
+ *   في الكود القديم بنستخدم prisma.orders.findMany() اللي بيرجع أعمدة
+ *   v_order_totals ما كانتش فيه. الآن بنستخدم raw SQL على v_order_totals
+ *   فبنطبّق scope الفرع يدوي (search + status + branch_id + customer_id).
+ */
 export async function GET(request: Request) {
   try {
     const user = await requireAuth();
@@ -17,43 +34,69 @@ export async function GET(request: Request) {
     const customer_id = searchParams.get('customer_id') || '';
     const offset = (page - 1) * limit;
 
-    const where: any = { deleted_at: null };
+    // تحديد الفرع بناءً على صلاحيات المستخدم
+    const effectiveBranchId =
+      user.role !== 'admin' && user.branch_id ? user.branch_id : branch_id || null;
+
+    // نبني WHERE clause بطريقة parameterized
+    const conditions: string[] = ['vot.deleted_at IS NULL'];
+    const rawParams: any[] = [];
+    let paramIdx = 1;
 
     if (search) {
-      where.order_name = { contains: search, mode: 'insensitive' };
+      conditions.push(`vot.order_name ILIKE $${paramIdx++}`);
+      rawParams.push(`%${search}%`);
     }
     if (status) {
-      where.status = status;
+      conditions.push(`vot.status = $${paramIdx++}`);
+      rawParams.push(status);
     }
-    if (user.role !== 'admin' && user.branch_id) {
-      where.branch_id = user.branch_id;
-    } else if (branch_id) {
-      where.branch_id = branch_id;
+    if (effectiveBranchId) {
+      conditions.push(`vot.branch_id = $${paramIdx++}::uuid`);
+      rawParams.push(effectiveBranchId);
     }
     if (customer_id) {
-      where.customer_id = customer_id;
+      conditions.push(`vot.customer_id = $${paramIdx++}::uuid`);
+      rawParams.push(customer_id);
     }
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
 
     const [countResult, data] = await Promise.all([
-      prisma.orders.count({ where }),
-      prisma.orders.findMany({
-        where,
-        include: { customer: true, branch: true },
-        orderBy: { created_at: 'desc' },
-        skip: offset,
-        take: limit,
-      }),
+      prisma.$queryRawUnsafe<any[]>(
+        `SELECT COUNT(*)::int as total FROM mazaya.v_order_totals vot ${whereClause}`,
+        ...rawParams
+      ),
+      prisma.$queryRawUnsafe<any[]>(
+        `SELECT vot.*,
+          c.name as customer_name,
+          b.name as branch_name
+         FROM mazaya.v_order_totals vot
+         LEFT JOIN mazaya.customers c ON vot.customer_id = c.id
+         LEFT JOIN mazaya.branches b ON vot.branch_id = b.id
+         ${whereClause}
+         ORDER BY vot.created_at DESC
+         LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+        ...rawParams, limit, offset
+      ),
     ]);
 
-    const items = data.map(({ customer, branch, ...rest }) => ({
-      ...rest,
-      customer_name: customer?.name ?? null,
-      branch_name: branch?.name ?? null,
+    const total = parseInt(countResult[0]?.total ?? '0', 10);
+
+    // Serializing decimals properly for client
+    const items = data.map((r: any) => ({
+      ...r,
+      boards_cost: Number(r.boards_cost ?? 0),
+      accessories_cost: Number(r.accessories_cost ?? 0),
+      installation_cost: Number(r.installation_cost ?? 0),
+      internal_transport_cost: Number(r.internal_transport_cost ?? 0),
+      external_transport_cost: Number(r.external_transport_cost ?? 0),
+      factory_commission: Number(r.factory_commission ?? 0),
+      order_total: Number(r.order_total ?? 0),
     }));
 
     return NextResponse.json({
       ok: true,
-      data: { items, total: countResult, page, limit },
+      data: { items, total, page, limit },
     });
   } catch (e: any) {
     if (e.status) return NextResponse.json({ ok: false, error: { code: 'UNAUTHORIZED', message: 'غير مسجل الدخول' } }, { status: e.status });
@@ -66,7 +109,7 @@ export async function POST(request: Request) {
   try {
     const user = await requireAuth();
     const body = await request.json();
-    const { order_name, customer_id, branch_id, order_type, start_date, end_date, status, installation_cost, internal_transport_cost, external_transport_cost, factory_commission, workers_count, notes } = body;
+    const { order_name, customer_id, branch_id, order_type, start_date, end_date, status, installation_cost, installation_travel_days, internal_transport_cost, external_transport_cost, factory_commission, workers_count, notes } = body;
 
     if (!order_name || !order_name.trim()) {
       return NextResponse.json({ ok: false, error: { code: 'VALIDATION_ERROR', message: 'اسم الأوردر مطلوب' } }, { status: 400 });
@@ -85,6 +128,7 @@ export async function POST(request: Request) {
         end_date: end_date ? new Date(end_date).toISOString() : null,
         status: validStatuses.includes(status) ? status : 'مفتوح',
         installation_cost: installation_cost || 0,
+        installation_travel_days: installation_travel_days ?? 0,
         internal_transport_cost: internal_transport_cost || 0,
         external_transport_cost: external_transport_cost || 0,
         factory_commission: factory_commission || 0,

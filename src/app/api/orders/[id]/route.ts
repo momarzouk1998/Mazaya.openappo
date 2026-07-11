@@ -9,15 +9,34 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const orderId = id;
 
-    const order = await prisma.orders.findFirst({
-      where: { id: orderId, deleted_at: null },
-      include: { customer: true, branch: true },
-    });
+    // ============================
+    // Single Source of Truth (SSoT)
+    // ============================
+    // نستخدم v_order_totals view بدل ما نحسب boards_cost /
+    // accessories_cost في 4 استعلامات منفصلة + نضيف installation_cost
+    // يدوياً. الـ view بيحسب order_total بشكل صحيح (F3, F4, F5).
+    const [order, totalsR, extraCostsR] = await Promise.all([
+      prisma.orders.findFirst({
+        where: { id: orderId, deleted_at: null },
+        include: { customer: true, branch: true },
+      }),
+      prisma.$queryRawUnsafe<any[]>(
+        `SELECT boards_cost, accessories_cost, order_total, extra_costs_total
+         FROM mazaya.v_order_totals WHERE order_id = $1::uuid`,
+        orderId,
+      ).catch(() => [{ boards_cost: 0, accessories_cost: 0, order_total: 0, extra_costs_total: 0 }]),
+      prisma.$queryRawUnsafe<any[]>(
+        `SELECT * FROM mazaya.order_extra_costs WHERE order_id = $1::uuid ORDER BY created_at ASC`,
+        orderId,
+      ).catch(() => []),
+    ]);
     if (!order) {
       return NextResponse.json({ ok: false, error: { code: 'NOT_FOUND', message: 'الأوردر غير موجود' } }, { status: 404 });
     }
 
-    const [materialsR, extWorkR, totalsR, extraCostsR] = await Promise.all([
+    // لازم نرجّع المواد والأعمال الخارجية كمان عشان باقي الواجهات
+    // تعتمد على نفس الـ payload
+    const [materialsR, extWorkR] = await Promise.all([
       prisma.$queryRawUnsafe<any[]>(`
         SELECT om.*,
           CASE
@@ -39,20 +58,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         LEFT JOIN mazaya.contractors co ON oew.contractor_id = co.id
         WHERE oew.order_id = $1::uuid
       `, orderId).catch(() => []),
-      prisma.$queryRawUnsafe<any[]>(`
-        SELECT
-          COALESCE(SUM(CASE WHEN om.item_category = 'boards_inventory' THEN om.line_total ELSE 0 END), 0) as boards_cost,
-          COALESCE(SUM(CASE WHEN om.item_category = 'accessories_inventory' THEN om.line_total ELSE 0 END), 0) as accessories_cost
-        FROM mazaya.order_materials om
-        WHERE om.order_id = $1::uuid
-      `, orderId).catch(() => [{ boards_cost: 0, accessories_cost: 0 }]),
-      prisma.$queryRawUnsafe<any[]>(
-        `SELECT * FROM mazaya.order_extra_costs WHERE order_id = $1::uuid ORDER BY created_at ASC`,
-        orderId,
-      ).catch(() => []),
     ]);
 
-    const totals = totalsR[0];
+    const totals = totalsR[0] || { boards_cost: 0, accessories_cost: 0, order_total: 0, extra_costs_total: 0 };
     const extraCostsTotal = extraCostsR.reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0);
     const { customer, branch, ...orderData } = order;
 
@@ -68,7 +76,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         boards_cost: Number(totals.boards_cost),
         accessories_cost: Number(totals.accessories_cost),
         extra_costs_total: extraCostsTotal,
-        order_total: Number(totals.boards_cost) + Number(totals.accessories_cost) + Number(order.installation_cost ?? 0) + Number(order.internal_transport_cost ?? 0) + Number(order.external_transport_cost ?? 0) + Number(order.factory_commission ?? 0) + extraCostsTotal,
+        // order_total = كل التكاليف (ماشية من الـ view)
+        order_total: Number(totals.order_total),
       },
     });
   } catch (e: any) {
@@ -91,7 +100,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     const body = await request.json();
-    const allowed = ['order_name', 'customer_id', 'branch_id', 'order_type', 'start_date', 'end_date', 'status', 'installation_cost', 'internal_transport_cost', 'external_transport_cost', 'factory_commission', 'workers_count', 'notes'];
+    const allowed = ['order_name', 'customer_id', 'branch_id', 'order_type', 'start_date', 'end_date', 'status', 'installation_cost', 'installation_travel_days', 'internal_transport_cost', 'external_transport_cost', 'factory_commission', 'workers_count', 'notes'];
     const data: any = {};
     for (const key of allowed) {
       if (body[key] !== undefined) {
