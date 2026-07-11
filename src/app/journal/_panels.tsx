@@ -258,14 +258,15 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
       </div>
 
       {/* الأوردر (اختياري) */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">الأوردر (اختياري)</label>
-        <input list={"order-list-" + cat} type="text" value={orders.find((o: any) => o.id === form.order_id)?.order_name ?? ""} onChange={(e) => {
-          const selected = orders.find((o: any) => o.order_name === e.target.value)
-          setForm({ ...form, order_id: selected ? String(selected.id) : "" })
-        }} placeholder="🔍 ابحث باسم الأوردر..." className="w-full px-3 py-2 border rounded-lg" />
-        <datalist id={"order-list-" + cat}>{orders.map((o: any) => <option key={o.id} value={o.order_name} />)}</datalist>
-      </div>
+      <Combobox
+        label="الأوردر (اختياري)"
+        placeholder="🔍 ابحث باسم الأوردر..."
+        endpoint="/api/orders?limit=500"
+        value={form.order_id}
+        onChange={(id) => setForm({ ...form, order_id: id })}
+        allowCreate={false}
+        nameKey="order_name"
+      />
 
       <div className="grid grid-cols-2 gap-3">
         <Input label="التاريخ" type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />

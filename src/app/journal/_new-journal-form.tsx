@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useUserStore } from "@/store/user-store"
@@ -7,6 +7,7 @@ import { useApiMutation } from "@/hooks/useApi"
 import DashboardLayout from "@/components/layout/DashboardLayout"
 import PageHeader from "@/components/PageHeader"
 import { Input, Textarea } from "@/components/ui/Input"
+import Combobox from "@/components/ui/Combobox"
 import { Button } from "@/components/ui/Button"
 import { ENTRY_TYPE_LABELS, formatCurrency } from "@/lib/format"
 
@@ -152,14 +153,15 @@ export default function NewJournalForm() {
         )}
         {form.entry_type === "نثريات" && <div className="bg-purple-50 text-purple-700 text-sm p-3 rounded-lg">💡 الأفضل تسجيل النثريات من صفحة "النثريات" — هتترتبط هنا تلقائياً.</div>}
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">الأوردر المرتبط (اختياري)</label>
-          <input list="order-list" type="text" value={orders.find((o: any) => o.id === form.order_id)?.order_name ?? ""} onChange={(e) => {
-            const selected = orders.find((o: any) => o.order_name === e.target.value)
-            setForm({ ...form, order_id: selected ? selected.id : "" })
-          }} placeholder="🔍 ابحث باسم الأوردر..." className="w-full px-3 py-2 border rounded-lg" />
-          <datalist id="order-list">{orders.map((o: any) => <option key={o.id} value={o.order_name} />)}</datalist>
-        </div>
+        <Combobox
+          label="الأوردر المرتبط (اختياري)"
+          placeholder="🔍 ابحث باسم الأوردر..."
+          endpoint="/api/orders?limit=500"
+          value={form.order_id}
+          onChange={(id) => setForm({ ...form, order_id: id })}
+          allowCreate={false}
+          nameKey="order_name"
+        />
 
         <Textarea label="ملاحظات" rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
 

@@ -21,6 +21,7 @@ interface ComboboxProps {
   /** Auto-create new option on blur (no button needed). Requires allowCreate=true */
   autoCreateOnBlur?: boolean;
   hint?: string;
+  nameKey?: string;
 }
 
 /**
@@ -38,6 +39,7 @@ export default function Combobox({
   allowCreate = true,
   autoCreateOnBlur = false,
   hint,
+  nameKey = "name",
 }: ComboboxProps) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -59,7 +61,7 @@ export default function Combobox({
         const seen = new Set<string>();
         const mapped: ComboboxOption[] = [];
         for (const it of items) {
-          const rawName = (it.name || '').trim();
+          const rawName = (it[nameKey] || it.name || '').trim();
           const lowerName = rawName.toLowerCase();
           if (!seen.has(lowerName)) {
             seen.add(lowerName);
