@@ -32,7 +32,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const created: any[] = []
     for (const it of items) {
       const contractorRaw = it.contractor_id
-      const contractorId = contractorRaw == null || contractorRaw === "" ? null : String(contractorRaw)
+      // نشيل قيم غير صالحة (NaN / رقم / فاضي) — contractor_id لازم UUID أو null
+      const contractorId = (contractorRaw == null || contractorRaw === "" || (typeof contractorRaw === "number" && Number.isNaN(contractorRaw)) || String(contractorRaw) === "NaN")
+        ? null
+        : String(contractorRaw)
       const r = await prisma.order_external_work.create({
         data: {
           order_id: orderId,

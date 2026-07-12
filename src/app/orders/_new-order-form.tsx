@@ -190,10 +190,12 @@ export default function NewOrderForm() {
   const boardsCost = usedItems.filter((u) => u.category === "board").reduce((s, u) => s + (u.quantity * u.unit_price), 0)
   const accessoriesCost = usedItems.filter((u) => u.category === "accessory").reduce((s, u) => s + (u.quantity * u.unit_price), 0)
   const extraCostsTotal = extraCosts.reduce((s, e) => s + (e.amount || 0), 0)
+  const externalWorkTotal = externalWorks.reduce((s, e) => s + (e.amount || 0), 0)
   const orderTotal = boardsCost + accessoriesCost
     + (costs.installation_cost || 0) + (costs.internal_transport_cost || 0)
     + (costs.external_transport_cost || 0) + (costs.factory_commission || 0)
     + extraCostsTotal
+    + externalWorkTotal
 
   async function onSubmit() {
     setError(null)
@@ -246,13 +248,15 @@ export default function NewOrderForm() {
 
     if (editingId) await fetch("/api/orders/" + orderId + "/external-work?external_id=all", { method: "DELETE" })
     if (externalWorks.length > 0) {
-      const ext = externalWorks.filter((e) => e.work_type && e.contractor_id).map((e) => ({
-        order_id: orderId,
-        work_type: e.work_type,
-        contractor_id: Number(e.contractor_id),
-        amount: e.amount,
-        notes: e.notes || null,
-      }))
+      const ext = externalWorks
+        .filter((e) => e.work_type) // المقاول اختياري — نحفظ أي عمل عنده نوع
+        .map((e) => ({
+          order_id: orderId,
+          work_type: e.work_type,
+          contractor_id: e.contractor_id || null, // UUID نصي — من غير Number()
+          amount: e.amount,
+          notes: e.notes || null,
+        }))
       if (ext.length > 0) await mutate("POST", "/api/orders/" + orderId + "/external-work", ext)
     }
 
@@ -335,7 +339,7 @@ export default function NewOrderForm() {
                 <div key={it.category + "-" + it.id} className="flex items-center justify-between py-2 hover:bg-gray-50 px-2 rounded">
                   <div className="min-w-0">
                     <div className="font-medium text-sm truncate">{it.name}</div>
-                    <div className="text-xs text-gray-500">{it.code} • متوفر: <span className={it.remaining > 0 ? "text-green-600 font-semibold" : "text-red-600"}>{it.remaining}</span></div>
+                    <div className="text-xs text-gray-500">{it.code} • متوفر: <span className={it.remaining > 0 ? "text-green-600 font-semibold" : "text-red-600"}>{it.remaining}</span> • آخر سعر: <span className="text-brand-orange-dark font-semibold">{formatCurrency(it.price)}</span></div>
                   </div>
                   <button onClick={() => addItem(it)} disabled={it.remaining <= 0} className="text-xs px-3 py-1.5 bg-brand-orange text-white rounded-lg hover:bg-brand-orange-dark disabled:opacity-50">+ إضافة</button>
                 </div>
@@ -356,7 +360,7 @@ export default function NewOrderForm() {
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="min-w-0">
                           <div className="font-medium text-sm truncate">{u.name}</div>
-                          <div className="text-xs text-gray-500">{u.category === "board" ? "لوح" : "اكسسوار"} • متوفر: {(item?.remaining ?? 0) + (u.original_quantity || 0)}</div>
+                          <div className="text-xs text-gray-500">{u.category === "board" ? "لوح" : "اكسسوار"} • متوفر: <span className="text-green-600 font-semibold">{(item?.remaining ?? 0) + (u.original_quantity || 0)}</span> • آخر سعر: <span className="text-brand-orange-dark font-semibold">{formatCurrency(item?.price ?? u.unit_price)}</span></div>
                         </div>
                         <button onClick={() => removeUsed(i)} className="text-red-500 hover:bg-red-100 rounded px-2">✕</button>
                       </div>
@@ -483,7 +487,7 @@ export default function NewOrderForm() {
             <h3 className="font-bold">🔨 أعمال خارجية (ألوميتال / تنجيد / أخرى)</h3>
             <Button variant="secondary" onClick={() => setExternalWorks((s) => [...s, { work_type: "", contractor_id: "", amount: 0, notes: "" }])}>+ إضافة عمل</Button>
           </div>
-          <p className="text-xs text-gray-500">⚠️ المبالغ هنا للتتبع فقط — لا تدخل في إجمالي الأوردر لأن المعرض يحوّل للمقاول مباشرة.</p>
+          <p className="text-xs text-gray-500">💡 المبالغ هنا بتدخل في إجمالي الأوردر والفاتورة. المقاول اختياري.</p>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
             <input type="text" value={customWorkType} onChange={(e) => setCustomWorkType(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomWorkType() } }} placeholder="اكتب نوع شغل جديد (مثال: نجارة خارجية)" className="flex-1 px-3 py-2 border rounded-lg text-sm" />

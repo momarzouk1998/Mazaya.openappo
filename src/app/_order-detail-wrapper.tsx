@@ -126,7 +126,8 @@ export default function OrderDetailPage() {
             <div className="card"><div className="text-xs text-gray-500">نقل خارجي</div><div className="font-bold">{formatCurrency(costs.external_transport_cost)}</div></div>
             <div className="card"><div className="text-xs text-gray-500">عمولة المصنع</div><div className="font-bold">{formatCurrency(costs.factory_commission)}</div></div>
             <div className={`card ${extraCostsTotal > 0 ? "bg-brand-orange-light border border-brand-orange/20" : ""}`}><div className="text-xs text-gray-500">تكاليف إضافية</div><div className="font-bold">{formatCurrency(extraCostsTotal)}</div></div>
-            <div className="card bg-gradient-to-l from-brand-orange to-brand-orange-dark text-white md:col-span-4"><div className="text-xs opacity-90">الإجمالي</div><div className="font-extrabold text-lg">{formatCurrency(costs.order_total)}</div></div>
+            <div className={`card ${external.length > 0 ? "bg-brand-orange-light border border-brand-orange/20" : ""}`}><div className="text-xs text-gray-500">أعمال خارجية</div><div className="font-bold">{formatCurrency(external.reduce((s: number, e: any) => s + Number(e.amount ?? 0), 0))}</div></div>
+            <div className="card bg-gradient-to-l from-brand-orange to-brand-orange-dark text-white md:col-span-4"><div className="text-xs opacity-90">الإجمالي (شامل الأعمال الخارجية)</div><div className="font-extrabold text-lg">{formatCurrency(costs.order_total)}</div></div>
           </div>
           {extraCosts.length > 0 && (
             <div className="card mb-4">
@@ -144,21 +145,23 @@ export default function OrderDetailPage() {
         </>
       )}
 
-      {/* الأعمال الخارجية */}
+      {/* الأعمال الخارجية — داخل إجمالي الأوردر */}
+      <h3 className="font-bold text-lg mt-6 mb-3">🔨 أعمال خارجية</h3>
+      <DataTable
+        rows={external as any[]}
+        emptyMessage="لا توجد أعمال خارجية"
+        columns={[
+          { key: "type", label: "النوع", render: (r: any) => r.work_type },
+          { key: "contractor", label: "المقاول", render: (r: any) => r.contractor_name ?? r.mazaya_contractors?.name ?? "—" },
+          { key: "amount", label: "القيمة", render: (r: any) => formatCurrency(r.amount) },
+          { key: "notes", label: "ملاحظات" },
+        ]}
+      />
       {external.length > 0 && (
-        <>
-          <h3 className="font-bold text-lg mt-6 mb-3">🔨 أعمال خارجية (تتبع فقط)</h3>
-          <DataTable
-            rows={external as any[]}
-            emptyMessage="—"
-            columns={[
-              { key: "type", label: "النوع", render: (r: any) => r.work_type },
-              { key: "contractor", label: "المقاول", render: (r: any) => r.contractor_name ?? r.mazaya_contractors?.name ?? "-" },
-              { key: "amount", label: "القيمة", render: (r: any) => formatCurrency(r.amount) },
-              { key: "notes", label: "ملاحظات" },
-            ]}
-          />
-        </>
+        <div className="mt-2 text-sm flex justify-between max-w-md mr-auto">
+          <span className="text-gray-500">إجمالي الأعمال الخارجية:</span>
+          <strong>{formatCurrency(external.reduce((s: number, e: any) => s + Number(e.amount ?? 0), 0))}</strong>
+        </div>
       )}
 
       {/* التحويلات */}

@@ -15,6 +15,7 @@ const CATEGORIES = [
   { value: "", label: "— اختر التصنيف —" },
   { value: "أجور عمال", label: "أجور عمال" },
   { value: "نثريات عامة", label: "نثريات عامة" },
+  { value: "غداء", label: "غداء" },
   { value: "كهرباء", label: "كهرباء" },
   { value: "شحن", label: "شحن / نقل" },
   { value: "صيانة", label: "صيانة" },

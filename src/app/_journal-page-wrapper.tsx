@@ -12,6 +12,7 @@ import { formatCurrency, formatDate, ENTRY_TYPE_LABELS, ENTRY_TYPE_COLORS, PAYME
 import { calcIncome, calcExpense, calcPayout, calcOpeningBalance, calcClosingBalance, dateKey } from "@/lib/finance";
 import { canSeeModule } from "@/lib/auth";
 import RowEditor, { type FieldDef } from "@/components/ui/RowEditor";
+import { PWAInstallButton } from "@/components/PWAInstallButton";
 import {
   BoardPurchasePanel,
   AccessoryPurchasePanel,
@@ -131,6 +132,7 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
         subtitle={showSummary ? "صندوق الرصيد + ملخص الأسبوع" : "أدخل أي حركة من هنا — شراء، نثريات، وارد، بحث"}
         helpTitle="اليومية"
         helpDescription="هنا تدخل كل حاجة من صفحة واحدة: اضغط أي زر في الأزرار السريعة (شراء ألواح، نثريات، دفعة من معرض...)، يفتح فورم جنبها. كل حاجة بتسجل في اليومية تلقائياً."
+        actions={<PWAInstallButton />}
       />
 
       {!canSee ? (

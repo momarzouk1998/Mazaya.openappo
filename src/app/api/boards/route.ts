@@ -62,17 +62,7 @@ export async function POST(request: Request) {
 
     const autoCode = code?.trim() || `B-${Date.now().toString(36).toUpperCase()}`;
 
-    // تحقق من تكرار الكود لو المستخدم كتب واحد
-    if (code?.trim()) {
-      const existing = await prisma.boards_inventory.findFirst({
-        where: { supplier_id: supplier_id || null, code: code.trim(), deleted_at: null },
-        select: { id: true },
-      });
-      if (existing) {
-        return NextResponse.json({ ok: false, error: { code: 'CONFLICT', message: 'هذا الكود موجود بالفعل لنفس المورد' } }, { status: 409 });
-      }
-    }
-
+    // الكود مسموح بتكراره (نفس الكود ممكن يتنضاف أكتر من مرة لنفس المورد)
     const qty = quantity_in || 0;
     const item = await prisma.boards_inventory.create({
       data: {

@@ -38,13 +38,15 @@ export default function InvoicePage() {
   const accCost = Number(costs?.accessories_cost ?? 0);
   const materialsCost = materials?.reduce((s: number, m: any) => s + Number(m.line_total ?? 0), 0) || 0;
   const extraCostsSum = extraCosts?.reduce((s: number, e: any) => s + Number(e.amount ?? 0), 0) || 0;
+  const externalWorkSum = external?.reduce((s: number, e: any) => s + Number(e.amount ?? 0), 0) || 0;
   const grandTotal = Number(costs?.order_total ?? 0) || (
     materialsCost +
     Number(costs?.installation_cost ?? 0) +
     Number(costs?.internal_transport_cost ?? 0) +
     Number(costs?.external_transport_cost ?? 0) +
     Number(costs?.factory_commission ?? 0) +
-    extraCostsSum
+    extraCostsSum +
+    externalWorkSum
   );
 
   return (
@@ -128,34 +130,23 @@ export default function InvoicePage() {
               ))}
             </>
           )}
+          {external && external.length > 0 && (
+            <>
+              <div className="border-t pt-2 mt-2 font-semibold">أعمال خارجية:</div>
+              {external.map((e: any) => (
+                <div key={e.id} className="flex justify-between text-gray-600">
+                  <span>{e.work_type}{e.contractor_name ? ` (${e.contractor_name})` : ""}{e.notes ? ` — ${e.notes}` : ""}:</span>
+                  <strong>{formatCurrency(Number(e.amount))}</strong>
+                </div>
+              ))}
+            </>
+          )}
         </div>
 
         <div className="bg-gradient-to-l from-brand-orange to-brand-orange-dark text-white p-4 rounded-xl flex items-center justify-between">
           <span className="font-bold">الإجمالي الكلي</span>
           <span className="text-2xl font-extrabold">{formatCurrency(grandTotal)}</span>
         </div>
-
-        {external && external.length > 0 && (
-          <>
-            <h3 className="font-bold text-lg mt-6 mb-3 border-b pb-2">أعمال خارجية (تتبع فقط)</h3>
-            <table className="w-full text-sm">
-              <thead><tr className="bg-gray-100">
-                <th className="p-2 text-right">النوع</th>
-                <th className="p-2 text-right">المقاول</th>
-                <th className="p-2 text-left">القيمة</th>
-              </tr></thead>
-              <tbody>
-                {external.map((e: any) => (
-                  <tr key={e.id} className="border-b">
-                    <td className="p-2">{e.work_type}</td>
-                    <td className="p-2">{e.contractor_name}</td>
-                    <td className="p-2 text-left">{formatCurrency(e.amount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
-        )}
 
         <div className="mt-8 pt-4 border-t text-center text-xs text-gray-400">
           <p>مصنع مزايا للأثاث - Mazaya Furniture Factory</p>

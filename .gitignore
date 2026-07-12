@@ -208,3 +208,6 @@ config.local.yml
 settings.local.json
 
 testsprite_tests\tmp\config.json
+
+# ZCode local artifacts
+.zcode/
