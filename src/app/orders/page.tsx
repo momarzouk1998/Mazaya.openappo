@@ -90,47 +90,81 @@ export default function OrdersPage() {
 
       {/* كاردات الحالات */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-        <div className="card bg-white border-r-4 border-brand-orange">
-          <div className="text-xs text-gray-500">أوردرات مفتوحة</div>
-          <div className="text-2xl font-extrabold text-brand-orange">{openOrders.length}</div>
-          <div className="text-[10px] text-gray-400 mt-0.5">إجمالي: {formatCurrency(totalOpen)}</div>
+        <div className="card bg-white border-t-4 border-brand-orange hover:shadow-elevated transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs text-gray-500 font-medium">أوردرات مفتوحة</div>
+              <div className="text-3xl font-extrabold text-brand-orange mt-1">{openOrders.length}</div>
+              <div className="text-sm font-bold text-brand-orange mt-0.5">{formatCurrency(totalOpen)}</div>
+            </div>
+            <div className="text-4xl opacity-30">📂</div>
+          </div>
         </div>
-        <div className="card bg-white border-r-4 border-blue-400">
-          <div className="text-xs text-gray-500">أوردرات مكتملة</div>
-          <div className="text-2xl font-extrabold text-blue-600">{completedOrders.length}</div>
-          <div className="text-[10px] text-gray-400 mt-0.5">إجمالي: {formatCurrency(totalCompleted)}</div>
+        <div className="card bg-white border-t-4 border-blue-500 hover:shadow-elevated transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs text-gray-500 font-medium">أوردرات مكتملة</div>
+              <div className="text-3xl font-extrabold text-blue-600 mt-1">{completedOrders.length}</div>
+              <div className="text-sm font-bold text-blue-600 mt-0.5">{formatCurrency(totalCompleted)}</div>
+            </div>
+            <div className="text-4xl opacity-30">✅</div>
+          </div>
         </div>
-        <div className="card bg-white border-r-4 border-green-400">
-          <div className="text-xs text-gray-500">تم التسليم</div>
-          <div className="text-2xl font-extrabold text-green-600">{deliveredOrders.length}</div>
+        <div className="card bg-white border-t-4 border-green-500 hover:shadow-elevated transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs text-gray-500 font-medium">تم التسليم</div>
+              <div className="text-3xl font-extrabold text-green-600 mt-1">{deliveredOrders.length}</div>
+              <div className="text-xs text-gray-400 mt-0.5">من المكتملة</div>
+            </div>
+            <div className="text-4xl opacity-30">🚚</div>
+          </div>
         </div>
-        <div className="card bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white">
-          <div className="text-xs opacity-90">إجمالي كل الأوردرات</div>
-          <div className="text-2xl font-extrabold">{formatCurrency(totalAll)}</div>
-          <div className="text-[10px] opacity-70 mt-0.5">{filtered.length} أوردر</div>
+        <div className="card bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white hover:shadow-elevated transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs opacity-90 font-medium">إجمالي كل الأوردرات</div>
+              <div className="text-3xl font-extrabold mt-1">{filtered.length}</div>
+              <div className="text-sm font-bold opacity-90 mt-0.5">{formatCurrency(totalAll)}</div>
+            </div>
+            <div className="text-4xl opacity-40">📦</div>
+          </div>
         </div>
       </div>
 
       {/* كاردات المواد والأعمال */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-        <div className="card bg-white border-r-4 border-brand-orange">
-          <div className="text-xs text-gray-500">📋 المواد (ألواح + اكسسوارات)</div>
-          <div className="text-xl font-extrabold text-brand-black">{formatCurrency(totalMaterials)}</div>
-          <div className="text-[10px] text-gray-400 mt-0.5">ألواح: {formatCurrency(totalBoards)} | اكسسوارات: {formatCurrency(totalAccessories)}</div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <div className="card bg-white border-t-4 border-brand-orange hover:shadow-elevated transition-all">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-brand-orange-light flex items-center justify-center text-xl">📋</div>
+            <div className="text-sm font-bold text-gray-700">المواد</div>
+          </div>
+          <div className="text-2xl font-extrabold text-brand-black">{formatCurrency(totalMaterials)}</div>
+          <div className="flex items-center gap-3 mt-2 text-xs">
+            <span className="text-gray-500">🪵 ألواح: <strong className="text-brand-black">{formatCurrency(totalBoards)}</strong></span>
+            <span className="text-gray-500">🔩 اكسسوارات: <strong className="text-brand-black">{formatCurrency(totalAccessories)}</strong></span>
+          </div>
         </div>
-        <div className="card bg-white border-r-4 border-purple-400">
-          <div className="text-xs text-gray-500">🔨 أعمال خارجية</div>
-          <div className="text-xl font-extrabold text-purple-600">{formatCurrency(totalExternalWork)}</div>
+        <div className="card bg-white border-t-4 border-purple-500 hover:shadow-elevated transition-all">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-xl">🔨</div>
+            <div className="text-sm font-bold text-gray-700">أعمال خارجية</div>
+          </div>
+          <div className="text-2xl font-extrabold text-purple-600">{formatCurrency(totalExternalWork)}</div>
+          <div className="text-xs text-gray-400 mt-2">إجمالي الأعمال الخارجية على الأوردرات</div>
         </div>
-        <div className="card bg-white border-r-4 border-yellow-400">
-          <div className="text-xs text-gray-500">💸 تكاليف يدوية</div>
-          <div className="text-xl font-extrabold text-yellow-700">{formatCurrency(totalManualCosts)}</div>
-          <div className="grid grid-cols-2 gap-1 mt-1 text-[9px] text-gray-500">
-            <span>تركيبات: {formatCurrency(totalInstallation)}</span>
-            <span>نقل داخلي: {formatCurrency(totalInternalTransport)}</span>
-            <span>نقل خارجي: {formatCurrency(totalExternalTransport)}</span>
-            <span>عمولة: {formatCurrency(totalFactoryCommission)}</span>
-            <span className="col-span-2">تكاليف إضافية: {formatCurrency(totalExtraCosts)}</span>
+        <div className="card bg-white border-t-4 border-yellow-500 hover:shadow-elevated transition-all">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-yellow-100 flex items-center justify-center text-xl">💸</div>
+            <div className="text-sm font-bold text-gray-700">تكاليف يدوية</div>
+          </div>
+          <div className="text-2xl font-extrabold text-yellow-700">{formatCurrency(totalManualCosts)}</div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-2 text-xs text-gray-500">
+            <span>🔧 تركيبات: <strong className="text-brand-black">{formatCurrency(totalInstallation)}</strong></span>
+            <span>📦 نقل داخلي: <strong className="text-brand-black">{formatCurrency(totalInternalTransport)}</strong></span>
+            <span>🚛 نقل خارجي: <strong className="text-brand-black">{formatCurrency(totalExternalTransport)}</strong></span>
+            <span>🏭 عمولة: <strong className="text-brand-black">{formatCurrency(totalFactoryCommission)}</strong></span>
+            <span className="col-span-2">➕ تكاليف إضافية: <strong className="text-brand-black">{formatCurrency(totalExtraCosts)}</strong></span>
           </div>
         </div>
       </div>

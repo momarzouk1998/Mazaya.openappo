@@ -6,7 +6,7 @@ import { useApi } from "@/hooks/useApi"
 import DashboardLayout from "@/components/layout/DashboardLayout"
 import PageHeader from "@/components/PageHeader"
 import { DataTable } from "@/components/DataTable"
-import { SearchBox, FilterBar } from "@/components/SearchFilter"
+import { SearchBox } from "@/components/SearchFilter"
 import { Button } from "@/components/ui/Button"
 import { exportToExcel } from "@/lib/excel"
 import { formatCurrency, formatDate } from "@/lib/format"
@@ -18,8 +18,6 @@ const overheadFields: FieldDef[] = [
   { name: "amount", label: "المبلغ", type: "number", required: true },
   { name: "notes", label: "ملاحظات", rows: 2 },
 ]
-
-const CATEGORIES = ["أجور عمال", "كهرباء", "شحن", "إيجار", "صيانة", "أخرى"] as const
 
 export default function OverheadPage() {
   const router = useRouter()
@@ -48,16 +46,6 @@ export default function OverheadPage() {
 
   const total = filtered.reduce((s, r) => s + Number(r.amount ?? 0), 0)
 
-  // كاردات التصنيفات من الفلتر الحالي
-  const categoryTotals = useMemo(() => {
-    const m: Record<string, number> = {}
-    filtered.forEach((r) => {
-      const cat = r.category || "أخرى"
-      m[cat] = (m[cat] || 0) + Number(r.amount ?? 0)
-    })
-    return m
-  }, [filtered])
-
   const uniqueCategories = useMemo(() => {
     return Array.from(new Set(rows.map((r) => r.category).filter(Boolean))).sort()
   }, [rows])
@@ -69,66 +57,72 @@ export default function OverheadPage() {
     return workers.filter((w: any) => (w.name ?? "").toLowerCase().includes(workerSearch.toLowerCase()))
   }, [workers, workerSearch])
 
+  // لو عامل محدد، نظهر اسمه
+  const selectedWorkerName = workerFilter ? (workers.find((w: any) => w.id === workerFilter)?.name || "") : ""
+
+  function clearFilters() {
+    setCategoryFilter(""); setWorkerFilter(""); setWorkerSearch(""); setFromDate(""); setToDate("")
+  }
+
   if (!profile) return null
 
   return (
     <DashboardLayout profile={profile}>
       <PageHeader title="النثريات" subtitle="مصاريف تشغيل المصنع العامة" helpTitle="النثريات" helpDescription="كهرباء، أجور عمال، شحن، إلخ." backHref="/journal" actions={<Button onClick={() => router.push("/overhead/new")}>+ نثريات جديدة</Button>} />
 
-      {/* كاردات الإجماليات */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-        <div className="card bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white">
-          <div className="text-xs opacity-90">إجمالي النثريات</div>
-          <div className="text-2xl font-extrabold">{formatCurrency(total)}</div>
-          <div className="text-[10px] opacity-70 mt-0.5">{filtered.length} سجل</div>
-        </div>
-        <div className="card bg-white border-r-4 border-brand-orange">
-          <div className="text-xs text-gray-500">عدد السجلات</div>
-          <div className="text-2xl font-extrabold text-brand-black">{filtered.length}</div>
+      {/* كارد الإجمالي الوحيد */}
+      <div className="mb-4">
+        <div className="card bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white hover:shadow-elevated transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm opacity-90 font-medium">إجمالي النثريات</div>
+              <div className="text-4xl font-extrabold mt-1">{formatCurrency(total)}</div>
+              <div className="text-xs opacity-80 mt-1">
+                {filtered.length} سجل
+                {categoryFilter && ` • تصنيف: ${categoryFilter}`}
+                {selectedWorkerName && ` • عامل: ${selectedWorkerName}`}
+                {(fromDate || toDate) && ` • فترة: ${fromDate || "البداية"} → ${toDate || "اليوم"}`}
+              </div>
+            </div>
+            <div className="text-6xl opacity-30">💵</div>
+          </div>
         </div>
       </div>
 
-      {/* كاردات التصنيفات */}
-      {Object.keys(categoryTotals).length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
-          {Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]).map(([cat, amount]) => (
-            <div
-              key={cat}
-              className={`card cursor-pointer transition ${categoryFilter === cat ? "border-brand-orange bg-brand-orange-light ring-2 ring-brand-orange/30" : "bg-white"}`}
-              onClick={() => setCategoryFilter(categoryFilter === cat ? "" : cat)}
-            >
-              <div className="text-xs text-gray-500">{cat}</div>
-              <div className="text-xl font-extrabold text-brand-black">{formatCurrency(amount)}</div>
-              <div className="text-[10px] text-gray-400 mt-0.5">{filtered.filter((r) => (r.category || "أخرى") === cat).length} سجل</div>
-            </div>
-          ))}
-        </div>
-      )}
-
       <div className="card mb-4">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex-1"><SearchBox value={search} onChange={setSearch} placeholder="ابحث في البيان..." /></div>
-          <Button variant="secondary" onClick={() => setFilterOpen(v => !v)} className="relative">
+          <div className="flex-1 min-w-[200px]"><SearchBox value={search} onChange={setSearch} placeholder="ابحث في البيان..." /></div>
+          <Button variant="secondary" onClick={() => setFilterOpen(true)} className="relative">
             تصفية
             {activeFiltersCount > 0 && <span className="absolute -top-2 -right-2 bg-brand-orange text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{activeFiltersCount}</span>}
           </Button>
-          <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="px-3 py-2.5 border rounded-lg" />
-          <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="px-3 py-2.5 border rounded-lg" />
           <Button variant="secondary" onClick={() => exportToExcel(filtered as any, "overhead")}>تصدير</Button>
         </div>
-        {filterOpen && (
-          <div className="mt-3 bg-gray-50 rounded-xl p-4 space-y-3 border">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      </div>
+
+      {filterOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setFilterOpen(false)}>
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">تصفية النثريات</h2>
+              <button onClick={() => setFilterOpen(false)} className="p-1 hover:bg-gray-100 rounded-lg">✕</button>
+            </div>
+            <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">التصنيف</label>
-                <select value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setWorkerFilter("") }} className="w-full px-3 py-2 border rounded-lg bg-white">
+                <label className="block text-sm font-medium text-gray-700 mb-1">التصنيف</label>
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => { setCategoryFilter(e.target.value); setWorkerFilter(""); setWorkerSearch("") }}
+                  className="w-full px-3 py-2 border rounded-lg bg-white"
+                >
                   <option value="">كل التصنيفات</option>
                   {uniqueCategories.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
+
               {showWorkerFilter && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">بحث عامل</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">بحث عن عامل</label>
                   <input
                     type="search"
                     value={workerSearch}
@@ -137,12 +131,12 @@ export default function OverheadPage() {
                     className="w-full px-3 py-2 border rounded-lg bg-white"
                   />
                   {workerSearch && (
-                    <div className="mt-1 max-h-32 overflow-y-auto bg-white border rounded-lg">
+                    <div className="mt-1 max-h-40 overflow-y-auto bg-white border rounded-lg">
                       {filteredWorkers.length === 0 && <div className="p-2 text-xs text-gray-400">لا يوجد عمال</div>}
                       {filteredWorkers.map((w: any) => (
                         <button
                           key={w.id}
-                          onClick={() => setWorkerFilter(w.id)}
+                          onClick={() => { setWorkerFilter(w.id); setWorkerSearch(w.name) }}
                           className={`w-full text-right px-3 py-2 text-sm hover:bg-gray-100 ${workerFilter === w.id ? "bg-brand-orange-light text-brand-orange-dark font-bold" : ""}`}
                         >
                           {w.name}
@@ -151,22 +145,38 @@ export default function OverheadPage() {
                     </div>
                   )}
                   {workerFilter && (
-                    <div className="mt-1 flex items-center gap-2">
-                      <span className="text-xs text-gray-500">محدد: {workers.find((w: any) => w.id === workerFilter)?.name || ""}</span>
-                      <button onClick={() => setWorkerFilter("")} className="text-xs text-red-500 hover:underline">مسح</button>
+                    <div className="mt-2 flex items-center gap-2 bg-brand-orange-light p-2 rounded-lg">
+                      <span className="text-xs text-brand-orange-dark font-medium">✓ العامل المحدد: {selectedWorkerName}</span>
+                      <button onClick={() => { setWorkerFilter(""); setWorkerSearch("") }} className="text-xs text-red-500 hover:underline mr-auto">إزالة</button>
                     </div>
                   )}
                 </div>
               )}
-            </div>
-            {activeFiltersCount > 0 && (
-              <div className="flex justify-end">
-                <Button variant="secondary" size="sm" onClick={() => { setCategoryFilter(""); setWorkerFilter(""); setWorkerSearch(""); setFromDate(""); setToDate(""); }}>🗑️ مسح الفلاتر</Button>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">من تاريخ</label>
+                  <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-full px-3 py-2 border rounded-lg" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">إلى تاريخ</label>
+                  <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-full px-3 py-2 border rounded-lg" />
+                </div>
               </div>
-            )}
+
+              {activeFiltersCount > 0 && (
+                <div className="text-xs text-brand-orange-dark bg-brand-orange-light border border-brand-orange/20 p-2 rounded">
+                  تم تطبيق {activeFiltersCount} فلتر — الإجمالي سيتحدث تلقائياً
+                </div>
+              )}
+            </div>
+            <div className="flex justify-between gap-2 pt-4 mt-4 border-t">
+              <Button variant="secondary" onClick={clearFilters}>مسح الفلاتر</Button>
+              <Button onClick={() => setFilterOpen(false)}>تطبيق</Button>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <DataTable
         loading={loading}
@@ -185,4 +195,3 @@ export default function OverheadPage() {
     </DashboardLayout>
   )
 }
-
