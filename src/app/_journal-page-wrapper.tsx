@@ -151,21 +151,18 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
             </div>
             <div className="card bg-white border-r-4 border-brand-orange">
               <div className="text-xs text-gray-500">أوردرات مفتوحة</div>
-              <div className="text-2xl font-extrabold text-brand-black">{allOrders.filter((o: any) => o.status === "مفتوح" || o.status === "قيد التنفيذ").length}</div>
-              <div className="text-[10px] text-gray-400 mt-0.5">قيد التنفيذ والمفتوحة</div>
+              <div className="text-2xl font-extrabold text-brand-orange">{allOrders.filter((o: any) => o.status === "مفتوح" || o.status === "قيد التنفيذ").length}</div>
+              <div className="text-[10px] text-gray-400 mt-0.5">إجمالي: {formatCurrency(allOrders.filter((o: any) => o.status === "مفتوح" || o.status === "قيد التنفيذ").reduce((s: number, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0))}</div>
             </div>
             <div className="card bg-white border-r-4 border-brand-orange">
-              <div className="text-xs text-gray-500">أوردرات مكتملة (الشهر)</div>
-              <div className="text-2xl font-extrabold text-brand-black">{allOrders.filter((o: any) => {
-                const d = new Date(o.created_at); const now = new Date();
-                return (o.status === "مكتمل" || o.status === "تم التسليم") && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-              }).length}</div>
-              <div className="text-[10px] text-gray-400 mt-0.5">هذا الشهر</div>
+              <div className="text-xs text-gray-500">أوردرات مكتملة</div>
+              <div className="text-2xl font-extrabold text-green-600">{allOrders.filter((o: any) => o.status === "مكتمل" || o.status === "تم التسليم").length}</div>
+              <div className="text-[10px] text-gray-400 mt-0.5">إجمالي: {formatCurrency(allOrders.filter((o: any) => o.status === "مكتمل" || o.status === "تم التسليم").reduce((s: number, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0))}</div>
             </div>
             <div className="card bg-white border-r-4 border-brand-orange">
               <div className="text-xs text-gray-500">إجمالي الأوردرات</div>
               <div className="text-2xl font-extrabold text-brand-black">{allOrders.length}</div>
-              <div className="text-[10px] text-gray-400 mt-0.5">كل الأوردرات</div>
+              <div className="text-[10px] text-gray-400 mt-0.5">إجمالي: {formatCurrency(allOrders.reduce((s: number, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0))}</div>
             </div>
           </div>
 
@@ -198,11 +195,10 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
             {/* تقرير اليوم */}
             <div className="card bg-white border border-gray-200">
               <div className="text-xs font-bold text-gray-700 mb-2 border-b pb-2">📅 تقرير اليوم ({formatDate(todayKey)})</div>
-              <div className="grid grid-cols-2 gap-2 text-center">
-                <div className="bg-gray-50 rounded p-1.5"><div className="text-[10px] text-gray-500">رصيد أول اليوم</div><div className="font-bold text-gray-700 text-sm">{formatCurrency(openingBalance)}</div></div>
-                <div className="bg-brand-orange-light rounded p-1.5"><div className="text-[10px] text-gray-500">+ وارد اليوم</div><div className="font-bold text-brand-orange-dark text-sm">{formatCurrency(todayIncome)}</div></div>
-                <div className="bg-gray-50 rounded p-1.5"><div className="text-[10px] text-gray-500">− مصروف اليوم</div><div className="font-bold text-gray-700 text-sm">{formatCurrency(todayExpense)}</div></div>
-                <div className="bg-white border rounded p-1.5"><div className="text-[10px] text-gray-500">= المتبقي (آخر اليوم)</div><div className="font-bold text-brand-black text-sm">{formatCurrency(closingBalance)}</div></div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="bg-brand-orange-light rounded p-1.5"><div className="text-[10px] text-gray-500">وارد</div><div className="font-bold text-brand-orange-dark text-sm">{formatCurrency(todayIncome)}</div></div>
+                <div className="bg-gray-50 rounded p-1.5"><div className="text-[10px] text-gray-500">مصروف</div><div className="font-bold text-gray-700 text-sm">{formatCurrency(todayExpense)}</div></div>
+                <div className="bg-white border rounded p-1.5"><div className="text-[10px] text-gray-500">الصافي</div><div className={`font-bold text-sm ${todayIncome - todayExpense >= 0 ? "text-green-600" : "text-red-600"}`}>{formatCurrency(todayIncome - todayExpense)}</div></div>
               </div>
             </div>
             {/* تقرير آخر 7 أيام */}
@@ -307,31 +303,21 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
                   <div>
                     {/* ملخص الرصيد الجاري */}
                     <div className="card bg-white border-r-4 border-brand-orange mb-4">
-                      <div className="text-sm font-bold text-brand-orange mb-3">💰 الرصيد الجاري — {formatDate(todayKey)} ({dayNames[new Date().getDay()]})</div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div className="bg-gray-50 rounded-lg p-3 text-center border">
-                          <div className="text-xs text-gray-500 mb-1">رصيد أول اليوم</div>
-                          <div className="font-bold text-gray-700">{formatCurrency(openingBalance)}</div>
-                        </div>
+                      <div className="text-sm font-bold text-brand-orange mb-3">💰 تقرير اليوم — {formatDate(todayKey)} ({dayNames[new Date().getDay()]})</div>
+                      <div className="grid grid-cols-3 gap-3">
                         <div className="bg-orange-50 rounded-lg p-3 text-center border border-brand-orange/20">
-                          <div className="text-xs text-brand-orange-dark mb-1">+ وارد اليوم</div>
-                          <div className="font-bold text-brand-orange-dark">{formatCurrency(todayIncome)}</div>
+                          <div className="text-xs text-brand-orange-dark mb-1">وارد</div>
+                          <div className="font-bold text-brand-orange-dark text-lg">{formatCurrency(todayIncome)}</div>
                         </div>
                         <div className="bg-gray-50 rounded-lg p-3 text-center border">
-                          <div className="text-xs text-gray-500 mb-1">− مصروف اليوم</div>
-                          <div className="font-bold text-gray-700">{formatCurrency(todayExpense)}</div>
+                          <div className="text-xs text-gray-500 mb-1">مصروف</div>
+                          <div className="font-bold text-gray-700 text-lg">{formatCurrency(todayExpense)}</div>
                         </div>
-                        <div className={`rounded-lg p-3 text-center border ${closingBalance >= 0 ? "bg-orange-100 border-brand-orange" : "bg-red-100 border-red-300"}`}>
-                          <div className={`text-xs mb-1 ${closingBalance >= 0 ? "text-brand-orange-dark" : "text-red-600"}`}>= المتبقي (رصيد الدرج)</div>
-                          <div className={`font-bold text-lg ${closingBalance >= 0 ? "text-brand-black" : "text-red-700"}`}>{formatCurrency(closingBalance)}</div>
+                        <div className={`rounded-lg p-3 text-center border ${todayIncome - todayExpense >= 0 ? "bg-green-50 border-green-300" : "bg-red-50 border-red-300"}`}>
+                          <div className={`text-xs mb-1 ${todayIncome - todayExpense >= 0 ? "text-green-700" : "text-red-600"}`}>الصافي</div>
+                          <div className={`font-bold text-lg ${todayIncome - todayExpense >= 0 ? "text-green-700" : "text-red-700"}`}>{formatCurrency(todayIncome - todayExpense)}</div>
                         </div>
                       </div>
-                      {todayNet !== 0 && (
-                        <div className="mt-3 text-center text-sm">
-                          <span className="text-gray-500">صافي حركة اليوم: </span>
-                          <span className={`font-bold ${todayNet >= 0 ? "text-green-700" : "text-red-700"}`}>{todayNet >= 0 ? "+" : ""}{formatCurrency(todayNet)}</span>
-                        </div>
-                      )}
                     </div>
 
                     {/* تفاصيل حركات اليوم */}

@@ -75,6 +75,7 @@ model customers {
   updated_at DateTime? @default(now()) @db.Timestamptz()
   branch     branches? @relation(fields: [branch_id], references: [id])
   orders     orders[]
+  payments   customer_payments[]
 
   @@map("customers")
   @@schema("mazaya")
@@ -114,6 +115,7 @@ model orders {
   external_work           order_external_work[]
   extra_costs             order_extra_costs[]
   journal_entries         journal_entries[]
+  customer_payments       customer_payments[]
 
   @@map("orders")
   @@schema("mazaya")
@@ -317,5 +319,23 @@ model audit_log {
   user        users?   @relation(fields: [user_id], references: [id])
 
   @@map("audit_log")
+  @@schema("mazaya")
+}
+
+model customer_payments {
+  id             String    @id @default(uuid()) @db.Uuid
+  customer_id    String    @db.Uuid
+  order_id       String?   @db.Uuid
+  amount         Decimal   @default(0)
+  payment_method String    @default("نقدي") @db.Text
+  date           DateTime  @default(now()) @db.Date
+  notes          String?   @db.Text
+  created_by     Int?
+  created_at     DateTime? @default(now()) @db.Timestamptz()
+  updated_at     DateTime? @default(now()) @db.Timestamptz()
+  customer       customers @relation(fields: [customer_id], references: [id])
+  order          orders?   @relation(fields: [order_id], references: [id])
+
+  @@map("customer_payments")
   @@schema("mazaya")
 }

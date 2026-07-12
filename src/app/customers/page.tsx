@@ -10,6 +10,7 @@ import { DataTable } from "@/components/DataTable";
 import { SearchBox, FilterBar } from "@/components/SearchFilter";
 import { Button } from "@/components/ui/Button";
 import { exportToExcel } from "@/lib/excel";
+import { formatCurrency } from "@/lib/format";
 import RowEditor, { type FieldDef } from "@/components/ui/RowEditor";
 
 const customerFields: FieldDef[] = [
@@ -25,9 +26,11 @@ export default function CustomersPage() {
   const { data, loading } = useApi<{ items: any[] }>('/api/customers?limit=500');
   const { data: branchesData } = useApi<{ items: any[] }>('/api/branches?limit=500');
   const { data: ordersData } = useApi<{ items: any[] }>('/api/orders?limit=500');
+  const { data: paymentsData } = useApi<{ items: any[] }>('/api/customer-payments?limit=2000');
   const rows = data?.items ?? [];
   const branches = branchesData?.items ?? [];
   const orders = ordersData?.items ?? [];
+  const allPayments = paymentsData?.items ?? [];
   const [search, setSearch] = useState("");
   const [branchFilter, setBranchFilter] = useState("");
 
@@ -37,7 +40,25 @@ export default function CustomersPage() {
     return m;
   }, [orders]);
 
-  const enriched = useMemo(() => (rows).map((x: any) => ({ ...x, branch_name: x.branch_name ?? "", orders_count: ordersCountMap[x.id] || 0 })), [rows, ordersCountMap]);
+  const ordersTotalMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    (orders).forEach((o: any) => { if (o.customer_id) m[o.customer_id] = (m[o.customer_id] || 0) + (o.total || 0); });
+    return m;
+  }, [orders]);
+
+  const paymentsByCustomer = useMemo(() => {
+    const m: Record<string, number> = {};
+    allPayments.forEach((p: any) => { if (p.customer_id) m[p.customer_id] = (m[p.customer_id] || 0) + Number(p.amount || 0); });
+    return m;
+  }, [allPayments]);
+
+  const enriched = useMemo(() => (rows).map((x: any) => ({
+    ...x,
+    branch_name: x.branch_name ?? "",
+    orders_count: ordersCountMap[x.id] || 0,
+    total_cost: ordersTotalMap[x.id] || 0,
+    total_paid: paymentsByCustomer[x.id] || 0,
+  })), [rows, ordersCountMap, ordersTotalMap, paymentsByCustomer]);
 
   const filtered = useMemo(() => enriched.filter(c =>
     (!search || c.name.toLowerCase().includes(search.toLowerCase()) || (c.phone ?? "").includes(search)) &&
@@ -79,7 +100,16 @@ export default function CustomersPage() {
           { key: "name", label: "اسم العميل", render: r => <Link href={`/customers/${r.id}`} className="font-semibold text-brand-orange hover:underline">{r.name}</Link> },
           { key: "branch_name", label: "المعرض" },
           { key: "phone", label: "رقم التواصل" },
-          { key: "orders_count", label: "عدد الأوردرات" },
+          { key: "orders_count", label: "الأوردرات" },
+          { key: "total_cost", label: "التكلفة", render: r => <span className="font-bold text-brand-orange">{formatCurrency(r.total_cost)}</span> },
+          { key: "total_paid", label: "المدفوع", render: r => <span className="font-bold text-green-600">{formatCurrency(r.total_paid)}</span> },
+          {
+            key: "remaining", label: "المتبقي",
+            render: r => {
+              const rem = r.total_cost - r.total_paid;
+              return <span className={`font-bold ${rem > 0 ? "text-red-600" : "text-green-600"}`}>{formatCurrency(rem)}</span>;
+            }
+          },
           { key: "address", label: "العنوان" },
           { key: "_actions", label: "إجراءات", render: r => <RowEditor row={r} apiBase="/api/customers" fields={customerFields} entityLabel="العميل" deleteHint="لا يمكن حذف هذا العميل لوجود أوردرات أو سجلات يومية مرتبطة به" /> },
         ]}

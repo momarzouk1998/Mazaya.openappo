@@ -32,6 +32,8 @@ export default function AccessoriesPage() {
   const [supplierFilter, setSupplierFilter] = useState("")
   const [typeFilter, setTypeFilter] = useState("")
   const [availableOnly, setAvailableOnly] = useState(false)
+  const [fromDate, setFromDate] = useState("")
+  const [toDate, setToDate] = useState("")
 
   const types = useMemo(() => {
     const set = new Set<string>()
@@ -44,8 +46,10 @@ export default function AccessoriesPage() {
     const matchSup = !supplierFilter || String(a.supplier_id) === supplierFilter
     const matchType = !typeFilter || a.type === typeFilter
     const matchAvail = !availableOnly || a.quantity_remaining > 0
-    return matchSearch && matchSup && matchType && matchAvail
-  }), [rows, search, supplierFilter, typeFilter, availableOnly])
+    const matchFrom = !fromDate || String(a.date_added ?? "") >= fromDate
+    const matchTo = !toDate || String(a.date_added ?? "") <= toDate
+    return matchSearch && matchSup && matchType && matchAvail && matchFrom && matchTo
+  }), [rows, search, supplierFilter, typeFilter, availableOnly, fromDate, toDate])
 
   if (!profile) return null
 
@@ -85,6 +89,8 @@ export default function AccessoriesPage() {
           <select value={supplierFilter} onChange={(e) => setSupplierFilter(e.target.value)} className="px-3 py-2.5 border border-gray-300 rounded-lg bg-white"><option value="">كل الموردين</option>{suppliers.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
           <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="px-3 py-2.5 border border-gray-300 rounded-lg bg-white"><option value="">كل الأنواع</option>{types.map((t) => <option key={t} value={t}>{t}</option>)}</select>
           <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={availableOnly} onChange={(e) => setAvailableOnly(e.target.checked)} className="accent-brand-orange" />المتوفر فقط</label>
+          <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="px-3 py-2.5 border border-gray-300 rounded-lg bg-white" placeholder="من تاريخ" />
+          <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="px-3 py-2.5 border border-gray-300 rounded-lg bg-white" placeholder="إلى تاريخ" />
           <div className="text-sm text-gray-500 mr-auto">النتائج: <strong>{filtered.length}</strong></div>
         </FilterBar>
       </div>

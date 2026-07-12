@@ -65,3 +65,22 @@ body {
     linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
   background-size: 24px 24px;
 }
+
+/* Fix date input direction for Arabic RTL - show day/month/year order */
+input[type="date"],
+input[type="datetime-local"] {
+  direction: ltr;
+  text-align: center;
+  unicode-bidi: plaintext;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

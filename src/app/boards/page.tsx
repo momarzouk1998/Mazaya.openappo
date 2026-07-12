@@ -33,6 +33,8 @@ export default function BoardsPage() {
   const [supplierFilter, setSupplierFilter] = useState("")
   const [materialFilter, setMaterialFilter] = useState("")
   const [availableOnly, setAvailableOnly] = useState(false)
+  const [fromDate, setFromDate] = useState("")
+  const [toDate, setToDate] = useState("")
 
   const [materialTypes, setMaterialTypes] = useState<string[]>([])
 
@@ -53,8 +55,10 @@ export default function BoardsPage() {
     const matchSup = !supplierFilter || String(b.supplier_id) === supplierFilter
     const matchMat = !materialFilter || (b.material_type || "").trim().toLowerCase() === materialFilter.trim().toLowerCase()
     const matchAvail = !availableOnly || b.quantity_remaining > 0
-    return matchSearch && matchSup && matchMat && matchAvail
-  }), [rows, search, supplierFilter, materialFilter, availableOnly])
+    const matchFrom = !fromDate || String(b.date_added ?? "") >= fromDate
+    const matchTo = !toDate || String(b.date_added ?? "") <= toDate
+    return matchSearch && matchSup && matchMat && matchAvail && matchFrom && matchTo
+  }), [rows, search, supplierFilter, materialFilter, availableOnly, fromDate, toDate])
 
   if (!profile) return null
 
@@ -97,6 +101,8 @@ export default function BoardsPage() {
             {materialTypes.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
           <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={availableOnly} onChange={(e) => setAvailableOnly(e.target.checked)} className="accent-brand-orange" />المتوفر فقط</label>
+          <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="px-3 py-2.5 border border-gray-300 rounded-lg bg-white" placeholder="من تاريخ" />
+          <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="px-3 py-2.5 border border-gray-300 rounded-lg bg-white" placeholder="إلى تاريخ" />
           <div className="text-sm text-gray-500 mr-auto">النتائج: <strong>{filtered.length}</strong></div>
         </FilterBar>
       </div>

@@ -84,46 +84,6 @@ export default function BudgetPage() {
         </div>
       </div>
 
-      {/* ===== ملخص تفصيلي ===== */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-        <div className="card p-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs text-gray-500">عدد الحركات</div>
-              <div className="font-bold text-brand-black">{filtered.length}</div>
-            </div>
-            <div className="text-2xl">📋</div>
-          </div>
-        </div>
-        <div className="card p-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs text-gray-500">تحويلات تمريرية</div>
-              <div className="font-bold text-gray-500">{formatCurrency(fPassthrough)}</div>
-            </div>
-            <div className="text-2xl">🔄</div>
-          </div>
-        </div>
-        <div className="card p-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs text-gray-500">صافي إجمالي (كل الحركات)</div>
-              <div className={`font-bold ${allNet >= 0 ? "text-green-700" : "text-red-700"}`}>{formatCurrency(allNet)}</div>
-            </div>
-            <div className="text-2xl">📊</div>
-          </div>
-        </div>
-        <div className="card p-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs text-gray-500">متوسط الحركة</div>
-              <div className="font-bold text-brand-black">{filtered.length > 0 ? formatCurrency(filtered.reduce((s, r) => s + Number(r.amount), 0) / filtered.length) : "0"}</div>
-            </div>
-            <div className="text-2xl">📈</div>
-          </div>
-        </div>
-      </div>
-
       {/* ===== الفلتر ===== */}
       <div className="card mb-4">
         <FilterBar>

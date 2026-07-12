@@ -21,6 +21,7 @@ export const ALL_MODULES = [
   { key: 'accessories_inventory', label: 'مخزون الاكسسوارات', icon: '🔩', path: '/accessories' },
   { key: 'branches', label: 'المعارض', icon: '🏪', path: '/branches' },
   { key: 'customers', label: 'العملاء', icon: '👥', path: '/customers' },
+  { key: 'payments', label: 'مدفوعات العملاء', icon: '💳', path: '/payments' },
   { key: 'overhead', label: 'النثريات', icon: '📄', path: '/overhead' },
   { key: 'workers', label: 'العمال', icon: '🧑‍🔧', path: '/workers' },
   { key: 'contractors', label: 'المقاولين', icon: '🔨', path: '/contractors' },

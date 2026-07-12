@@ -53,6 +53,24 @@ export default function OrdersPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
   const activeFiltersCount = [branchFilter, statusFilter, typeFilter, fromDate, toDate].filter(Boolean).length
 
+  // كاردات الحالات
+  const openOrders = filtered.filter(o => o.status === "مفتوح" || o.status === "قيد التنفيذ")
+  const completedOrders = filtered.filter(o => o.status === "مكتمل" || o.status === "تم التسليم")
+  const deliveredOrders = filtered.filter(o => o.status === "تم التسليم")
+  const totalOpen = openOrders.reduce((s, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0)
+  const totalCompleted = completedOrders.reduce((s, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0)
+  const totalAll = filtered.reduce((s, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0)
+  const totalBoards = filtered.reduce((s, o: any) => s + Number(o.boards_cost ?? 0), 0)
+  const totalAccessories = filtered.reduce((s, o: any) => s + Number(o.accessories_cost ?? 0), 0)
+  const totalMaterials = totalBoards + totalAccessories
+  const totalExternalWork = filtered.reduce((s, o: any) => s + Number(o.external_work_total ?? 0), 0)
+  const totalInstallation = filtered.reduce((s, o: any) => s + Number(o.installation_cost ?? 0), 0)
+  const totalInternalTransport = filtered.reduce((s, o: any) => s + Number(o.internal_transport_cost ?? 0), 0)
+  const totalExternalTransport = filtered.reduce((s, o: any) => s + Number(o.external_transport_cost ?? 0), 0)
+  const totalFactoryCommission = filtered.reduce((s, o: any) => s + Number(o.factory_commission ?? 0), 0)
+  const totalExtraCosts = filtered.reduce((s, o: any) => s + Number(o.extra_costs_total ?? 0), 0)
+  const totalManualCosts = totalInstallation + totalInternalTransport + totalExternalTransport + totalFactoryCommission + totalExtraCosts
+
   function clearFilters() {
     setBranchFilter(""); setStatusFilter(""); setTypeFilter(""); setFromDate(""); setToDate("")
   }
@@ -69,6 +87,53 @@ export default function OrdersPage() {
   return (
     <DashboardLayout profile={profile}>
       <PageHeader title="الأوردرات" subtitle={filtered.length + " أوردر مطابق للفلاتر"} helpTitle="الأوردرات" helpDescription="هنا كل أوردرات المصنع. ابحث بالاسم أو العميل، فلتر بالمعرض أو الحالة أو التاريخ." backHref="/journal" actions={<Button onClick={() => router.push("/orders/new")}>+ أوردر جديد</Button>} />
+
+      {/* كاردات الحالات */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div className="card bg-white border-r-4 border-brand-orange">
+          <div className="text-xs text-gray-500">أوردرات مفتوحة</div>
+          <div className="text-2xl font-extrabold text-brand-orange">{openOrders.length}</div>
+          <div className="text-[10px] text-gray-400 mt-0.5">إجمالي: {formatCurrency(totalOpen)}</div>
+        </div>
+        <div className="card bg-white border-r-4 border-blue-400">
+          <div className="text-xs text-gray-500">أوردرات مكتملة</div>
+          <div className="text-2xl font-extrabold text-blue-600">{completedOrders.length}</div>
+          <div className="text-[10px] text-gray-400 mt-0.5">إجمالي: {formatCurrency(totalCompleted)}</div>
+        </div>
+        <div className="card bg-white border-r-4 border-green-400">
+          <div className="text-xs text-gray-500">تم التسليم</div>
+          <div className="text-2xl font-extrabold text-green-600">{deliveredOrders.length}</div>
+        </div>
+        <div className="card bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white">
+          <div className="text-xs opacity-90">إجمالي كل الأوردرات</div>
+          <div className="text-2xl font-extrabold">{formatCurrency(totalAll)}</div>
+          <div className="text-[10px] opacity-70 mt-0.5">{filtered.length} أوردر</div>
+        </div>
+      </div>
+
+      {/* كاردات المواد والأعمال */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+        <div className="card bg-white border-r-4 border-brand-orange">
+          <div className="text-xs text-gray-500">📋 المواد (ألواح + اكسسوارات)</div>
+          <div className="text-xl font-extrabold text-brand-black">{formatCurrency(totalMaterials)}</div>
+          <div className="text-[10px] text-gray-400 mt-0.5">ألواح: {formatCurrency(totalBoards)} | اكسسوارات: {formatCurrency(totalAccessories)}</div>
+        </div>
+        <div className="card bg-white border-r-4 border-purple-400">
+          <div className="text-xs text-gray-500">🔨 أعمال خارجية</div>
+          <div className="text-xl font-extrabold text-purple-600">{formatCurrency(totalExternalWork)}</div>
+        </div>
+        <div className="card bg-white border-r-4 border-yellow-400">
+          <div className="text-xs text-gray-500">💸 تكاليف يدوية</div>
+          <div className="text-xl font-extrabold text-yellow-700">{formatCurrency(totalManualCosts)}</div>
+          <div className="grid grid-cols-2 gap-1 mt-1 text-[9px] text-gray-500">
+            <span>تركيبات: {formatCurrency(totalInstallation)}</span>
+            <span>نقل داخلي: {formatCurrency(totalInternalTransport)}</span>
+            <span>نقل خارجي: {formatCurrency(totalExternalTransport)}</span>
+            <span>عمولة: {formatCurrency(totalFactoryCommission)}</span>
+            <span className="col-span-2">تكاليف إضافية: {formatCurrency(totalExtraCosts)}</span>
+          </div>
+        </div>
+      </div>
       <div className="card mb-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex-1 min-w-[200px]"><SearchBox value={search} onChange={setSearch} placeholder="ابحث باسم الأوردر أو العميل..." /></div>
@@ -99,7 +164,7 @@ export default function OrdersPage() {
       <DataTable loading={loading} rows={paged} emptyMessage="لا توجد أوردرات" columns={[
         { key: "order_name", label: "اسم الأوردر", render: (r: any) => <Link href={"/orders/" + r.id} className="font-semibold text-brand-orange hover:underline">{r.order_name}</Link> },
         { key: "type", label: "النوع", render: (r: any) => ORDER_TYPE_LABELS[r.order_type] || r.order_type },
-        { key: "customer_name", label: "العميل" },
+        { key: "customer_name", label: "العميل", render: (r: any) => r.customer_id ? <Link href={`/customers/${r.customer_id}`} className="text-brand-orange hover:underline">{r.customer_name || "-"}</Link> : (r.customer_name || "-") },
         { key: "branch_name", label: "المعرض" },
         { key: "status", label: "الحالة", render: (r: any) => <span className={"badge " + STATUS_COLORS[r.status]}>{STATUS_LABELS[r.status]}</span> },
         { key: "start_date", label: "البدء", render: (r: any) => formatDate(r.start_date) },

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import Logo from "@/components/ui/Logo";
+import { PWAInstallButton } from "@/components/PWAInstallButton";
 import { ALL_MODULES, type CurrentProfile } from "@/lib/auth";
 
 interface Props { profile: CurrentProfile; children: React.ReactNode; }
@@ -76,6 +77,9 @@ export default function DashboardLayout({ profile, children }: Props) {
           <button onClick={logout} className="w-full text-right px-3 py-2 text-sm text-red-300 hover:bg-white/5 rounded-lg transition">
             🚪 تسجيل الخروج
           </button>
+
+          {/* زر تثبيت PWA — آخر حاجة في السايد */}
+          <PWAInstallButton />
         </div>
       </aside>
 
