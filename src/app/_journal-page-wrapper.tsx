@@ -153,26 +153,20 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
             </div>
             <div className="card bg-white border-r-4 border-brand-orange">
               <div className="text-xs text-gray-500">أوردرات مفتوحة</div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-extrabold text-brand-orange">{allOrders.filter((o: any) => o.status === "مفتوح" || o.status === "قيد التنفيذ").length}</span>
-                <span className="text-2xl font-extrabold text-brand-orange">{formatCurrency(allOrders.filter((o: any) => o.status === "مفتوح" || o.status === "قيد التنفيذ").reduce((s: number, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0))}</span>
-              </div>
+              <div className="text-2xl font-extrabold text-brand-orange mb-1">{allOrders.filter((o: any) => o.status === "مفتوح" || o.status === "قيد التنفيذ").length}</div>
+              <div className="text-lg font-bold text-brand-orange">{formatCurrency(allOrders.filter((o: any) => o.status === "مفتوح" || o.status === "قيد التنفيذ").reduce((s: number, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0))}</div>
               <div className="text-[10px] text-gray-400 mt-0.5">إجمالي قيمة المفتوحة</div>
             </div>
             <div className="card bg-white border-r-4 border-brand-orange">
               <div className="text-xs text-gray-500">أوردرات مكتملة</div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-extrabold text-green-600">{allOrders.filter((o: any) => o.status === "مكتمل" || o.status === "تم التسليم").length}</span>
-                <span className="text-2xl font-extrabold text-green-600">{formatCurrency(allOrders.filter((o: any) => o.status === "مكتمل" || o.status === "تم التسليم").reduce((s: number, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0))}</span>
-              </div>
+              <div className="text-2xl font-extrabold text-brand-orange mb-1">{allOrders.filter((o: any) => o.status === "مكتمل" || o.status === "تم التسليم").length}</div>
+              <div className="text-lg font-bold text-brand-orange">{formatCurrency(allOrders.filter((o: any) => o.status === "مكتمل" || o.status === "تم التسليم").reduce((s: number, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0))}</div>
               <div className="text-[10px] text-gray-400 mt-0.5">إجمالي قيمة المكتملة</div>
             </div>
             <div className="card bg-white border-r-4 border-brand-orange">
               <div className="text-xs text-gray-500">إجمالي الأوردرات</div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-extrabold text-brand-black">{allOrders.length}</span>
-                <span className="text-2xl font-extrabold text-brand-orange">{formatCurrency(allOrders.reduce((s: number, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0))}</span>
-              </div>
+              <div className="text-2xl font-extrabold text-brand-orange mb-1">{allOrders.length}</div>
+              <div className="text-lg font-bold text-brand-orange">{formatCurrency(allOrders.reduce((s: number, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0))}</div>
               <div className="text-[10px] text-gray-400 mt-0.5">عدد + قيمة الكل</div>
             </div>
           </div>
