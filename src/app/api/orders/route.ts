@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/auth-server';
 import prisma from '@/lib/db/prisma';
 import { auditLog } from '@/lib/audit';
 
@@ -24,7 +24,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: Request) {
   try {
-    const user = await requireAuth();
+    const user = await requirePermission('orders', 'view');
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
@@ -100,7 +100,7 @@ export async function GET(request: Request) {
       data: { items, total, page, limit },
     });
   } catch (e: any) {
-    if (e.status) return NextResponse.json({ ok: false, error: { code: 'UNAUTHORIZED', message: 'غير مسجل الدخول' } }, { status: e.status });
+    if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status });
     console.error('Orders list error:', e);
     return NextResponse.json({ ok: false, error: { code: 'INTERNAL_ERROR', message: e?.message || 'حدث خطأ' } }, { status: 500 });
   }
@@ -108,7 +108,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = await requireAuth();
+    const user = await requirePermission('orders', 'add');
     const body = await request.json();
     const { order_name, customer_id, branch_id, order_type, start_date, end_date, status, installation_cost, installation_travel_days, internal_transport_cost, external_transport_cost, factory_commission, workers_count, notes } = body;
 
@@ -142,7 +142,7 @@ export async function POST(request: Request) {
     auditLog({ user_id: user.id, action: 'create', table_name: 'orders', row_id: r.id, after: r });
     return NextResponse.json({ ok: true, data: r }, { status: 201 });
   } catch (e: any) {
-    if (e.status) return NextResponse.json({ ok: false, error: { code: 'UNAUTHORIZED', message: 'غير مسجل الدخول' } }, { status: e.status });
+    if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status });
     console.error('Order create error:', e);
     return NextResponse.json({ ok: false, error: { code: 'INTERNAL_ERROR', message: e?.message || 'حدث خطأ' } }, { status: 500 });
   }

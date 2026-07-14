@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/auth-server';
 import prisma from '@/lib/db/prisma';
 import { auditLog } from '@/lib/audit';
 
@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    const user = await requireAuth();
+    const user = await requirePermission('accessories_inventory', 'view');
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
@@ -41,7 +41,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ ok: true, data: { items, total, page, limit } });
   } catch (e: any) {
-    if (e.status) return NextResponse.json({ ok: false, error: { code: 'UNAUTHORIZED', message: 'غير مسجل الدخول' } }, { status: e.status });
+    if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status });
     console.error('Accessories list error:', e);
     return NextResponse.json({ ok: false, error: { code: 'INTERNAL_ERROR', message: e?.message || 'حدث خطأ' } }, { status: 500 });
   }
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = await requireAuth();
+    const user = await requirePermission('accessories_inventory', 'add');
     const body = await request.json();
     const { item_name, material_type, code, supplier_id, unit_price, quantity_in, date_added, linked_order_id, notes } = body;
 
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
     auditLog({ user_id: user.id, action: 'create', table_name: 'accessories_inventory', row_id: item.id, after: item });
     return NextResponse.json({ ok: true, data: item }, { status: 201 });
   } catch (e: any) {
-    if (e.status) return NextResponse.json({ ok: false, error: { code: 'UNAUTHORIZED', message: 'غير مسجل الدخول' } }, { status: e.status });
+    if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status });
     console.error('Accessory create error:', e);
     return NextResponse.json({ ok: false, error: { code: 'INTERNAL_ERROR', message: e?.message || 'حدث خطأ' } }, { status: 500 });
   }

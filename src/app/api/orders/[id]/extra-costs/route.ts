@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/auth-server';
 import prisma from '@/lib/db/prisma';
 import { auditLog } from '@/lib/audit';
 
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 // GET /api/orders/:id/extra-costs
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAuth();
+    const user = await requirePermission('orders', 'view');
     const { id } = await params;
 
     const items = await prisma.order_extra_costs.findMany({
@@ -21,7 +21,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       data: items.map((r) => ({ ...r, amount: Number(r.amount) })),
     });
   } catch (e: any) {
-    if (e.status) return NextResponse.json({ ok: false, error: { code: 'UNAUTHORIZED', message: 'غير مسجل الدخول' } }, { status: e.status });
+    if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status });
     console.error('Extra costs list error:', e);
     return NextResponse.json({ ok: false, error: { code: 'INTERNAL_ERROR', message: e?.message || 'حدث خطأ' } }, { status: 500 });
   }
@@ -30,7 +30,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 // POST /api/orders/:id/extra-costs  — body can be a single object or array
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = await requireAuth();
+    const user = await requirePermission('orders', 'add');
     const { id } = await params;
     const body = await request.json();
     const items = Array.isArray(body) ? body : [body];
@@ -54,7 +54,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     return NextResponse.json({ ok: true, data: { count: created.count } }, { status: 201 });
   } catch (e: any) {
-    if (e.status) return NextResponse.json({ ok: false, error: { code: 'UNAUTHORIZED', message: 'غير مسجل الدخول' } }, { status: e.status });
+    if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status });
     console.error('Extra costs create error:', e);
     return NextResponse.json({ ok: false, error: { code: 'INTERNAL_ERROR', message: e?.message || 'حدث خطأ' } }, { status: 500 });
   }
@@ -63,7 +63,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 // DELETE /api/orders/:id/extra-costs?extra_id=all | ?extra_id=uuid
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = await requireAuth();
+    const user = await requirePermission('orders', 'delete');
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const extraId = searchParams.get('extra_id');
@@ -82,7 +82,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     auditLog({ user_id: user.id, action: 'delete', table_name: 'order_extra_costs', row_id: extraId });
     return NextResponse.json({ ok: true, data: { deleted: 1 } });
   } catch (e: any) {
-    if (e.status) return NextResponse.json({ ok: false, error: { code: 'UNAUTHORIZED', message: 'غير مسجل الدخول' } }, { status: e.status });
+    if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status });
     console.error('Extra costs delete error:', e);
     return NextResponse.json({ ok: false, error: { code: 'INTERNAL_ERROR', message: e?.message || 'حدث خطأ' } }, { status: 500 });
   }

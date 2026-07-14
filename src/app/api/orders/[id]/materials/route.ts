@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/auth-server';
 import prisma from '@/lib/db/prisma';
 import { auditLog } from '@/lib/audit';
 import { adjustInventoryUsage, getInventoryRemaining } from '@/lib/inventory';
@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 /** GET — list materials for an order */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = await requireAuth();
+    const user = await requirePermission('orders', 'view');
     const { id: orderIdStr } = await params;
     const orderId = orderIdStr;
 
@@ -44,7 +44,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
     return NextResponse.json({ ok: true, data: r });
   } catch (e: any) {
-    if (e.status) return NextResponse.json({ ok: false, error: { code: 'UNAUTHORIZED', message: 'غير مسجل الدخول' } }, { status: e.status });
+    if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status });
     return NextResponse.json({ ok: false, error: { code: 'INTERNAL_ERROR', message: e?.message || 'حدث خطأ' } }, { status: 500 });
   }
 }
@@ -52,7 +52,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 /** POST — add material(s) to order (deduct from inventory). Accepts single object or array. */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = await requireAuth();
+    const user = await requirePermission('orders', 'add');
     const { id: orderIdStr } = await params;
     const orderId = orderIdStr;
     const body = await request.json();
@@ -122,7 +122,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     return NextResponse.json({ ok: true, data: { created, errors: errors.length > 0 ? errors : undefined } }, { status: 201 });
   } catch (e: any) {
-    if (e.status) return NextResponse.json({ ok: false, error: { code: 'UNAUTHORIZED', message: 'غير مسجل الدخول' } }, { status: e.status });
+    if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status });
     console.error('Order material create error:', e);
     return NextResponse.json({ ok: false, error: { code: 'INTERNAL_ERROR', message: e?.message || 'حدث خطأ' } }, { status: 500 });
   }
@@ -131,7 +131,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 /** DELETE — remove material(s) from order (restore inventory) */
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = await requireAuth();
+    const user = await requirePermission('orders', 'delete');
     const { id: orderIdStr } = await params;
     const orderId = orderIdStr;
     const { searchParams } = new URL(request.url);
@@ -188,7 +188,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
     return NextResponse.json({ ok: true, data: { message: 'تم حذف المادة' } });
   } catch (e: any) {
-    if (e.status) return NextResponse.json({ ok: false, error: { code: 'UNAUTHORIZED', message: 'غير مسجل الدخول' } }, { status: e.status });
+    if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status });
     console.error('Order material delete error:', e);
     return NextResponse.json({ ok: false, error: { code: 'INTERNAL_ERROR', message: e?.message || 'حدث خطأ' } }, { status: 500 });
   }
@@ -197,7 +197,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 /** PATCH — update material quantity (adjust inventory diff) */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = await requireAuth();
+    const user = await requirePermission('orders', 'edit');
     const { id: orderIdStr } = await params;
     const orderId = orderIdStr;
     const { searchParams } = new URL(request.url);
@@ -256,7 +256,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     return NextResponse.json({ ok: true, data: { message: 'تم تعديل الكمية', oldQty, newQty, diff } });
   } catch (e: any) {
-    if (e.status) return NextResponse.json({ ok: false, error: { code: 'UNAUTHORIZED', message: 'غير مسجل الدخول' } }, { status: e.status });
+    if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status });
     console.error('Order material delete error:', e);
     return NextResponse.json({ ok: false, error: { code: 'INTERNAL_ERROR', message: e?.message || 'حدث خطأ' } }, { status: 500 });
   }

@@ -1,5 +1,5 @@
-﻿import { NextRequest, NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth-server"
+import { NextRequest, NextResponse } from "next/server"
+import { requirePermission } from '@/lib/auth-server'
 import prisma from "@/lib/db/prisma"
 import { auditLog } from "@/lib/audit"
 import { increaseInventory } from "@/lib/inventory"
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth()
+    const user = await requirePermission('accessories_inventory', 'add')
     const body = await request.json()
     const { item_id, quantity, unit_price, supplier_id, payment_method, notes, date, create_journal } = body
 
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, data: { ...result.item, total, quantity_remaining: Number(result.item.quantity_remaining) } }, { status: 201 })
   } catch (e: any) {
-    if (e.status) return NextResponse.json({ ok: false, error: { code: "UNAUTHORIZED", message: "غير مسجل الدخول" } }, { status: e.status })
+    if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status })
     console.error("Accessory purchase error:", e)
     return NextResponse.json({ ok: false, error: { code: "INTERNAL_ERROR", message: e?.message || "حدث خطأ" } }, { status: 500 })
   }

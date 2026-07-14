@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useUserStore } from "@/store/user-store"
 import { useApi } from "@/hooks/useApi"
+import { useCan } from "@/hooks/useCan"
 import DashboardLayout from "@/components/layout/DashboardLayout"
 import PageHeader from "@/components/PageHeader"
 import { DataTable } from "@/components/DataTable"
@@ -23,6 +24,7 @@ const branchFields: FieldDef[] = [
 export default function BranchesPage() {
   const router = useRouter()
   const { user: profile } = useUserStore()
+  const { can } = useCan()
   const { data, loading } = useApi<{ items: any[] }>("/api/branches?limit=500")
   const { data: customersData } = useApi<{ items: any[] }>("/api/customers?limit=500")
   const { data: ordersData } = useApi<{ items: any[] }>("/api/orders?limit=500")
@@ -48,7 +50,7 @@ export default function BranchesPage() {
 
   return (
     <DashboardLayout profile={profile}>
-      <PageHeader title="المعارض / الفروع" subtitle="النقاط اللي بتبتاع للعميل النهائي" helpTitle="المعارض" helpDescription="هنا الـ 4 معارض بتاعة المصنع. كل معرض له عملاء وأوردرات. المعرض يحوّل للمصنع قيمة الأوردرات اللي بيوصلها." backHref="/journal" actions={<><Button variant="secondary" onClick={() => exportToExcel(filtered, "branches")}>تصدير</Button><Button onClick={() => router.push("/branches/new")}>+ معرض جديد</Button></>} />
+      <PageHeader title="المعارض / الفروع" subtitle="النقاط اللي بتبتاع للعميل النهائي" helpTitle="المعارض" helpDescription="هنا الـ 4 معارض بتاعة المصنع. كل معرض له عملاء وأوردرات. المعرض يحوّل للمصنع قيمة الأوردرات اللي بيوصلها." backHref="/journal" actions={<><Button variant="secondary" onClick={() => exportToExcel(filtered, "branches")}>تصدير</Button>{can('branches', 'add') && <Button onClick={() => router.push("/branches/new")}>+ معرض جديد</Button>}</>} />
       <div className="card mb-4">
         <FilterBar>
           <div className="flex-1"><SearchBox value={search} onChange={setSearch} placeholder="ابحث باسم المعرض أو الموقع..." /></div>
@@ -65,7 +67,7 @@ export default function BranchesPage() {
           { key: "customers_count", label: "عدد العملاء" },
           { key: "orders_count", label: "عدد الأوردرات" },
           { key: "total_income", label: "إجمالي التحويلات", render: (r) => <span className="font-bold text-green-600">{formatCurrency(r.total_income)}</span> },
-          { key: "_actions", label: "إجراءات", render: (r) => <RowEditor row={r} apiBase="/api/branches" fields={branchFields} entityLabel="المعرض" deleteHint="لا يمكن حذف هذا المعرض لوجود عملاء أو أوردرات أو تحويلات مرتبطة به" /> },
+          { key: "_actions", label: "إجراءات", render: (r) => <RowEditor row={r} apiBase="/api/branches" fields={branchFields} entityLabel="المعرض" deleteHint="لا يمكن حذف هذا المعرض لوجود عملاء أو أوردرات أو تحويلات مرتبطة به" canEdit={can('branches', 'edit')} canDelete={can('branches', 'delete')} /> },
         ]}
       />
     </DashboardLayout>

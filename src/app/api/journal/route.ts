@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/auth-server';
 import prisma from '@/lib/db/prisma';
 import { auditLog } from '@/lib/audit';
 import { VALID_ENTRY_TYPES, VALID_PAYMENT_METHODS } from '@/lib/finance';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const user = await requirePermission('journal', 'view');
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
@@ -113,8 +113,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth();
-
+    const user = await requirePermission('journal', 'add');
     const body = await request.json();
     const {
       description, amount, entry_type, payment_method,

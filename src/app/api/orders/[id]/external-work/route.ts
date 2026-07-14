@@ -1,5 +1,5 @@
-﻿import { NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth-server"
+import { NextResponse } from "next/server"
+import { requirePermission } from '@/lib/auth-server'
 import prisma from "@/lib/db/prisma"
 import { auditLog } from "@/lib/audit"
 
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic"
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = await requireAuth()
+    const user = await requirePermission('orders', 'view')
     const { id: orderIdStr } = await params
     const orderId = orderIdStr
     const order = await prisma.orders.findFirst({ where: { id: orderId, deleted_at: null }, select: { id: true } })
@@ -15,14 +15,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const r = await prisma.$queryRawUnsafe<any[]>(`SELECT oew.*, co.name as contractor_name FROM mazaya.order_external_work oew LEFT JOIN mazaya.contractors co ON oew.contractor_id = co.id WHERE oew.order_id = $1::uuid ORDER BY oew.created_at DESC`, orderId)
     return NextResponse.json({ ok: true, data: r })
   } catch (e: any) {
-    if (e.status) return NextResponse.json({ ok: false, error: { code: "UNAUTHORIZED", message: "غير مسجل الدخول" } }, { status: e.status })
+    if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status })
     return NextResponse.json({ ok: false, error: { code: "INTERNAL_ERROR", message: e?.message || "حدث خطأ" } }, { status: 500 })
   }
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = await requireAuth()
+    const user = await requirePermission('orders', 'add')
     const { id: orderIdStr } = await params
     const orderId = orderIdStr
     const body = await request.json()
@@ -50,7 +50,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
     return NextResponse.json({ ok: true, data: created }, { status: 201 })
   } catch (e: any) {
-    if (e.status) return NextResponse.json({ ok: false, error: { code: "UNAUTHORIZED", message: "غير مسجل الدخول" } }, { status: e.status })
+    if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status })
     console.error("External work create error:", e)
     return NextResponse.json({ ok: false, error: { code: "INTERNAL_ERROR", message: e?.message || "حدث خطأ" } }, { status: 500 })
   }
@@ -58,7 +58,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = await requireAuth()
+    const user = await requirePermission('orders', 'delete')
     const { id: orderIdStr } = await params
     const orderId = orderIdStr
     const { searchParams } = new URL(request.url)
@@ -74,9 +74,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     auditLog({ user_id: user.id, action: "delete", table_name: "order_external_work", row_id: externalId, before })
     return NextResponse.json({ ok: true, data: { message: "تم حذف العمل" } })
   } catch (e: any) {
-    if (e.status) return NextResponse.json({ ok: false, error: { code: "UNAUTHORIZED", message: "غير مسجل الدخول" } }, { status: e.status })
+    if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status })
     console.error("External work delete error:", e)
     return NextResponse.json({ ok: false, error: { code: "INTERNAL_ERROR", message: e?.message || "حدث خطأ" } }, { status: 500 })
   }
 }
-

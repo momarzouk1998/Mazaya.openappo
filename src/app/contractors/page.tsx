@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useUserStore } from "@/store/user-store";
 import { useApi } from "@/hooks/useApi";
+import { useCan } from "@/hooks/useCan";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
@@ -22,6 +23,7 @@ const contractorFields: FieldDef[] = [
 export default function ContractorsPage() {
   const router = useRouter();
   const { user: profile } = useUserStore();
+  const { can } = useCan();
   const { data, loading } = useApi<{ items: any[] }>('/api/contractors?limit=500');
   const rows = data?.items ?? [];
   const [search, setSearch] = useState("");
@@ -42,7 +44,7 @@ export default function ContractorsPage() {
         backHref="/journal"
         actions={<>
           <Button variant="secondary" onClick={() => exportToExcel(filtered, "contractors")}>📥 تصدير</Button>
-          <Button onClick={() => router.push("/contractors/new")}>+ مقاول جديد</Button>
+          {can('contractors', 'add') && <Button onClick={() => router.push("/contractors/new")}>+ مقاول جديد</Button>}
         </>}
       />
 
@@ -62,7 +64,7 @@ export default function ContractorsPage() {
           { key: "phone", label: "رقم التواصل" },
           { key: "total_work", label: "إجمالي الأعمال", render: r => formatCurrency(r.total_work || 0) },
           { key: "notes", label: "ملاحظات" },
-          { key: "_actions", label: "إجراءات", render: r => <RowEditor row={r} apiBase="/api/contractors" fields={contractorFields} entityLabel="المقاول" deleteHint="لا يمكن حذف هذا المقاول لوجود أعمال خارجية مسندة إليه" /> },
+          { key: "_actions", label: "إجراءات", render: r => <RowEditor row={r} apiBase="/api/contractors" fields={contractorFields} entityLabel="المقاول" deleteHint="لا يمكن حذف هذا المقاول لوجود أعمال خارجية مسندة إليه" canEdit={can('contractors', 'edit')} canDelete={can('contractors', 'delete')} /> },
         ]}
       />
     </DashboardLayout>

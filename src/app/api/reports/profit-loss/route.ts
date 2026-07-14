@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/auth-server';
 import prisma from '@/lib/db/prisma';
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAuth();
-
+    const user = await requirePermission('reports', 'view');
     const { searchParams } = new URL(request.url);
     const date_from = searchParams.get('date_from') || '';
     const date_to = searchParams.get('date_to') || '';

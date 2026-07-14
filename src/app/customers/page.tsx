@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useUserStore } from "@/store/user-store";
 import { useApi } from "@/hooks/useApi";
+import { useCan } from "@/hooks/useCan";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
@@ -23,6 +24,7 @@ const customerFields: FieldDef[] = [
 export default function CustomersPage() {
   const router = useRouter();
   const { user: profile } = useUserStore();
+  const { can } = useCan();
   const { data, loading } = useApi<{ items: any[] }>('/api/customers?limit=500');
   const { data: branchesData } = useApi<{ items: any[] }>('/api/branches?limit=500');
   const { data: ordersData } = useApi<{ items: any[] }>('/api/orders?limit=500');
@@ -77,7 +79,7 @@ export default function CustomersPage() {
         backHref="/journal"
         actions={<>
           <Button variant="secondary" onClick={() => exportToExcel(filtered, "customers")}>📥 تصدير</Button>
-          <Button onClick={() => router.push("/customers/new")}>+ عميل جديد</Button>
+          {can('customers', 'add') && <Button onClick={() => router.push("/customers/new")}>+ عميل جديد</Button>}
         </>}
       />
 
@@ -111,7 +113,7 @@ export default function CustomersPage() {
             }
           },
           { key: "address", label: "العنوان" },
-          { key: "_actions", label: "إجراءات", render: r => <RowEditor row={r} apiBase="/api/customers" fields={customerFields} entityLabel="العميل" deleteHint="لا يمكن حذف هذا العميل لوجود أوردرات أو سجلات يومية مرتبطة به" /> },
+          { key: "_actions", label: "إجراءات", render: r => <RowEditor row={r} apiBase="/api/customers" fields={customerFields} entityLabel="العميل" deleteHint="لا يمكن حذف هذا العميل لوجود أوردرات أو سجلات يومية مرتبطة به" canEdit={can('customers', 'edit')} canDelete={can('customers', 'delete')} /> },
         ]}
       />
     </DashboardLayout>

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useUserStore } from "@/store/user-store";
 import { useApi } from "@/hooks/useApi";
+import { useCan } from "@/hooks/useCan";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
@@ -22,6 +23,7 @@ const workerFields: FieldDef[] = [
 export default function WorkersPage() {
   const router = useRouter();
   const { user: profile } = useUserStore();
+  const { can } = useCan();
   const { data, loading } = useApi<{ items: any[] }>("/api/workers?limit=500");
   // Fetch overhead expenses (with worker relation) to compute totals per worker
   const { data: ohData } = useApi<{ expenses: any[] }>("/api/overhead?limit=2000");
@@ -75,7 +77,7 @@ export default function WorkersPage() {
         actions={
           <>
             <Button variant="secondary" onClick={() => exportToExcel(rowsWithStats, "workers")}>📥 تصدير</Button>
-            <Button onClick={() => router.push("/workers/new")}>+ عامل جديد</Button>
+            {can('workers', 'add') && <Button onClick={() => router.push("/workers/new")}>+ عامل جديد</Button>}
           </>
         }
       />
@@ -112,7 +114,7 @@ export default function WorkersPage() {
           { key: "total_paid", label: "إجمالي الأجور", render: r => <span className="font-bold text-purple-700">{formatCurrency(r.total_paid)}</span> },
           { key: "last_paid_date", label: "آخر صرف", render: r => r.last_paid_date || "-" },
           { key: "notes", label: "ملاحظات" },
-          { key: "_actions", label: "إجراءات", render: r => <RowEditor row={r} apiBase="/api/workers" fields={workerFields} entityLabel="العامل" deleteHint="لا يمكن حذف هذا العامل لوجود مصروفات مرتبطة به" /> },
+          { key: "_actions", label: "إجراءات", render: r => <RowEditor row={r} apiBase="/api/workers" fields={workerFields} entityLabel="العامل" deleteHint="لا يمكن حذف هذا العامل لوجود مصروفات مرتبطة به" canEdit={can('workers', 'edit')} canDelete={can('workers', 'delete')} /> },
         ]}
       />
     </DashboardLayout>

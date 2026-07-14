@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth-server"
+import { requirePermission } from '@/lib/auth-server'
 import prisma from "@/lib/db/prisma"
 import { auditLog } from "@/lib/audit"
 
@@ -9,7 +9,7 @@ let legacySynced = false
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAuth()
+    const user = await requirePermission('material_types', 'view')
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get("page") || "1")
     const limit = parseInt(searchParams.get("limit") || "500")
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
         aMats.forEach(a => legacyNames.add((a.material_type || "").trim()))
       }
       const existingNames = new Set(items.map(i => i.name.trim().toLowerCase()))
-      
+
       const newItemsToInsert: any[] = []
       legacyNames.forEach(name => {
         if (name && !existingNames.has(name.toLowerCase())) {
@@ -71,8 +71,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ ok: true, data: { items, total, page, limit } })
   } catch (e: any) {
-    if (e.status === 401) return NextResponse.json({ ok: false, error: { code: "UNAUTHORIZED", message: "غير مسجل الدخول" } }, { status: 401 })
-    if (e.status === 403) return NextResponse.json({ ok: false, error: { code: "FORBIDDEN", message: "غير مصرح" } }, { status: 403 })
+    if (e.status === 401) return NextResponse.json({ ok: false, error: { code: e.code || 'UNAUTHORIZED', message: e?.message || 'غير مسجل الدخول' } }, { status: 401 })
+    if (e.status === 403) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مصرح' } }, { status: 403 })
     console.error("Error:", e)
     return NextResponse.json({ ok: false, error: { code: "INTERNAL_ERROR", message: e?.message || "حدث خطأ" } }, { status: 500 })
   }
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth()
+    const user = await requirePermission('material_types', 'add')
     const body = await request.json()
     const name = (body.name || body.value || "").trim()
     const category = body.category || "board"
@@ -102,10 +102,9 @@ export async function POST(request: NextRequest) {
     auditLog({ user_id: user.id, action: "create", table_name: "material_types", row_id: materialType.id, after: materialType })
     return NextResponse.json({ ok: true, data: materialType }, { status: 201 })
   } catch (e: any) {
-    if (e.status === 401) return NextResponse.json({ ok: false, error: { code: "UNAUTHORIZED", message: "غير مسجل الدخول" } }, { status: 401 })
-    if (e.status === 403) return NextResponse.json({ ok: false, error: { code: "FORBIDDEN", message: "غير مصرح" } }, { status: 403 })
+    if (e.status === 401) return NextResponse.json({ ok: false, error: { code: e.code || 'UNAUTHORIZED', message: e?.message || 'غير مسجل الدخول' } }, { status: 401 })
+    if (e.status === 403) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مصرح' } }, { status: 403 })
     console.error("Error:", e)
     return NextResponse.json({ ok: false, error: { code: "INTERNAL_ERROR", message: e?.message || "حدث خطأ" } }, { status: 500 })
   }
 }
-

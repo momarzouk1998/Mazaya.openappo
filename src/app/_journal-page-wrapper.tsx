@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { useUserStore } from "@/store/user-store";
 import { useApi } from "@/hooks/useApi";
+import { useCan } from "@/hooks/useCan";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
@@ -61,6 +62,7 @@ const PANEL_TITLES: Record<Exclude<PanelKey, null>, string> = {
 
 export default function JournalPageWrapper({ showSummary = false }: { showSummary?: boolean }) {
   const { user: profile } = useUserStore();
+  const { can } = useCan();
   const { data, loading, refetch } = useApi<{ entries: any[] }>("/api/journal?limit=500");
   const { data: boardsData } = useApi<{ items: any[] }>("/api/boards?limit=500");
   const { data: accessoriesData } = useApi<{ items: any[] }>("/api/accessories?limit=500");
@@ -123,6 +125,15 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
   if (!profile) return null;
   const canSee = canSeeModule(profile, "journal");
 
+  // Filter quick-action buttons by add permissions (board/accessory/overhead/income = add actions)
+  const visibleActions = ACTIONS.filter(a => {
+    if (a.key === "board") return can("boards_inventory", "add");
+    if (a.key === "accessory") return can("accessories_inventory", "add");
+    if (a.key === "overhead") return can("overhead", "add");
+    if (a.key === "income") return can("journal", "add");
+    return true; // search/workers/today/filter are view-only
+  });
+
   function closePanel() { setActivePanel(null); }
 
   return (
@@ -146,7 +157,7 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
                 boards.reduce((s: number, b: any) => s + (Number(b.unit_price ?? 0) * Number(b.quantity_remaining ?? 0)), 0)
                 + accessories.reduce((s: number, a: any) => s + (Number(a.unit_price ?? 0) * Number(a.quantity_remaining ?? 0)), 0)
               )}</div>
-              <div className="text-[10px] text-gray-400 mt-0.5">{boards.length + accessories.length} صنف</div>
+              <div className="text-lg font-bold text-brand-orange">{boards.length + accessories.length} صنف</div>
             </div>
             <div className="card bg-white border-r-4 border-brand-orange">
               <div className="text-xs text-gray-500 font-bold">أوردرات مفتوحة</div>
@@ -240,7 +251,7 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
 
           {/* ===== أزرار الإجراءات السريعة ===== */}
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
-            {ACTIONS.map(a => (
+            {visibleActions.map(a => (
               <button
                 key={a.key}
                 onClick={() => setActivePanel(activePanel === a.key ? null : a.key)}
@@ -320,7 +331,7 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
                         { key: "party", label: "الجهة", render: r => r.party_name || "-" },
                         { key: "payment_method", label: "الطريقة", render: r => PAYMENT_METHOD_LABELS[r.payment_method] || "-" },
                         { key: "amount", label: "المبلغ", render: r => <span className={`font-bold ${r.entry_type === "دفعة واردة من معرض" ? "text-green-600" : "text-red-600"}`}>{formatCurrency(r.amount)}</span> },
-                        { key: "_actions", label: "إجراءات", render: r => <RowEditor row={r} apiBase="/api/journal" fields={journalFields} entityLabel="الحركة المالية" deleteHint="لا يمكن حذف هذه الحركة لأنها مرتبطة بأوردر أو حركات أخرى" /> },
+                        { key: "_actions", label: "إجراءات", render: r => <RowEditor row={r} apiBase="/api/journal" fields={journalFields} entityLabel="الحركة المالية" deleteHint="لا يمكن حذف هذه الحركة لأنها مرتبطة بأوردر أو حركات أخرى" canEdit={can("journal", "edit")} canDelete={can("journal", "delete")} /> },
                       ]}
                     />
                   </div>

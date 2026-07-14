@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/auth-server';
 import prisma from '@/lib/db/prisma';
 import { auditLog } from '@/lib/audit';
 
 // GET /api/customer-payments?customer_id=xxx&order_id=xxx
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const user = await requirePermission('payments', 'view');
     const { searchParams } = new URL(request.url);
     const customerId = searchParams.get('customer_id');
     const orderId = searchParams.get('order_id');
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 // POST /api/customer-payments
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const user = await requirePermission('payments', 'add');
     const body = await request.json();
     const { customer_id, order_id, amount, payment_method, date, notes } = body;
 

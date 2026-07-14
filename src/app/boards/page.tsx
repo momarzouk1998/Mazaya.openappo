@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useUserStore } from "@/store/user-store"
 import { useApi } from "@/hooks/useApi"
+import { useCan } from "@/hooks/useCan"
 import DashboardLayout from "@/components/layout/DashboardLayout"
 import PageHeader from "@/components/PageHeader"
 import { DataTable } from "@/components/DataTable"
@@ -25,6 +26,7 @@ const boardFields: FieldDef[] = [
 export default function BoardsPage() {
   const router = useRouter()
   const { user: profile } = useUserStore()
+  const { can } = useCan()
   const { data, loading } = useApi<{ items: any[] }>("/api/boards?limit=500")
   const { data: suppliersData } = useApi<{ items: any[] }>("/api/suppliers?limit=500")
   const rows = data?.items ?? []
@@ -162,7 +164,7 @@ export default function BoardsPage() {
         { key: "quantity_used", label: "المستخدم", render: (r) => Number(r.quantity_used ?? 0) },
         { key: "quantity_remaining", label: "المتبقي", render: (r) => <span className={Number(r.quantity_remaining ?? 0) > 0 ? "font-bold text-green-600" : "text-gray-400"}>{Number(r.quantity_remaining ?? 0)}</span> },
         { key: "total_price", label: "الإجمالي", render: (r) => <span className="font-bold">{formatCurrency(Number(r.total_price ?? 0))}</span> },
-        { key: "_actions", label: "إجراءات", render: (r) => <RowEditor row={r} apiBase="/api/boards" fields={boardFields} entityLabel="اللوح" deleteHint="لا يمكن حذف هذا الصنف لأنه مُستخدم في أوردرات أو مُسجّل في اليومية" /> },
+        { key: "_actions", label: "إجراءات", render: (r) => <RowEditor row={r} apiBase="/api/boards" fields={boardFields} entityLabel="اللوح" deleteHint="لا يمكن حذف هذا الصنف لأنه مُستخدم في أوردرات أو مُسجّل في اليومية" canEdit={can('boards_inventory', 'edit')} canDelete={can('boards_inventory', 'delete')} /> },
       ]} />
     </DashboardLayout>
   )

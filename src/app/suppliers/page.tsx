@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useUserStore } from "@/store/user-store";
 import { useApi } from "@/hooks/useApi";
+import { useCan } from "@/hooks/useCan";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
@@ -31,6 +32,7 @@ const supplierFields: FieldDef[] = [
 export default function SuppliersPage() {
   const router = useRouter();
   const { user, initialized } = useUserStore();
+  const { can } = useCan();
   const { data, loading, refetch } = useApi<{ items: any[]; total: number, stats: any }>('/api/suppliers?limit=500');
   const rows = data?.items || [];
   const stats = data?.stats || { totalDebt: 0, totalCredit: 0, suppliersCount: 0 };
@@ -56,7 +58,7 @@ export default function SuppliersPage() {
         backHref="/journal"
         actions={<>
           <Button variant="secondary" onClick={() => exportToExcel(filtered, "suppliers")}>📥 تصدير Excel</Button>
-          <Button onClick={() => router.push("/suppliers/new")}>+ مورد جديد</Button>
+          {can('suppliers', 'add') && <Button onClick={() => router.push("/suppliers/new")}>+ مورد جديد</Button>}
         </>}
       />
 
@@ -117,6 +119,8 @@ export default function SuppliersPage() {
                 refreshPage={false}
                 onChanged={() => refetch()}
                 deleteHint="لا يمكن حذف هذا المورد لوجود فواتير أو سجلات مرتبطة به"
+                canEdit={can('suppliers', 'edit')}
+                canDelete={can('suppliers', 'delete')}
               />
             </div>
           )},

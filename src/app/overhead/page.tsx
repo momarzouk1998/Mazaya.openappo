@@ -3,6 +3,7 @@ import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useUserStore } from "@/store/user-store"
 import { useApi } from "@/hooks/useApi"
+import { useCan } from "@/hooks/useCan"
 import DashboardLayout from "@/components/layout/DashboardLayout"
 import PageHeader from "@/components/PageHeader"
 import { DataTable } from "@/components/DataTable"
@@ -22,6 +23,7 @@ const overheadFields: FieldDef[] = [
 export default function OverheadPage() {
   const router = useRouter()
   const { user: profile } = useUserStore()
+  const { can } = useCan()
   const { data, loading } = useApi<{ expenses: any[]; items?: any[] }>("/api/overhead?limit=500")
   const { data: workersData } = useApi<{ items: any[] }>("/api/workers?limit=500")
   const rows: any[] = data?.expenses ?? data?.items ?? []
@@ -68,7 +70,7 @@ export default function OverheadPage() {
 
   return (
     <DashboardLayout profile={profile}>
-      <PageHeader title="النثريات" subtitle="مصاريف تشغيل المصنع العامة" helpTitle="النثريات" helpDescription="كهرباء، أجور عمال، شحن، إلخ." backHref="/journal" actions={<Button onClick={() => router.push("/overhead/new")}>+ نثريات جديدة</Button>} />
+      <PageHeader title="النثريات" subtitle="مصاريف تشغيل المصنع العامة" helpTitle="النثريات" helpDescription="كهرباء، أجور عمال، شحن، إلخ." backHref="/journal" actions={can('overhead', 'add') ? <Button onClick={() => router.push("/overhead/new")}>+ نثريات جديدة</Button> : undefined} />
 
       {/* كارد الإجمالي الوحيد */}
       <div className="mb-4">
@@ -189,7 +191,7 @@ export default function OverheadPage() {
           { key: "worker", label: "العامل", render: (r) => r.worker?.name || "-" },
           { key: "amount", label: "المبلغ", render: (r) => <span className="font-bold text-red-600">{formatCurrency(Number(r.amount ?? 0))}</span> },
           { key: "notes", label: "ملاحظات" },
-          { key: "_actions", label: "إجراءات", render: (r) => <RowEditor row={r} apiBase="/api/overhead" fields={overheadFields} entityLabel="النثريات" deleteHint="لا يمكن حذف هذه الحركة لأنها مرتبطة بحركة يومية" /> },
+          { key: "_actions", label: "إجراءات", render: (r) => <RowEditor row={r} apiBase="/api/overhead" fields={overheadFields} entityLabel="النثريات" deleteHint="لا يمكن حذف هذه الحركة لأنها مرتبطة بحركة يومية" canEdit={can('overhead', 'edit')} canDelete={can('overhead', 'delete')} /> },
         ]}
       />
     </DashboardLayout>

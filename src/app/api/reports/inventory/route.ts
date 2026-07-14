@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/auth-server';
 import prisma from '@/lib/db/prisma';
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAuth();
-
+    const user = await requirePermission('reports', 'view');
     // Query the v_inventory_value view grouped by inventory_type
     const totalsR = await prisma.$queryRaw<any[]>`
       SELECT inventory_type, SUM(total_value)::float8 as total_value

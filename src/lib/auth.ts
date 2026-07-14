@@ -44,3 +44,41 @@ export function canSeeModule(profile: CurrentProfile | null, moduleKey: string):
   if (mod && (mod as any).adminOnly) return false;
   return profile.visible_modules.includes(moduleKey);
 }
+
+export type PermissionAction = 'view' | 'add' | 'edit' | 'delete';
+
+export const ALL_PERMISSION_ACTIONS: PermissionAction[] = ['view', 'add', 'edit', 'delete'];
+
+export const PERMISSION_ACTION_LABELS: Record<PermissionAction, string> = {
+  view: 'مشاهدة',
+  add: 'إضافة',
+  edit: 'تعديل',
+  delete: 'حذف',
+};
+
+export const PERMISSION_ACTION_ICONS: Record<PermissionAction, string> = {
+  view: '👁',
+  add: '➕',
+  edit: '✏️',
+  delete: '🗑️',
+};
+
+/**
+ * Client-side check: does the current profile have a specific permission
+ * on a module? Admins always have every permission. `view` is implied by
+ * having any other permission on the module.
+ */
+export function hasPermission(
+  profile: CurrentProfile | null | undefined,
+  moduleKey: string,
+  action: PermissionAction
+): boolean {
+  if (!profile) return false;
+  if (profile.role === 'admin') return true;
+  if (!canSeeModule(profile, moduleKey)) return false;
+  const modulePerms = profile.permissions?.[moduleKey];
+  if (!Array.isArray(modulePerms) || modulePerms.length === 0) return false;
+  if (modulePerms.includes(action)) return true;
+  if (action === 'view') return true; // any permission implies view
+  return false;
+}

@@ -25,12 +25,18 @@ interface Props {
   confirmDelete?: (row: any) => string | null; // return null to skip confirmation
   deleteHint?: string;
   extraButtons?: React.ReactNode;
+  /** Hide the edit button when false (e.g. user lacks edit permission). Default true. */
+  canEdit?: boolean;
+  /** Hide the delete button when false (e.g. user lacks delete permission). Default true. */
+  canDelete?: boolean;
 }
 
 export default function RowEditor({
   row, apiBase, fields, entityLabel = "السجل", onChanged,
   refreshPage = true, confirmDelete, deleteHint,
   extraButtons,
+  canEdit = true,
+  canDelete = true,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Record<string, any>>(() => {
@@ -106,19 +112,23 @@ export default function RowEditor({
   return (
     <>
       <div className="flex items-center justify-center gap-1">
-        <button
-          onClick={openEdit}
-          className="p-1.5 hover:bg-blue-100 rounded transition text-base"
-          title="تعديل"
-          aria-label="تعديل"
-        >✏️</button>
-        <button
-          onClick={remove}
-          disabled={deleting}
-          className="p-1.5 hover:bg-red-100 rounded transition text-base disabled:opacity-50"
-          title="حذف"
-          aria-label="حذف"
-        >🗑️</button>
+        {canEdit && (
+          <button
+            onClick={openEdit}
+            className="p-1.5 hover:bg-blue-100 rounded transition text-base"
+            title="تعديل"
+            aria-label="تعديل"
+          >✏️</button>
+        )}
+        {canDelete && (
+          <button
+            onClick={remove}
+            disabled={deleting}
+            className="p-1.5 hover:bg-red-100 rounded transition text-base disabled:opacity-50"
+            title="حذف"
+            aria-label="حذف"
+          >🗑️</button>
+        )}
         {extraButtons}
       </div>
 

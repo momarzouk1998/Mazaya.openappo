@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useUserStore } from "@/store/user-store"
 import { useApi } from "@/hooks/useApi"
+import { useCan } from "@/hooks/useCan"
 import DashboardLayout from "@/components/layout/DashboardLayout"
 import PageHeader from "@/components/PageHeader"
 import { DataTable } from "@/components/DataTable"
@@ -24,6 +25,7 @@ interface Order {
 export default function OrdersPage() {
   const router = useRouter()
   const { user: profile } = useUserStore()
+  const { can } = useCan()
   const { data, loading, refetch } = useApi<{ items: any[] }>("/api/orders?limit=500")
   const { data: branchesData } = useApi<{ items: any[] }>("/api/branches?limit=500")
   const rows: Order[] = data?.items ?? []
@@ -86,7 +88,7 @@ export default function OrdersPage() {
 
   return (
     <DashboardLayout profile={profile}>
-      <PageHeader title="الأوردرات" subtitle={filtered.length + " أوردر مطابق للفلاتر"} helpTitle="الأوردرات" helpDescription="هنا كل أوردرات المصنع. ابحث بالاسم أو العميل، فلتر بالمعرض أو الحالة أو التاريخ." backHref="/journal" actions={<Button onClick={() => router.push("/orders/new")}>+ أوردر جديد</Button>} />
+      <PageHeader title="الأوردرات" subtitle={filtered.length + " أوردر مطابق للفلاتر"} helpTitle="الأوردرات" helpDescription="هنا كل أوردرات المصنع. ابحث بالاسم أو العميل، فلتر بالمعرض أو الحالة أو التاريخ." backHref="/journal" actions={can('orders', 'add') ? <Button onClick={() => router.push("/orders/new")}>+ أوردر جديد</Button> : undefined} />
 
       {/* كاردات الحالات */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
@@ -204,7 +206,7 @@ export default function OrdersPage() {
         { key: "start_date", label: "البدء", render: (r: any) => formatDate(r.start_date) },
         { key: "duration", label: "المدة", render: (r: any) => { const computed = daysBetween(r.start_date ?? "", r.end_date ?? ""); const days = r.duration_days ?? computed; return days != null ? days + " يوم" : "-" } },
         { key: "total", label: "الإجمالي", render: (r: any) => <span className="font-bold">{formatCurrency(Number(r.order_total ?? r.total ?? 0))}</span> },
-        { key: "_actions", label: "إجراءات", render: (r: any) => <div className="flex items-center justify-center gap-1"><Link href={"/orders/" + r.id} className="p-1.5 hover:bg-blue-100 rounded text-base" title="عرض">👁️</Link><Link href={"/orders/" + r.id + "/edit"} className="p-1.5 hover:bg-blue-100 rounded text-base" title="تعديل">✏️</Link><Link href={"/orders/" + r.id + "/invoice"} className="p-1.5 hover:bg-blue-100 rounded text-base" title="طباعة فاتورة">🧾</Link>{profile?.role === "admin" && <button onClick={() => deleteOrder(r)} className="p-1.5 hover:bg-red-100 rounded text-base" title="حذف">🗑️</button>}</div> },
+        { key: "_actions", label: "إجراءات", render: (r: any) => <div className="flex items-center justify-center gap-1"><Link href={"/orders/" + r.id} className="p-1.5 hover:bg-blue-100 rounded text-base" title="عرض">👁️</Link>{can('orders', 'edit') && <Link href={"/orders/" + r.id + "/edit"} className="p-1.5 hover:bg-blue-100 rounded text-base" title="تعديل">✏️</Link>}<Link href={"/orders/" + r.id + "/invoice"} className="p-1.5 hover:bg-blue-100 rounded text-base" title="طباعة فاتورة">🧾</Link>{can('orders', 'delete') && <button onClick={() => deleteOrder(r)} className="p-1.5 hover:bg-red-100 rounded text-base" title="حذف">🗑️</button>}</div> },
       ]} />
 
       {totalPages > 1 && <div className="flex items-center justify-center gap-2 mt-4"><Button variant="secondary" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>السابق</Button><span className="text-sm text-gray-600">صفحة {page} من {totalPages}</span><Button variant="secondary" size="sm" disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>التالي</Button></div>}

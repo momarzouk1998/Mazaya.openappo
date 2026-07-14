@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/auth-server';
 import prisma from '@/lib/db/prisma';
 import { auditLog } from '@/lib/audit';
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAuth();
-
+    const user = await requirePermission('overhead', 'view');
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
@@ -55,8 +54,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth();
-
+    const user = await requirePermission('overhead', 'add');
     const { searchParams } = new URL(request.url);
     const createJournal = searchParams.get('create_journal') === 'true';
 

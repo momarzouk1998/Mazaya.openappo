@@ -7,7 +7,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
-import { ALL_MODULES } from "@/lib/auth";
+import { ALL_MODULES, ALL_PERMISSION_ACTIONS, PERMISSION_ACTION_ICONS, PERMISSION_ACTION_LABELS } from "@/lib/auth";
 
 interface UserRow {
   id: number; auth_id: string | null; username: string;
@@ -52,16 +52,19 @@ export default function UsersPage() {
   }, [usersData]);
 
   async function toggleModule(u: UserRow, modKey: string) {
-    const newMods = u.visible_modules.includes(modKey)
+    // The "view" axis now doubles as the module-visibility toggle:
+    //   turning view ON  → module becomes visible (+ view permission)
+    //   turning view OFF → module hidden + all permissions cleared
+    const isVisible = u.visible_modules.includes(modKey);
+    const newMods = isVisible
       ? u.visible_modules.filter(m => m !== modKey)
       : [...u.visible_modules, modKey];
-    // When adding a module, give view permission by default; when removing, also remove permissions
     const newPerms = { ...u.permissions };
-    if (!u.visible_modules.includes(modKey)) {
-      // Adding module — default to view
+    if (!isVisible) {
+      // enabling → grant view
       newPerms[modKey] = ["view"];
     } else {
-      // Removing module — clean up permissions
+      // disabling → drop module + its permissions
       delete newPerms[modKey];
     }
     await fetch(`/api/admin/users/${u.id}`, {
@@ -72,25 +75,30 @@ export default function UsersPage() {
   }
 
   async function togglePermission(u: UserRow, modKey: string, action: string) {
+    // "view" is handled by toggleModule (it's the module-visibility switch).
+    // add/edit/delete require the module to be visible (view on).
+    if (action === "view") {
+      toggleModule(u, modKey);
+      return;
+    }
     const perms = { ...u.permissions };
     const modulePerms = [...(perms[modKey] || [])];
     if (modulePerms.includes(action)) {
-      // Remove the action (but keep "view" at minimum)
       const idx = modulePerms.indexOf(action);
       modulePerms.splice(idx, 1);
-      if (modulePerms.length === 0) modulePerms.push("view");
-      perms[modKey] = modulePerms;
     } else {
       modulePerms.push(action);
-      perms[modKey] = [...new Set(modulePerms)]; // deduplicate
+      perms[modKey] = [...new Set(modulePerms)];
     }
+    // keep view always present when module is visible
+    if (!modulePerms.includes("view")) modulePerms.unshift("view");
+    perms[modKey] = modulePerms;
     await fetch(`/api/admin/users/${u.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ permissions: perms }),
     });
     setUsers(s => s.map(x => x.id === u.id ? { ...x, permissions: perms } : x));
   }
-
   async function toggleActive(u: UserRow) {
     await fetch(`/api/admin/users/${u.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -143,7 +151,9 @@ export default function UsersPage() {
                   <div className="text-lg">{m.icon}</div>
                   <div className="hidden lg:block text-[10px]">{m.label}</div>
                   <div className="flex justify-center gap-1 mt-1 text-[9px] text-gray-400">
-                    <span title="مشاهدة">👁</span><span title="تعديل">✏</span><span title="حذف">🗑</span>
+                    {ALL_PERMISSION_ACTIONS.map(a => (
+                      <span key={a} title={PERMISSION_ACTION_LABELS[a]}>{PERMISSION_ACTION_ICONS[a]}</span>
+                    ))}
                   </div>
                 </th>
               ))}
@@ -187,36 +197,27 @@ export default function UsersPage() {
                 {ALL_MODULES.map(m => {
                   const hasModule = u.visible_modules.includes(m.key);
                   const perms = u.permissions?.[m.key] || [];
-                  const canEdit = perms.includes("edit");
-                  const canDelete = perms.includes("delete");
                   return (
-                    <td key={m.key} className={`px-1 py-1 text-center ${!hasModule ? "opacity-40" : ""}`}>
-                      <button
-                        onClick={() => toggleModule(u, m.key)}
-                        className={`w-7 h-7 rounded-md transition ${hasModule ? "bg-green-500 text-white" : "bg-gray-200 text-gray-400 hover:bg-gray-300"}`}
-                        title={hasModule ? `إخفاء: ${m.label}` : `إظهار: ${m.label}`}
-                      >
-                        {hasModule ? "✓" : ""}
-                      </button>
-                      {hasModule && (
-                        <div className="flex justify-center gap-0.5 mt-1">
-                          <button
-                            onClick={() => togglePermission(u, m.key, "view")}
-                            className={`w-6 h-6 rounded text-[10px] transition ${perms.length > 0 ? "bg-blue-100 text-blue-700 border border-blue-300" : "bg-gray-100 text-gray-400 border border-gray-200"}`}
-                            title="مشاهدة"
-                          >👁</button>
-                          <button
-                            onClick={() => togglePermission(u, m.key, "edit")}
-                            className={`w-6 h-6 rounded text-[10px] transition ${canEdit ? "bg-yellow-100 text-yellow-700 border border-yellow-300" : "bg-gray-100 text-gray-400 border border-gray-200"}`}
-                            title="تعديل"
-                          >✏️</button>
-                          <button
-                            onClick={() => togglePermission(u, m.key, "delete")}
-                            className={`w-6 h-6 rounded text-[10px] transition ${canDelete ? "bg-red-100 text-red-700 border border-red-300" : "bg-gray-100 text-gray-400 border border-gray-200"}`}
-                            title="حذف"
-                          >🗑️</button>
-                        </div>
-                      )}
+                    <td key={m.key} className={`px-1 py-1 text-center ${!hasModule ? "opacity-50" : ""}`}>
+                      <div className="flex flex-col items-center gap-0.5">
+                        {ALL_PERMISSION_ACTIONS.map(action => {
+                          const isActive = action === 'view' ? hasModule : (hasModule && perms.includes(action));
+                          const styles: Record<string, string> = {
+                            view: 'bg-blue-500 text-white border-blue-600',
+                            add: 'bg-emerald-500 text-white border-emerald-600',
+                            edit: 'bg-yellow-500 text-white border-yellow-600',
+                            delete: 'bg-red-500 text-white border-red-600',
+                          };
+                          return (
+                            <button
+                              key={action}
+                              onClick={() => togglePermission(u, m.key, action)}
+                              className={`w-7 h-6 rounded text-[11px] transition border ${isActive ? styles[action] : "bg-gray-100 text-gray-400 border-gray-200 hover:bg-gray-200"}`}
+                              title={`${PERMISSION_ACTION_LABELS[action]} — ${m.label}`}
+                            >{PERMISSION_ACTION_ICONS[action]}</button>
+                          );
+                        })}
+                      </div>
                     </td>
                   );
                 })}
@@ -277,18 +278,22 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
   }
 
   function togglePerm(k: string, action: string) {
+    // "view" toggles the module visibility (handled by toggleMod).
+    if (action === "view") {
+      toggleMod(k);
+      return;
+    }
     setForm(f => {
+      // add/edit/delete require the module to be visible
+      if (!f.visible_modules.includes(k)) return f;
       const perms = { ...f.permissions };
-      const modPerms = [...(perms[k] || [])];
-      if (modPerms.includes(action)) {
-        const idx = modPerms.indexOf(action);
-        modPerms.splice(idx, 1);
-        if (modPerms.length === 0) modPerms.push("view");
-        perms[k] = modPerms;
-      } else {
-        modPerms.push(action);
-        perms[k] = [...new Set(modPerms)];
-      }
+      const modPerms = [...(perms[k] || ["view"])];
+      const idx = modPerms.indexOf(action);
+      if (idx >= 0) modPerms.splice(idx, 1);
+      else modPerms.push(action);
+      // keep "view" always present when module is visible
+      if (!modPerms.includes("view")) modPerms.unshift("view");
+      perms[k] = [...new Set(modPerms)];
       return { ...f, permissions: perms };
     });
   }
@@ -313,46 +318,41 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
         <Input label="اسم المستخدم *" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} />
         <Input label="البريد أو الهاتف *" value={form.email_or_phone} onChange={e => setForm({ ...form, email_or_phone: e.target.value })} hint="لو رقم هاتف، بيتسجل كـ @mazaya.local في Auth" />
         <Input label="كلمة السر *" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
-        <Select label="الدور" value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} options={[{ value: "admin", label: "مدير المصنع (يشوف كل حاجة)" }, { value: "branch_user", label: "موظف (حسب الـ Checkboxes)" }]} />
+        <Select label="الدور" value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} options={[{ value: "admin", label: "مدير المصنع (يشوف كل حاجة)" }, { value: "branch_user", label: "موظف (حسب الصلاحيات)" }]} />
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-medium">الصفحات المرئية</label>
+            <label className="text-sm font-medium">الصفحات والصلاحيات</label>
             <div className="flex gap-1">
-              <button onClick={() => setForm(f => ({ ...f, visible_modules: ALL_MODULES.map(m => m.key) }))} className="text-xs px-2 py-1 border rounded hover:bg-gray-100">تحديد الكل</button>
-              <button onClick={() => setForm(f => ({ ...f, visible_modules: [] }))} className="text-xs px-2 py-1 border rounded hover:bg-gray-100">إلغاء الكل</button>
+              <button onClick={() => setForm(f => ({ ...f, visible_modules: ALL_MODULES.map(m => m.key), permissions: Object.fromEntries(ALL_MODULES.map(m => [m.key, ["view"]])) }))} className="text-xs px-2 py-1 border rounded hover:bg-gray-100">تحديد الكل</button>
+              <button onClick={() => setForm(f => ({ ...f, visible_modules: [], permissions: {} }))} className="text-xs px-2 py-1 border rounded hover:bg-gray-100">إلغاء الكل</button>
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {ALL_MODULES.map(m => {
               const hasMod = form.visible_modules.includes(m.key);
               const perms = form.permissions[m.key] || [];
-              const canEdit = perms.includes("edit");
-              const canDelete = perms.includes("delete");
               return (
                 <div key={m.key} className={`p-2 border rounded-lg ${hasMod ? "bg-green-50 border-green-300" : "border-gray-200"}`}>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={hasMod} onChange={() => toggleMod(m.key)} className="accent-brand-orange" />
-                    <span className="text-sm font-medium">{m.icon} {m.label}</span>
-                  </label>
-                  {hasMod && (
-                    <div className="flex gap-2 mt-1.5 mr-7">
-                      <button
-                        type="button"
-                        onClick={() => togglePerm(m.key, "view")}
-                        className={`flex items-center gap-1 px-2 py-1 rounded text-xs border ${perms.length > 0 ? "bg-blue-100 text-blue-700 border-blue-300" : "bg-gray-100 text-gray-400 border-gray-200"}`}
-                      >👁 مشاهدة</button>
-                      <button
-                        type="button"
-                        onClick={() => togglePerm(m.key, "edit")}
-                        className={`flex items-center gap-1 px-2 py-1 rounded text-xs border ${canEdit ? "bg-yellow-100 text-yellow-700 border-yellow-300" : "bg-gray-100 text-gray-400 border-gray-200"}`}
-                      >✏️ تعديل</button>
-                      <button
-                        type="button"
-                        onClick={() => togglePerm(m.key, "delete")}
-                        className={`flex items-center gap-1 px-2 py-1 rounded text-xs border ${canDelete ? "bg-red-100 text-red-700 border-red-300" : "bg-gray-100 text-gray-400 border-gray-200"}`}
-                      >🗑️ حذف</button>
-                    </div>
-                  )}
+                  <div className="text-sm font-medium mb-1.5">{m.icon} {m.label}</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {ALL_PERMISSION_ACTIONS.map(action => {
+                      const isActive = action === 'view' ? hasMod : (hasMod && perms.includes(action));
+                      const styles: Record<string, string> = {
+                        view: 'bg-blue-500 text-white border-blue-600',
+                        add: 'bg-emerald-500 text-white border-emerald-600',
+                        edit: 'bg-yellow-500 text-white border-yellow-600',
+                        delete: 'bg-red-500 text-white border-red-600',
+                      };
+                      return (
+                        <button
+                          key={action}
+                          type="button"
+                          onClick={() => togglePerm(m.key, action)}
+                          className={`flex items-center gap-1 px-2 py-1 rounded text-xs border transition ${isActive ? styles[action] : "bg-gray-100 text-gray-400 border-gray-200 hover:bg-gray-200"}`}
+                        >{PERMISSION_ACTION_ICONS[action]} {PERMISSION_ACTION_LABELS[action]}</button>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })}
@@ -396,18 +396,22 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserRow; onClose: (
   }
 
   function togglePerm(k: string, action: string) {
+    // "view" toggles the module visibility (handled by toggleMod).
+    if (action === "view") {
+      toggleMod(k);
+      return;
+    }
     setForm(f => {
+      // add/edit/delete require the module to be visible
+      if (!f.visible_modules.includes(k)) return f;
       const perms = { ...f.permissions };
-      const modPerms = [...(perms[k] || [])];
-      if (modPerms.includes(action)) {
-        const idx = modPerms.indexOf(action);
-        modPerms.splice(idx, 1);
-        if (modPerms.length === 0) modPerms.push("view");
-        perms[k] = modPerms;
-      } else {
-        modPerms.push(action);
-        perms[k] = [...new Set(modPerms)];
-      }
+      const modPerms = [...(perms[k] || ["view"])];
+      const idx = modPerms.indexOf(action);
+      if (idx >= 0) modPerms.splice(idx, 1);
+      else modPerms.push(action);
+      // keep "view" always present when module is visible
+      if (!modPerms.includes("view")) modPerms.unshift("view");
+      perms[k] = [...new Set(modPerms)];
       return { ...f, permissions: perms };
     });
   }
@@ -445,21 +449,28 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserRow; onClose: (
             {ALL_MODULES.map(m => {
               const hasMod = form.visible_modules.includes(m.key);
               const perms = form.permissions[m.key] || [];
-              const canEdit = perms.includes("edit");
-              const canDelete = perms.includes("delete");
               return (
                 <div key={m.key} className={`p-2 border rounded-lg ${hasMod ? "bg-green-50 border-green-300" : "border-gray-200"}`}>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={hasMod} onChange={() => toggleMod(m.key)} className="accent-brand-orange" />
-                    <span className="text-sm font-medium">{m.icon} {m.label}</span>
-                  </label>
-                  {hasMod && (
-                    <div className="flex gap-2 mt-1.5 mr-7">
-                      <button type="button" onClick={() => togglePerm(m.key, "view")} className={`flex items-center gap-1 px-2 py-1 rounded text-xs border ${perms.length > 0 ? "bg-blue-100 text-blue-700 border-blue-300" : "bg-gray-100 text-gray-400 border-gray-200"}`}>👁 مشاهدة</button>
-                      <button type="button" onClick={() => togglePerm(m.key, "edit")} className={`flex items-center gap-1 px-2 py-1 rounded text-xs border ${canEdit ? "bg-yellow-100 text-yellow-700 border-yellow-300" : "bg-gray-100 text-gray-400 border-gray-200"}`}>✏️ تعديل</button>
-                      <button type="button" onClick={() => togglePerm(m.key, "delete")} className={`flex items-center gap-1 px-2 py-1 rounded text-xs border ${canDelete ? "bg-red-100 text-red-700 border-red-300" : "bg-gray-100 text-gray-400 border-gray-200"}`}>🗑️ حذف</button>
-                    </div>
-                  )}
+                  <div className="text-sm font-medium mb-1.5">{m.icon} {m.label}</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {ALL_PERMISSION_ACTIONS.map(action => {
+                      const isActive = action === 'view' ? hasMod : (hasMod && perms.includes(action));
+                      const styles: Record<string, string> = {
+                        view: 'bg-blue-500 text-white border-blue-600',
+                        add: 'bg-emerald-500 text-white border-emerald-600',
+                        edit: 'bg-yellow-500 text-white border-yellow-600',
+                        delete: 'bg-red-500 text-white border-red-600',
+                      };
+                      return (
+                        <button
+                          key={action}
+                          type="button"
+                          onClick={() => togglePerm(m.key, action)}
+                          className={`flex items-center gap-1 px-2 py-1 rounded text-xs border transition ${isActive ? styles[action] : "bg-gray-100 text-gray-400 border-gray-200 hover:bg-gray-200"}`}
+                        >{PERMISSION_ACTION_ICONS[action]} {PERMISSION_ACTION_LABELS[action]}</button>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useUserStore } from "@/store/user-store";
 import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApi";
+import { useCan } from "@/hooks/useCan";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
@@ -14,6 +15,7 @@ import { exportToExcel } from "@/lib/excel";
 
 export default function PaymentsPage() {
   const { user: profile } = useUserStore();
+  const { can } = useCan();
   const { data: paymentsData, loading, refetch } = useApi<{ items: any[] }>('/api/customer-payments?limit=500');
   const { data: customersData } = useApi<{ items: any[] }>('/api/customers?limit=500');
   const { mutate } = useApiMutation();
@@ -57,7 +59,7 @@ export default function PaymentsPage() {
             التاريخ: p.date, العميل: p.customer?.name || "", الأوردر: p.order?.order_name || "عامة",
             المبلغ: Number(p.amount), "طريقة الدفع": p.payment_method, ملاحظات: p.notes || "",
           })), "customer_payments")}>📥 تصدير</Button>
-          <Button onClick={() => setShowAdd(true)}>💰 تسجيل دفعة</Button>
+          {can('payments', 'add') && <Button onClick={() => setShowAdd(true)}>💰 تسجيل دفعة</Button>}
         </>}
       />
 
@@ -115,7 +117,7 @@ export default function PaymentsPage() {
           { key: "notes", label: "ملاحظات", render: (r: any) => r.notes || "-" },
           {
             key: "_actions", label: "",
-            render: (r: any) => (
+            render: (r: any) => can('payments', 'delete') ? (
               <button
                 onClick={async () => {
                   if (!confirm(`حذف هذه الدفعة؟`)) return;
@@ -125,7 +127,7 @@ export default function PaymentsPage() {
                 className="p-1.5 hover:bg-red-100 rounded"
                 title="حذف"
               >🗑️</button>
-            )
+            ) : null
           },
         ]}
       />

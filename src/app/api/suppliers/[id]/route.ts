@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/auth-server';
 import prisma from '@/lib/db/prisma';
 import { auditLog } from '@/lib/audit';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = await requireAuth();
+    const user = await requirePermission('suppliers', 'view');
     const { id } = await params;
     const item = await prisma.suppliers.findFirst({ where: { id, deleted_at: null } });
     if (!item) {
@@ -13,14 +13,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     }
     return NextResponse.json({ ok: true, data: item });
   } catch (e: any) {
-    if (e.status) return NextResponse.json({ ok: false, error: { code: 'UNAUTHORIZED', message: '\u063a\u064a\u0631 \u0645\u0633\u062c\u0644 \u0627\u0644\u062f\u062e\u0648\u0644' } }, { status: e.status });
+    if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status });
     return NextResponse.json({ ok: false, error: { code: 'INTERNAL_ERROR', message: e?.message || '\u062d\u062f\u062b \u062e\u0637\u0623' } }, { status: 500 });
   }
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = await requireAuth();
+    const user = await requirePermission('suppliers', 'edit');
     const { id } = await params;
     const intId = id;
     const before = await prisma.suppliers.findFirst({ where: { id: intId, deleted_at: null } });
@@ -46,7 +46,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     return NextResponse.json({ ok: true, data: item });
   } catch (e: any) {
-    if (e.status) return NextResponse.json({ ok: false, error: { code: 'UNAUTHORIZED', message: '\u063a\u064a\u0631 \u0645\u0633\u062c\u0644 \u0627\u0644\u062f\u062e\u0648\u0644' } }, { status: e.status });
+    if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status });
     console.error('Supplier update error:', e);
     return NextResponse.json({ ok: false, error: { code: 'INTERNAL_ERROR', message: e?.message || '\u062d\u062f\u062b \u062e\u0637\u0623' } }, { status: 500 });
   }
@@ -54,7 +54,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = await requireAuth();
+    const user = await requirePermission('suppliers', 'delete');
     const { id } = await params;
     const intId = id;
     const before = await prisma.suppliers.findFirst({ where: { id: intId, deleted_at: null } });
@@ -67,7 +67,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
     return NextResponse.json({ ok: true, data: { message: '\u062a\u0645 \u0627\u0644\u062d\u0630\u0641' } });
   } catch (e: any) {
-    if (e.status) return NextResponse.json({ ok: false, error: { code: 'UNAUTHORIZED', message: '\u063a\u064a\u0631 \u0645\u0633\u062c\u0644 \u0627\u0644\u062f\u062e\u0648\u0644' } }, { status: e.status });
+    if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status });
     console.error('Supplier delete error:', e);
     return NextResponse.json({ ok: false, error: { code: 'INTERNAL_ERROR', message: e?.message || '\u062d\u062f\u062b \u062e\u0637\u0623' } }, { status: 500 });
   }

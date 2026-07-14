@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-server";
+import { requirePermission } from '@/lib/auth-server';
 import prisma from "@/lib/db/prisma";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
-    const user = await requireAuth();
+    const user = await requirePermission('budget', 'view');
     const { searchParams } = new URL(request.url);
     const monthStr = searchParams.get("month"); // format: "2026-07"
 
@@ -137,7 +137,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (e: any) {
-    if (e.status) return NextResponse.json({ ok: false, error: { code: "UNAUTHORIZED", message: "غير مسجل الدخول" } }, { status: e.status });
+    if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status });
     console.error("Budget error:", e);
     return NextResponse.json({ ok: false, error: { code: "INTERNAL_ERROR", message: e?.message || "حدث خطأ" } }, { status: 500 });
   }
