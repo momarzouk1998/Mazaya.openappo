@@ -139,10 +139,9 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
         <div className="card text-center text-gray-500 py-12">🔒 هذه الصفحة للمصنع فقط.</div>
       ) : (
         <>
-          {/* ===== ملخص المخزون والأوردرات ===== */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <div className="card bg-white border-r-4 border-brand-orange">
-              <div className="text-xs text-gray-500">قيمة المخزون</div>
+              <div className="text-xs text-gray-500 font-bold">قيمة المخزون</div>
               <div className="text-2xl font-extrabold text-brand-orange mb-1">{formatCurrency(
                 boards.reduce((s: number, b: any) => s + (Number(b.unit_price ?? 0) * Number(b.quantity_remaining ?? 0)), 0)
                 + accessories.reduce((s: number, a: any) => s + (Number(a.unit_price ?? 0) * Number(a.quantity_remaining ?? 0)), 0)
@@ -150,17 +149,17 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
               <div className="text-[10px] text-gray-400 mt-0.5">{boards.length + accessories.length} صنف</div>
             </div>
             <div className="card bg-white border-r-4 border-brand-orange">
-              <div className="text-xs text-gray-500">أوردرات مفتوحة</div>
+              <div className="text-xs text-gray-500 font-bold">أوردرات مفتوحة</div>
               <div className="text-2xl font-extrabold text-brand-orange mb-1">{allOrders.filter((o: any) => o.status === "مفتوح" || o.status === "قيد التنفيذ").length}</div>
               <div className="text-lg font-bold text-brand-orange">{formatCurrency(allOrders.filter((o: any) => o.status === "مفتوح" || o.status === "قيد التنفيذ").reduce((s: number, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0))}</div>
             </div>
             <div className="card bg-white border-r-4 border-brand-orange">
-              <div className="text-xs text-gray-500">أوردرات مكتملة</div>
+              <div className="text-xs text-gray-500 font-bold">أوردرات مكتملة</div>
               <div className="text-2xl font-extrabold text-brand-orange mb-1">{allOrders.filter((o: any) => o.status === "مكتمل" || o.status === "تم التسليم").length}</div>
               <div className="text-lg font-bold text-brand-orange">{formatCurrency(allOrders.filter((o: any) => o.status === "مكتمل" || o.status === "تم التسليم").reduce((s: number, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0))}</div>
             </div>
             <div className="card bg-white border-r-4 border-brand-orange">
-              <div className="text-xs text-gray-500">إجمالي الأوردرات</div>
+              <div className="text-xs text-gray-500 font-bold">إجمالي الأوردرات</div>
               <div className="text-2xl font-extrabold text-brand-orange mb-1">{allOrders.length}</div>
               <div className="text-lg font-bold text-brand-orange">{formatCurrency(allOrders.reduce((s: number, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0))}</div>
             </div>
@@ -168,24 +167,52 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <div className="card bg-white border-r-4 border-brand-orange">
-              <div className="text-xs text-gray-500 flex items-center gap-1">إجمالي الوارد <span className="text-gray-400">❓</span></div>
+              <div className="text-xs text-gray-500 font-bold flex items-center gap-1">
+                إجمالي الوارد 
+                <span className="relative group cursor-help text-gray-400">
+                  ❓
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none z-10">
+                    كل التحويلات الواردة من المعارض
+                  </div>
+                </span>
+              </div>
               <div className="text-2xl font-extrabold text-brand-orange mb-1">{formatCurrency(totalIncome)}</div>
-              <div className="text-[10px] text-gray-400 mt-0.5">كل التحويلات الواردة من المعارض</div>
             </div>
             <div className="card bg-white border-r-4 border-brand-orange">
-              <div className="text-xs text-gray-500 flex items-center gap-1">إجمالي المصروف (مشتريات) <span className="text-gray-400">❓</span></div>
+              <div className="text-xs text-gray-500 font-bold flex items-center gap-1">
+                إجمالي المصروف (مشتريات) 
+                <span className="relative group cursor-help text-gray-400">
+                  ❓
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none z-10">
+                    مشتريات ألواح + إكسسوارات + نثريات
+                  </div>
+                </span>
+              </div>
               <div className="text-2xl font-extrabold text-brand-orange mb-1">{formatCurrency(totalExpense)}</div>
-              <div className="text-[10px] text-gray-400 mt-0.5">مشتريات ألواح + إكسسوارات + نثريات</div>
             </div>
             <div className="card bg-white border-r-4 border-brand-orange">
-              <div className="text-xs text-gray-500 flex items-center gap-1">إجمالي المدفوعات (موردين) <span className="text-gray-400">❓</span></div>
+              <div className="text-xs text-gray-500 font-bold flex items-center gap-1">
+                إجمالي المدفوعات (موردين) 
+                <span className="relative group cursor-help text-gray-400">
+                  ❓
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none z-10">
+                    دفوع صادرة للموردين
+                  </div>
+                </span>
+              </div>
               <div className="text-2xl font-extrabold text-brand-orange mb-1">{formatCurrency(totalPayout)}</div>
-              <div className="text-[10px] text-gray-400 mt-0.5">دفوع صادرة للموردين</div>
             </div>
             <div className="card bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white">
-              <div className="text-xs opacity-90 flex items-center gap-1">صافي الرصيد الحالي <span className="opacity-70">❓</span></div>
+              <div className="text-xs opacity-90 font-bold flex items-center gap-1">
+                صافي الرصيد الحالي 
+                <span className="relative group cursor-help opacity-70">
+                  ❓
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-gray-800 bg-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none z-10">
+                    الوارد − المصروف − المدفوعات
+                  </div>
+                </span>
+              </div>
               <div className="text-2xl font-extrabold mb-1">{formatCurrency(totalNet)}</div>
-              <div className="text-[10px] opacity-70 mt-0.5">الوارد − المصروف − المدفوعات</div>
             </div>
           </div>
 
@@ -206,7 +233,7 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="bg-brand-orange-light rounded p-1.5"><div className="text-[10px] text-gray-500">وارد</div><div className="font-bold text-brand-orange-dark text-sm">{formatCurrency(weekIncome)}</div></div>
                 <div className="bg-gray-50 rounded p-1.5"><div className="text-[10px] text-gray-500">مصروف</div><div className="font-bold text-gray-700 text-sm">{formatCurrency(weekExpense)}</div></div>
-                <div className="bg-white border rounded p-1.5"><div className="text-[10px] text-gray-500">الصافي</div><div className="font-bold text-brand-black text-sm">{formatCurrency(weekIncome - weekExpense)}</div></div>
+                <div className="bg-white border rounded p-1.5"><div className="text-[10px] text-gray-500">الصافي</div><div className={`font-bold text-sm ${weekIncome - weekExpense >= 0 ? "text-green-600" : "text-red-600"}`}>{formatCurrency(weekIncome - weekExpense)}</div></div>
               </div>
             </div>
           </div>
