@@ -54,5 +54,4 @@ if (failures > 0) {
   process.exit(1);
 } else {
   console.log('\n✅ All finance-wages tests passed');
-  process.exit(0);
 }
