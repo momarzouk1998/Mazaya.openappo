@@ -23,6 +23,15 @@ interface DayBucket {
 
 function toNum(v: any): number {
   if (v == null) return 0;
+  // Prisma بيرجّع Decimal كـ object له دالة toString()/.toNumber()
+  // لو سبّبناه زي ما هو، الـ reduce هيحصل فيه string concatenation.
+  if (typeof v === 'object' && v !== null) {
+    if (typeof v.toNumber === 'function') return v.toNumber();
+    if (typeof v.toString === 'function') {
+      const n = parseFloat(v.toString());
+      return isNaN(n) ? 0 : n;
+    }
+  }
   const n = typeof v === 'string' ? parseFloat(v) : v;
   return isNaN(n) ? 0 : n;
 }

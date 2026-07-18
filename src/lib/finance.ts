@@ -29,7 +29,7 @@ export const VALID_ENTRY_TYPES = [
 export const VALID_PAYMENT_METHODS = ['نقدي', 'تحويل'] as const;
 
 export type JournalRow = {
-  amount: number | string;
+  amount: number | string | { toNumber?: () => number; toString?: () => string };
   entry_type: string;
   is_passthrough?: boolean;
   is_pass_through?: boolean;
@@ -56,30 +56,44 @@ export function isPassThrough(r: JournalRow): boolean {
   return Boolean(r.is_pass_through ?? r.is_passthrough);
 }
 
-function toNum(v: number | string | null | undefined): number {
+function toNum(v: number | string | { toNumber?: () => number; toString?: () => string } | null | undefined): number {
   if (v == null) return 0;
-  const n = typeof v === 'string' ? parseFloat(v) : v;
-  return isNaN(n) ? 0 : n;
+  // Prisma بيرجّع Decimal كـ object. لو سبّبناه زي ما هو،
+  // الـ reduce هيحصل فيه string concatenation بدل جمع.
+  if (typeof v === 'object') {
+    const obj = v as { toNumber?: () => number; toString?: () => string };
+    if (typeof obj.toNumber === 'function') return obj.toNumber();
+    if (typeof obj.toString === 'function') {
+      const n = parseFloat(obj.toString());
+      return isNaN(n) ? 0 : n;
+    }
+    return 0;
+  }
+  if (typeof v === 'string') {
+    const n = parseFloat(v);
+    return isNaN(n) ? 0 : n;
+  }
+  return isNaN(v) ? 0 : v;
 }
 
 /** إجمالي الوارد الحقيقي (من غير تمريري) */
 export function calcIncome(rows: JournalRow[]): number {
-  return rows.filter(isIncome).reduce((s, r) => s + toNum(r.amount), 0);
+  return rows.filter(isIncome).reduce<number>((s, r) => s + toNum(r.amount), 0);
 }
 
 /** إجمالي المصروف الحقيقي (مشتريات + نثريات، من غير تمريري) */
 export function calcExpense(rows: JournalRow[]): number {
-  return rows.filter(isExpense).reduce((s, r) => s + toNum(r.amount), 0);
+  return rows.filter(isExpense).reduce<number>((s, r) => s + toNum(r.amount), 0);
 }
 
 /** إجمالي الدفعات للموردين (من غير تمريري) */
 export function calcPayout(rows: JournalRow[]): number {
-  return rows.filter(isPayout).reduce((s, r) => s + toNum(r.amount), 0);
+  return rows.filter(isPayout).reduce<number>((s, r) => s + toNum(r.amount), 0);
 }
 
 /** إجمالي الحركات التمريرية (للمعلومات فقط) */
 export function calcPassthrough(rows: JournalRow[]): number {
-  return rows.filter(isPassThrough).reduce((s, r) => s + toNum(r.amount), 0);
+  return rows.filter(isPassThrough).reduce<number>((s, r) => s + toNum(r.amount), 0);
 }
 
 /** الصافي = وارد − مصروف − دفعات */
