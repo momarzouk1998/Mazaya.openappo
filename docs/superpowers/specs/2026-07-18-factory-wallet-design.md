@@ -144,7 +144,7 @@ ENTRY_TYPE_LABELS['أجور عمال'] = 'أجور عمال';
 ENTRY_TYPE_COLORS['أجور عمال'] = 'bg-amber-100 text-amber-700 border-amber-300';
 ```
 
-#### 4.4.3 تعديل `/api/overhead`
+#### 4.4.3 تعديل `/api/overhead` + شيل "أجور عمال" من مداخل النثريات
 السلوك الحالي: لما `worker_id` موجود، القيد بيتسجل بـ `entry_type='نثريات'`.
 السلوك الجديد:
 - لو `worker_id` موجود + `category === 'أجور عمال'` → القيد بـ `entry_type='أجور عمال'`.
@@ -152,6 +152,17 @@ ENTRY_TYPE_COLORS['أجور عمال'] = 'bg-amber-100 text-amber-700 border-amb
 - نضيف حقل `payment_kind` (اختياري) في `overhead_expenses`:
   `'قبض' | 'سلفة'` (افتراضي `'قبض'`). ده علشان نقدر نفرّق في صفحة
   العمال بين الدفعة النهائية والسلفة. (الكل بيدخل في المصروف على المحفظة.)
+
+**شيل "أجور عمال" من مداخل النثريات** — تبقى مدخولة من `/workers` فقط:
+- `src/app/overhead/_new-overhead-form.tsx`: نشيل `{ value: "أجور عمال", ... }`
+  من `CATEGORIES`، ونشيل منطق `isWages` (الـ Combobox للعامل) لأن الفورم ده للنثريات
+  العامة فقط.
+- `src/app/journal/_panels.tsx` (OverheadPanel): نفس الشيء — نشيل "أجور عمال" من
+  `CATS` ونشيل منطق `isWages` والـ Combobox.
+- `src/app/overhead/page.tsx`: نشيل فلتر العمال (المتغير `showWorkerFilter` والـ
+  combobox المرتبط بيه)، لأن النثريات العامة ما بقتش مرتبطة بعامل.
+- نسيب النصوص الإرشادية في `_journal-page-wrapper.tsx` ("نثريات / أجور عمال")
+  زي ما هي، أو نعدّلها لـ "نثريات" فقط (تفضّيل).
 
 #### 4.4.4 تعديل صفحة `/workers` — إضافة tab "أجور العمال"
 صفحة `/workers` الحالية تبقى بتبوين (tabs):
