@@ -76,13 +76,15 @@ export async function POST(request: NextRequest) {
     }
 
     if (createJournal) {
+      // أجور العمال بـ entry_type خاص علشان يحسب صح في المحفظة والميزانية.
+      // لو category='أجور عمال' و worker_id موجود → 'أجور عمال'، غير كده 'نثريات'.
+      const isWages = category === 'أجور عمال' && Boolean(worker_id);
       const result = await prisma.$transaction(async (tx) => {
         const journalEntry = await tx.journal_entries.create({
           data: {
             date: date ? new Date(date) : new Date(),
-            // SSoT (F8) — نستخدم المفتاح العربي 'نثريات' بدل 'overhead'
-            // عشان كل الحسابات الموحدة في src/lib/finance.ts تشتغل صح
-            entry_type: 'نثريات',
+            // SSoT — نستخدم المفاتيح العربية الموحدة في src/lib/finance.ts
+            entry_type: isWages ? 'أجور عمال' : 'نثريات',
             description: description.trim(),
             amount,
             payment_method: payment_method || null,
@@ -97,6 +99,7 @@ export async function POST(request: NextRequest) {
             description: description.trim(),
             amount,
             payment_method: payment_method || null,
+            payment_kind: body.payment_kind || null,
             journal_entry_id: journalEntry.id,
             created_by: user.id,
             notes: notes || null,
@@ -135,6 +138,7 @@ export async function POST(request: NextRequest) {
         description: description.trim(),
         amount,
         payment_method: payment_method || null,
+        payment_kind: body.payment_kind || null,
         created_by: user.id,
         notes: notes || null,
         worker_id: worker_id || null,

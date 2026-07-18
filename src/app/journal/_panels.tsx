@@ -298,11 +298,10 @@ export function BoardPurchasePanel(props: any) { return <UnifiedItemPurchaseForm
 export function AccessoryPurchasePanel(props: any) { return <UnifiedItemPurchaseForm cat="accessory" {...props} />; }
 
 /* ============================================================
- * 3) نثريات / أجور عمال
+ * 3) نثريات (عامة — أجور العمال بتتسجل من /workers)
  * ============================================================ */
 const CATS = [
   { value: "", label: "— اختر التصنيف —" },
-  { value: "أجور عمال", label: "أجور عمال" },
   { value: "نثريات عامة", label: "نثريات عامة" },
   { value: "غداء", label: "غداء" },
   { value: "كهرباء", label: "كهرباء" },
@@ -316,36 +315,28 @@ export function OverheadPanel({ onSaved }: { onSaved?: () => void }) {
     date: todayStr(), category: "", description: "", amount: "",
     payment_method: "نقدي", notes: "",
   });
-  const [workerId, setWorkerId] = useState("");
-  const [workerName, setWorkerName] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  const isWages = form.category === "أجور عمال";
-
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null); setMsg(null);
-    if (isWages) {
-      if (!workerId || !form.amount) { setErr("لأجور العمال: العامل والمبلغ مطلوبان"); return; }
-    } else if (!form.description || !form.amount) { setErr("البيان والمبلغ مطلوبان"); return; }
+    if (!form.description || !form.amount) { setErr("البيان والمبلغ مطلوبان"); return; }
     setSaving(true);
     try {
-      const description = isWages ? (form.description || `أجر عامل: ${workerName}`) : form.description;
       const res = await fetch("/api/overhead?create_journal=true", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          date: form.date, category: form.category || null, description,
+          date: form.date, category: form.category || null, description: form.description,
           amount: Number(form.amount), payment_method: form.payment_method,
-          notes: form.notes || null, worker_id: isWages ? workerId : null,
+          notes: form.notes || null, worker_id: null,
         }),
       });
       const j = await res.json();
       if (!res.ok) { setErr(j?.error?.message || "خطأ"); return; }
-      setMsg(`✅ تم تسجيل ${formatCurrency(Number(form.amount))}${isWages && workerName ? ` للعامل ${workerName}` : ""}`);
+      setMsg(`✅ تم تسجيل ${formatCurrency(Number(form.amount))}`);
       setForm(f => ({ ...f, description: "", amount: "", notes: "" }));
-      setWorkerId(""); setWorkerName("");
       onSaved?.();
     } finally { setSaving(false); }
   }
@@ -353,27 +344,13 @@ export function OverheadPanel({ onSaved }: { onSaved?: () => void }) {
   return (
     <form onSubmit={submit} className="space-y-3">
       <Input label="التاريخ" type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
-      <Select label="التصنيف" value={form.category} onChange={e => setForm({ ...form, category: e.target.value, description: "" })} options={CATS} />
-      {isWages && (
-        <Combobox
-          label="اسم العامل *"
-          endpoint="/api/workers?limit=500"
-          value={workerId}
-          onChange={(id, name) => { setWorkerId(id); setWorkerName(name || "") }}
-          placeholder="ابحث أو أضف عامل..."
-          hint="اكتب الاسم — موجود هيظهر، جديد اكتبه كامل واضغط 'إضافة'."
-        />
-      )}
-      {!isWages && (
-        <Input label="البيان *" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="مثال: كهرباء، شحن" required />
-      )}
-      {isWages && (
-        <Input label="بيان إضافي (اختياري)" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="مثال: أسبوع 3" />
-      )}
+      <Select label="التصنيف" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} options={CATS} />
+      <Input label="البيان *" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="مثال: كهرباء، شحن" required />
       <div className="grid grid-cols-2 gap-3">
         <Input label="المبلغ *" type="number" step="0.01" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} required />
         <Select label="طريقة الدفع" value={form.payment_method} onChange={e => setForm({ ...form, payment_method: e.target.value })} options={PAY_OPTS} />
       </div>
+      <Input label="ملاحظات" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
       {err && <div className="bg-red-50 text-red-700 p-2 rounded text-sm">{err}</div>}
       {msg && <div className="bg-brand-orange-light text-brand-orange-dark p-2 rounded text-sm">{msg}</div>}
       <Button type="submit" loading={saving} className="w-full">💾 تسجيل المصروف</Button>

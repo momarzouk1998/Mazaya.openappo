@@ -48,6 +48,7 @@ export const ENTRY_TYPE_LABELS: Record<string, string> = {
   "دفعة صادرة لمورد": "دفعة صادرة لمورد",
   "تحويل تمريري": "تحويل تمريري",
   "نثريات": "نثريات",
+  "أجور عمال": "أجور عمال",
 };
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   "نقدي": "نقدي",
@@ -75,6 +76,7 @@ export const ENTRY_TYPE_COLORS: Record<string, string> = {
   "دفعة صادرة لمورد": "bg-red-100 text-red-700 border-red-300",
   "تحويل تمريري": "bg-orange-100 text-orange-700 border-orange-300",
   "نثريات": "bg-purple-100 text-purple-700 border-purple-300",
+  "أجور عمال": "bg-amber-100 text-amber-700 border-amber-300",
   purchase: "bg-red-100 text-red-700 border-red-300",
   income: "bg-green-100 text-green-700 border-green-300",
   expense: "bg-red-100 text-red-700 border-red-300",

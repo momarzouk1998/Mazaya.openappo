@@ -25,52 +25,39 @@ export default function OverheadPage() {
   const { user: profile } = useUserStore()
   const { can } = useCan()
   const { data, loading } = useApi<{ expenses: any[]; items?: any[] }>("/api/overhead?limit=500")
-  const { data: workersData } = useApi<{ items: any[] }>("/api/workers?limit=500")
   const rows: any[] = data?.expenses ?? data?.items ?? []
-  const workers = workersData?.items ?? []
   const [search, setSearch] = useState("")
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("")
-  const [workerFilter, setWorkerFilter] = useState("")
-  const [workerSearch, setWorkerSearch] = useState("")
   const [filterOpen, setFilterOpen] = useState(false)
 
-  const activeFiltersCount = [categoryFilter, workerFilter, fromDate, toDate].filter(Boolean).length
+  const activeFiltersCount = [categoryFilter, fromDate, toDate].filter(Boolean).length
 
   const filtered = useMemo(() => rows.filter((r) => {
     const matchSearch = !search || (r.description ?? "").toLowerCase().includes(search.toLowerCase())
     const matchCategory = !categoryFilter || (r.category ?? "") === categoryFilter
-    const matchWorker = !workerFilter || r.worker_id === workerFilter
     const matchDate = (!fromDate || String(r.date) >= fromDate) && (!toDate || String(r.date) <= toDate)
-    return matchSearch && matchCategory && matchWorker && matchDate
-  }), [rows, search, categoryFilter, workerFilter, fromDate, toDate])
+    return matchSearch && matchCategory && matchDate
+  }), [rows, search, categoryFilter, fromDate, toDate])
 
   const total = filtered.reduce((s, r) => s + Number(r.amount ?? 0), 0)
 
   const uniqueCategories = useMemo(() => {
-    return Array.from(new Set(rows.map((r) => r.category).filter(Boolean))).sort()
+    return Array.from(new Set(rows.map((r) => r.category).filter((c) => Boolean(c)))).sort()
   }, [rows])
 
-  // فلتر العمال: لو اختار "أجور عمال" يظهر خانة بحث عامل
-  const showWorkerFilter = categoryFilter === "أجور عمال"
-  const filteredWorkers = useMemo(() => {
-    if (!workerSearch) return workers
-    return workers.filter((w: any) => (w.name ?? "").toLowerCase().includes(workerSearch.toLowerCase()))
-  }, [workers, workerSearch])
-
-  // لو عامل محدد، نظهر اسمه
-  const selectedWorkerName = workerFilter ? (workers.find((w: any) => w.id === workerFilter)?.name || "") : ""
-
   function clearFilters() {
-    setCategoryFilter(""); setWorkerFilter(""); setWorkerSearch(""); setFromDate(""); setToDate("")
+    setCategoryFilter("")
+    setFromDate("")
+    setToDate("")
   }
 
   if (!profile) return null
 
   return (
     <DashboardLayout profile={profile}>
-      <PageHeader title="النثريات" subtitle="مصاريف تشغيل المصنع العامة" helpTitle="النثريات" helpDescription="كهرباء، أجور عمال، شحن، إلخ." backHref="/journal" actions={can('overhead', 'add') ? <Button onClick={() => router.push("/overhead/new")}>+ نثريات جديدة</Button> : undefined} />
+      <PageHeader title="النثريات" subtitle="مصاريف تشغيل المصنع العامة" helpTitle="النثريات" helpDescription="نثريات عامة، كهرباء، شحن، إلخ. أجور العمال بتتسجل من صفحة العمال." backHref="/journal" actions={can('overhead', 'add') ? <Button onClick={() => router.push("/overhead/new")}>+ نثريات جديدة</Button> : undefined} />
 
       {/* كارد الإجمالي الوحيد */}
       <div className="mb-4">
@@ -82,7 +69,6 @@ export default function OverheadPage() {
               <div className="text-xs opacity-80 mt-1">
                 {filtered.length} سجل
                 {categoryFilter && ` • تصنيف: ${categoryFilter}`}
-                {selectedWorkerName && ` • عامل: ${selectedWorkerName}`}
                 {(fromDate || toDate) && ` • فترة: ${fromDate || "البداية"} → ${toDate || "اليوم"}`}
               </div>
             </div>
@@ -114,46 +100,13 @@ export default function OverheadPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">التصنيف</label>
                 <select
                   value={categoryFilter}
-                  onChange={(e) => { setCategoryFilter(e.target.value); setWorkerFilter(""); setWorkerSearch("") }}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
                   className="w-full px-3 py-2 border rounded-lg bg-white"
                 >
                   <option value="">كل التصنيفات</option>
                   {uniqueCategories.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-
-              {showWorkerFilter && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">بحث عن عامل</label>
-                  <input
-                    type="search"
-                    value={workerSearch}
-                    onChange={(e) => setWorkerSearch(e.target.value)}
-                    placeholder="اكتب اسم العامل..."
-                    className="w-full px-3 py-2 border rounded-lg bg-white"
-                  />
-                  {workerSearch && (
-                    <div className="mt-1 max-h-40 overflow-y-auto bg-white border rounded-lg">
-                      {filteredWorkers.length === 0 && <div className="p-2 text-xs text-gray-400">لا يوجد عمال</div>}
-                      {filteredWorkers.map((w: any) => (
-                        <button
-                          key={w.id}
-                          onClick={() => { setWorkerFilter(w.id); setWorkerSearch(w.name) }}
-                          className={`w-full text-right px-3 py-2 text-sm hover:bg-gray-100 ${workerFilter === w.id ? "bg-brand-orange-light text-brand-orange-dark font-bold" : ""}`}
-                        >
-                          {w.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {workerFilter && (
-                    <div className="mt-2 flex items-center gap-2 bg-brand-orange-light p-2 rounded-lg">
-                      <span className="text-xs text-brand-orange-dark font-medium">✓ العامل المحدد: {selectedWorkerName}</span>
-                      <button onClick={() => { setWorkerFilter(""); setWorkerSearch("") }} className="text-xs text-red-500 hover:underline mr-auto">إزالة</button>
-                    </div>
-                  )}
-                </div>
-              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -188,7 +141,6 @@ export default function OverheadPage() {
           { key: "date", label: "التاريخ", render: (r) => formatDate(r.date) },
           { key: "category", label: "التصنيف", render: (r) => r.category ? <span className="badge bg-purple-100 text-purple-700 border-purple-300">{r.category}</span> : "-" },
           { key: "description", label: "البيان" },
-          { key: "worker", label: "العامل", render: (r) => r.worker?.name || "-" },
           { key: "amount", label: "المبلغ", render: (r) => <span className="font-bold text-red-600">{formatCurrency(Number(r.amount ?? 0))}</span> },
           { key: "notes", label: "ملاحظات" },
           { key: "_actions", label: "إجراءات", render: (r) => <RowEditor row={r} apiBase="/api/overhead" fields={overheadFields} entityLabel="النثريات" deleteHint="لا يمكن حذف هذه الحركة لأنها مرتبطة بحركة يومية" canEdit={can('overhead', 'edit')} canDelete={can('overhead', 'delete')} /> },

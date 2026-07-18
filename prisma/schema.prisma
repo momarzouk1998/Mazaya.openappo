@@ -273,6 +273,7 @@ model overhead_expenses {
   description     String             @db.Text
   amount          Decimal            @default(0)
   payment_method  String?            @db.Text
+  payment_kind    String?            @db.Text
   notes           String?            @db.Text
   journal_entry_id String?           @unique @db.Uuid
   worker_id       String?            @db.Uuid
