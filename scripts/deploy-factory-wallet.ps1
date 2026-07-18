@@ -1,103 +1,96 @@
-# ============================================================
+﻿# ============================================================
 # deploy-factory-wallet.ps1
-# ============================================================
-# سكربت PowerShell لنشر محفظة المصنع + أجور العمال على السيرفر.
+# Deploy Factory Wallet + Worker Wages to production server.
 #
-# الاستخدام:
+# Usage:
 #   powershell -ExecutionPolicy Bypass -File scripts\deploy-factory-wallet.ps1
 #
-# بيعمل:
-#   1. فحص محلي كامل (typecheck + tests + build) — لو أي فحص فشل يقف
-#   2. git push لـ main
-#   3. GitHub Actions يبني الصورة + يـ deploy على السيرفر
-#   4. على السيرفر، prisma migrate deploy بيتطبّق اوتوماتيك عند إقلاع الـ container
-#      → العمود payment_kind هيـ apply من نفسه
-#
-# ملاحظة: الـ migration بيـ apply اوتوماتيك على السيرفر بفضل السطر ده في Dockerfile:
-#   prisma migrate deploy 2>/dev/null || echo '...'
+# Steps:
+#   1. Local verification (typecheck + tests + build). Stops if any fails.
+#   2. git push to main.
+#   3. GitHub Actions builds image + deploys to server.
+#   4. On the server, prisma migrate deploy runs automatically at container
+#      startup, so the payment_kind column is applied with no manual DB work.
 # ============================================================
 
 $ErrorActionPreference = "Stop"
 
-# رجّع لـ root المشروع
+# Go to project root
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Split-Path -Parent $scriptDir
 Set-Location $projectRoot
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  نشر محفظة المصنع + أجور العمال" -ForegroundColor Cyan
+Write-Host "  Factory Wallet + Worker Wages Deploy" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
 # ============================================================
-# [1] فحص محلي (لو أي حاجة فشلت، يقف وميرفعش)
+# [1] Local verification
 # ============================================================
-Write-Host "[1/3] تشغيل الفحص المحلي..." -ForegroundColor Yellow
+Write-Host "[1/3] Running local verification..." -ForegroundColor Yellow
 
-# شغّل سكربت bash للفحص (Git Bash لازم يكون موجود)
 $bashCheck = Get-Command bash -ErrorAction SilentlyContinue
 if ($bashCheck) {
-    Write-Host "  → تشغيل verify-factory-wallet.sh" -ForegroundColor Gray
+    Write-Host "  -> Running verify-factory-wallet.sh" -ForegroundColor Gray
     bash scripts/verify-factory-wallet.sh
     if ($LASTEXITCODE -ne 0) {
         Write-Host ""
-        Write-Host "❌ الفحص المحلي فشل. تم إيقاف النشر." -ForegroundColor Red
-        Write-Host "   شغّل السكربت يدويًا لتحديد المشكلة: bash scripts/verify-factory-wallet.sh" -ForegroundColor Gray
+        Write-Host "FAIL: Local verification failed. Deploy aborted." -ForegroundColor Red
+        Write-Host "  Run manually to see details: bash scripts/verify-factory-wallet.sh" -ForegroundColor Gray
         exit 1
     }
-    Write-Host "  ✅ الفحص عدى (23/23)" -ForegroundColor Green
+    Write-Host "  OK: All 23 checks passed" -ForegroundColor Green
 } else {
-    # fallback: typecheck + build فقط لو bash مش موجود
-    Write-Host "  → bash مش موجود، تشغيل typecheck + build" -ForegroundColor Gray
-    Write-Host "  → typecheck..." -ForegroundColor Gray
+    Write-Host "  -> bash not found, running typecheck + build" -ForegroundColor Gray
+    Write-Host "  -> typecheck..." -ForegroundColor Gray
     npm run typecheck
-    if ($LASTEXITCODE -ne 0) { Write-Host "❌ typecheck فشل" -ForegroundColor Red; exit 1 }
+    if ($LASTEXITCODE -ne 0) { Write-Host "FAIL: typecheck failed" -ForegroundColor Red; exit 1 }
 
-    Write-Host "  → build..." -ForegroundColor Gray
+    Write-Host "  -> build..." -ForegroundColor Gray
     npm run build
-    if ($LASTEXITCODE -ne 0) { Write-Host "❌ build فشل" -ForegroundColor Red; exit 1 }
-    Write-Host "  ✅ typecheck + build عدّوا" -ForegroundColor Green
+    if ($LASTEXITCODE -ne 0) { Write-Host "FAIL: build failed" -ForegroundColor Red; exit 1 }
+    Write-Host "  OK: typecheck + build passed" -ForegroundColor Green
 }
 
 # ============================================================
-# [2] git status — تأكد إن في تغييرات متـ commit
+# [2] git status check
 # ============================================================
 Write-Host ""
-Write-Host "[2/3] فحص git..." -ForegroundColor Yellow
+Write-Host "[2/3] Checking git..." -ForegroundColor Yellow
 
 $status = git status --porcelain
 if ($status) {
-    Write-Host "  ⚠️  فيه تغييرات مش متـ commit:" -ForegroundColor Yellow
+    Write-Host "  WARNING: There are uncommitted changes:" -ForegroundColor Yellow
     $status | ForEach-Object { Write-Host "     $_" -ForegroundColor Gray }
     Write-Host ""
-    $answer = Read-Host "  تعمل commit للكل قبل الـ push؟ (y/N)"
+    $answer = Read-Host "  Commit all before push? (y/N)"
     if ($answer -eq "y" -or $answer -eq "Y") {
         git add -A
-        $msg = Read-Host "  رسالة الـ commit (افتراضي: 'feat: factory wallet changes')"
+        $msg = Read-Host "  Commit message (default: feat: factory wallet changes)"
         if (-not $msg) { $msg = "feat: factory wallet changes" }
         git commit -m $msg
-        Write-Host "  ✅ تم الـ commit" -ForegroundColor Green
+        Write-Host "  OK: Committed" -ForegroundColor Green
     } else {
-        Write-Host "  ⚠️  كملنا من غير commit (التغييرات المحلية مش هتترفع)" -ForegroundColor Yellow
+        Write-Host "  WARNING: Continuing without commit (local changes will NOT be pushed)" -ForegroundColor Yellow
     }
 } else {
-    Write-Host "  ✅ مفيش تغييرات معلّقة (كل حاجة متـ commit)" -ForegroundColor Green
+    Write-Host "  OK: No pending changes (all committed)" -ForegroundColor Green
 }
 
 # ============================================================
 # [3] git push
 # ============================================================
 Write-Host ""
-Write-Host "[3/3] رفع الكود لـ GitHub..." -ForegroundColor Yellow
+Write-Host "[3/3] Pushing code to GitHub..." -ForegroundColor Yellow
 
-# تأكد إن على branch main
 $branch = git rev-parse --abbrev-ref HEAD
 if ($branch -ne "main") {
-    Write-Host "  ⚠️  أنت على branch '$branch' مش 'main'" -ForegroundColor Yellow
-    $answer = Read-Host "  تكمل برضه؟ (y/N)"
+    Write-Host "  WARNING: You are on branch '$branch' not 'main'" -ForegroundColor Yellow
+    $answer = Read-Host "  Continue anyway? (y/N)"
     if ($answer -ne "y" -and $answer -ne "Y") {
-        Write-Host "  تم الإيقاف." -ForegroundColor Gray
+        Write-Host "  Aborted." -ForegroundColor Gray
         exit 0
     }
 }
@@ -105,28 +98,23 @@ if ($branch -ne "main") {
 git push origin $branch
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
-    Write-Host "❌ الـ push فشل." -ForegroundColor Red
+    Write-Host "FAIL: Push failed." -ForegroundColor Red
     exit 1
 }
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
-Write-Host "  ✅ الكود اترفع بنجاح" -ForegroundColor Green
+Write-Host "  OK: Code pushed successfully" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "📊 راقب الـ pipeline هنا:" -ForegroundColor Cyan
-Write-Host "   https://github.com/momarzouk1998/Elnazlawy.openappo/actions" -ForegroundColor White
-Write-Host "   (أو repo الـ mazaya اللي بتشتغل عليه)" -ForegroundColor Gray
+Write-Host "Monitor the pipeline at:" -ForegroundColor Cyan
+Write-Host "  https://github.com/momarzouk1998/Mazaya.openappo/actions" -ForegroundColor White
 Write-Host ""
-Write-Host "⏱️  الوقت المتوقع: 3-5 دقايق" -ForegroundColor Yellow
+Write-Host "ETA: 3-5 minutes" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "🏥 بعد ما يخلّص، تأكد من الموقع:" -ForegroundColor Cyan
-$remoteUrl = git remote get-url origin
-Write-Host "   $remoteUrl" -ForegroundColor Gray
-Write-Host ""
-Write-Host "📝 ملاحظات:" -ForegroundColor Yellow
-Write-Host "   - الـ migration (payment_kind) بيتـ apply اوتوماتيك على السيرفر" -ForegroundColor Gray
-Write-Host "     لما الـ container يقلع (prisma migrate deploy في Dockerfile)" -ForegroundColor Gray
-Write-Host "   - محفظة المصنع هتظهر للأدمن في السايدبار تلقائيًا" -ForegroundColor Gray
-Write-Host "   - تبويب 'أجور العمال' هتظهر في صفحة /workers" -ForegroundColor Gray
+Write-Host "Notes:" -ForegroundColor Yellow
+Write-Host "  - The migration (payment_kind) is applied automatically on the server" -ForegroundColor Gray
+Write-Host "    when the container starts (prisma migrate deploy in Dockerfile)" -ForegroundColor Gray
+Write-Host "  - Factory Wallet appears for admins in the sidebar automatically" -ForegroundColor Gray
+Write-Host "  - Worker Wages tab appears in /workers page" -ForegroundColor Gray
 Write-Host ""
