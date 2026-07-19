@@ -41,7 +41,7 @@ export async function DELETE(
           where: {
             item_name: itemName,
             deleted_at: null,
-            ...(supplierId ? { supplier_id: Number(supplierId) } : {}),
+            ...(supplierId ? { supplier_id: String(supplierId) } : {}),
           },
         });
         if (item) {
