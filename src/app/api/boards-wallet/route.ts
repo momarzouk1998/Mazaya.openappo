@@ -1,18 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth-server';
 import prisma from '@/lib/db/prisma';
-import { BOARDS_EXPENSE_TYPES, PASSTHROUGH_TYPES } from '@/lib/finance';
+import { BOARDS_EXPENSE_TYPES } from '@/lib/finance';
 
 // ============================================================
 // GET /api/boards-wallet — يومية الألواح
 // ============================================================
 // بتحسب المشتريات (ألواح + إكسسوارات) + التحويل التمريري.
-// التمريري بيدخل فيها كامل (الوارد من المعرض والصادر للمورد).
+//
+// مهم: التمريري في الداتابيز بيتسجل كقيدين:
+//   1) entry_type='دفعة واردة من معرض' + is_pass_through=true + party_type='branch'
+//   2) entry_type='دفعة صادرة لمورد' + is_pass_through=true + party_type='supplier'
+// (مش كـ 'تحويل تمريري' — الـ entry_type ده بيتسجل لوحده بس مش في القيود التمريرية).
 //
 // معادلة اليوم:
 //   opening = رصيد آخر يوم قبله (تراكمي)
-//   income  = التمريري الوارد من المعرض (إن وجد)
-//   expense = مشتريات + التمريري الصادر للمورد (إن وجد)
+//   income  = التمريري الوارد من المعرض
+//   expense = مشتريات + التمريري الصادر للمورد
 //   closing = opening + income - expense
 // ============================================================
 
@@ -74,18 +78,19 @@ export async function GET(request: NextRequest) {
     const todayKey = now.toISOString().slice(0, 10);
 
     // الرصيد الافتتاحي = (وارد تمريري - مشتريات - صادر تمريري) قبل windowFrom
+    // التمريري الوارد = 'دفعة واردة من معرض' + is_pass_through=true + party_type='branch'
+    // التمريري الصادر = 'دفعة صادرة لمورد' + is_pass_through=true + party_type='supplier'
     const openingRows: Array<{ net: number }> = await prisma.$queryRawUnsafe(
       `SELECT COALESCE(SUM(
          CASE
-           WHEN entry_type = ANY($1::text[]) THEN amount
-           WHEN entry_type = ANY($2::text[]) THEN -amount
+           WHEN entry_type = 'دفعة واردة من معرض' AND is_pass_through = true THEN amount
+           WHEN entry_type = ANY($1::text[]) THEN -amount
            WHEN entry_type = 'دفعة صادرة لمورد' AND is_pass_through = true THEN -amount
            ELSE 0
          END
        ), 0)::float8 AS net
        FROM mazaya.journal_entries
-       WHERE date < $3::date`,
-      PASSTHROUGH_TYPES as readonly string[],   // وارد تمريري
+       WHERE date < $2::date`,
       BOARDS_EXPENSE_TYPES as readonly string[], // مشتريات
       windowFromStr
     );
@@ -127,16 +132,17 @@ export async function GET(request: NextRequest) {
 
     for (const date of sortedDates) {
       const dayRows = byDay.get(date)!;
-      // وارد = تمريري وارد من معرض فقط
+      // وارد = تمريري وارد من معرض (entry_type='دفعة واردة من معرض' + is_pass_through=true)
       const income = dayRows
-        .filter(r => (PASSTHROUGH_TYPES as readonly string[]).includes(r.entry_type) && r.is_pass_through && r.party_type === 'branch')
+        .filter(r => r.entry_type === 'دفعة واردة من معرض' && r.is_pass_through)
         .reduce<number>((s, r) => s + toNum(r.amount), 0);
-      // مصروف = مشتريات + تمريري صادر لمورد
+      // مشتريات عادية (مش تمريري)
       const purchases = dayRows
-        .filter(r => (BOARDS_EXPENSE_TYPES as readonly string[]).includes(r.entry_type))
+        .filter(r => (BOARDS_EXPENSE_TYPES as readonly string[]).includes(r.entry_type) && !r.is_pass_through)
         .reduce<number>((s, r) => s + toNum(r.amount), 0);
+      // تمريري صادر لمورد (entry_type='دفعة صادرة لمورد' + is_pass_through=true)
       const passOut = dayRows
-        .filter(r => r.is_pass_through && r.party_type === 'supplier')
+        .filter(r => r.entry_type === 'دفعة صادرة لمورد' && r.is_pass_through)
         .reduce<number>((s, r) => s + toNum(r.amount), 0);
       const expense = purchases + passOut;
       const net = income - expense;
@@ -171,15 +177,14 @@ export async function GET(request: NextRequest) {
       const beforeToday: Array<{ net: number }> = await prisma.$queryRawUnsafe(
         `SELECT COALESCE(SUM(
              CASE
-               WHEN entry_type = ANY($1::text[]) THEN amount
-               WHEN entry_type = ANY($2::text[]) THEN -amount
+               WHEN entry_type = 'دفعة واردة من معرض' AND is_pass_through = true THEN amount
+               WHEN entry_type = ANY($1::text[]) THEN -amount
                WHEN entry_type = 'دفعة صادرة لمورد' AND is_pass_through = true THEN -amount
                ELSE 0
              END
            ), 0)::float8 AS net
          FROM mazaya.journal_entries
-         WHERE date < $3::date`,
-        PASSTHROUGH_TYPES as readonly string[],
+         WHERE date < $2::date`,
         BOARDS_EXPENSE_TYPES as readonly string[],
         todayKey
       );
