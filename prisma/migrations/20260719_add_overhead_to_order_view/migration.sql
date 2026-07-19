@@ -4,7 +4,6 @@
 --          v_order_totals so the orders list page can display it.
 -- extra_costs_total stays as the sum of ALL extra costs (unchanged).
 -- ============================================================
-
 CREATE OR REPLACE VIEW mazaya.v_order_totals AS
 SELECT
   o.id            AS order_id,
