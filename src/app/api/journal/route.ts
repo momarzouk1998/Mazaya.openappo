@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
           data: {
             date: entryDate,
             entry_type: 'دفعة واردة من معرض',
-            description: `[تمريري] ${cleanDesc}`,
+            description: `تحويل تمريري: ${cleanDesc}`,
             amount,
             payment_method: payment_method || null,
             party_type: 'branch',
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
           data: {
             date: entryDate,
             entry_type: 'دفعة صادرة لمورد',
-            description: `[تمريري] ${cleanDesc}`,
+            description: `تحويل تمريري: ${cleanDesc}`,
             amount,
             payment_method: payment_method || null,
             party_type: 'supplier',
