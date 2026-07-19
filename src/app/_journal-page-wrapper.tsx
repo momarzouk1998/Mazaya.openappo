@@ -139,9 +139,9 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
   return (
     <DashboardLayout profile={profile}>
       <PageHeader
-        title={showSummary ? "ملخص اليومية" : "اليومية"}
+        title={showSummary ? "ملخص اليومية" : "لوحة التحكم"}
         subtitle={showSummary ? "صندوق الرصيد + ملخص الأسبوع" : "أدخل أي حركة من هنا — شراء، نثريات، وارد، بحث"}
-        helpTitle="اليومية"
+        helpTitle="لوحة التحكم"
         helpDescription="هنا تدخل كل حاجة من صفحة واحدة: اضغط أي زر في الأزرار السريعة (شراء ألواح، نثريات، دفعة من معرض...)، يفتح فورم جنبها. كل حاجة بتسجل في اليومية تلقائياً."
         actions={<PWAInstallButton />}
       />
