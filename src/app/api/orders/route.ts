@@ -69,7 +69,13 @@ export async function GET(request: Request) {
       prisma.$queryRawUnsafe<any[]>(
         `SELECT vot.*,
           c.name as customer_name,
-          b.name as branch_name
+          b.name as branch_name,
+          COALESCE((
+            SELECT SUM(ec.amount)::float8
+            FROM mazaya.order_extra_costs ec
+            WHERE ec.order_id = vot.order_id
+              AND ec.cost_type = 'نثريات'
+          ), 0) AS overhead_costs_total
          FROM mazaya.v_order_totals vot
          LEFT JOIN mazaya.customers c ON vot.customer_id = c.id
          LEFT JOIN mazaya.branches b ON vot.branch_id = b.id
@@ -92,9 +98,9 @@ export async function GET(request: Request) {
       internal_transport_cost: Number(r.internal_transport_cost ?? 0),
       external_transport_cost: Number(r.external_transport_cost ?? 0),
       factory_commission: Number(r.factory_commission ?? 0),
-      extra_costs_total: Number(r.extra_costs_total ?? 0),
-      overhead_total: Number(r.overhead_total ?? 0),
       order_total: Number(r.order_total ?? 0),
+      extra_costs_total: Number(r.extra_costs_total ?? 0),
+      overhead_costs_total: Number(r.overhead_costs_total ?? 0),
     }));
 
     return NextResponse.json({

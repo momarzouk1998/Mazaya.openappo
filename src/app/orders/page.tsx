@@ -71,6 +71,7 @@ export default function OrdersPage() {
   const totalExternalTransport = filtered.reduce((s, o: any) => s + Number(o.external_transport_cost ?? 0), 0)
   const totalFactoryCommission = filtered.reduce((s, o: any) => s + Number(o.factory_commission ?? 0), 0)
   const totalExtraCosts = filtered.reduce((s, o: any) => s + Number(o.extra_costs_total ?? 0), 0)
+  const totalOverheadCosts = filtered.reduce((s, o: any) => s + Number(o.overhead_costs_total ?? 0), 0)
   const totalManualCosts = totalInstallation + totalInternalTransport + totalExternalTransport + totalFactoryCommission + totalExtraCosts
 
   function clearFilters() {
@@ -166,8 +167,8 @@ export default function OrdersPage() {
             <span>📦 نقل داخلي: <strong className="text-brand-black">{formatCurrency(totalInternalTransport)}</strong></span>
             <span>🚛 نقل خارجي: <strong className="text-brand-black">{formatCurrency(totalExternalTransport)}</strong></span>
             <span>🏭 عمولة: <strong className="text-brand-black">{formatCurrency(totalFactoryCommission)}</strong></span>
-            <span>🧾 نثريات: <strong className="text-yellow-700">{formatCurrency(filtered.reduce((s, o: any) => s + Number(o.overhead_total ?? 0), 0))}</strong></span>
-            <span>➕ تكاليف إضافية: <strong className="text-brand-black">{formatCurrency(totalExtraCosts)}</strong></span>
+            <span>🧾 نثريات: <strong className="text-brand-black">{formatCurrency(totalOverheadCosts)}</strong></span>
+            <span className="col-span-2">➕ تكاليف إضافية: <strong className="text-brand-black">{formatCurrency(totalExtraCosts - totalOverheadCosts)}</strong></span>
           </div>
         </div>
       </div>
