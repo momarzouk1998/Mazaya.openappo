@@ -92,6 +92,8 @@ export async function GET(request: Request) {
       internal_transport_cost: Number(r.internal_transport_cost ?? 0),
       external_transport_cost: Number(r.external_transport_cost ?? 0),
       factory_commission: Number(r.factory_commission ?? 0),
+      extra_costs_total: Number(r.extra_costs_total ?? 0),
+      overhead_total: Number(r.overhead_total ?? 0),
       order_total: Number(r.order_total ?? 0),
     }));
 

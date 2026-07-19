@@ -59,6 +59,8 @@ deploy-key*
 *.sql.gz
 *.sql.bak
 *.dump
+# استثناء: ملفات migration المطلوبة في الـ repo
+!prisma/migrations/**/*.sql
 *.pgdump
 *.backup
 *.db
