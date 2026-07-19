@@ -21,10 +21,17 @@ interface DayData {
   count: number;
   entries: any[];
 }
+interface WalletTotals {
+  total_income: number;
+  total_expense: number;
+  total_payout: number;
+  current_balance: number;
+}
 interface WalletResponse {
   today: DayData;
   days: DayData[];
   current_balance: number;
+  totals: WalletTotals;
   window: { from: string; to: string };
 }
 
@@ -49,6 +56,7 @@ export default function FactoryWalletPage() {
 
   const today = data?.today ?? EMPTY_TODAY;
   const days = data?.days ?? [];
+  const totals = data?.totals ?? { total_income: 0, total_expense: 0, total_payout: 0, current_balance: 0 };
 
   if (!canSee) {
     return (
@@ -83,8 +91,8 @@ export default function FactoryWalletPage() {
         </div>
       </div>
 
-      {/* الكروت الأربعة الثابتة (اليوم الحالي) */}
-      <WalletCards today={today} />
+      {/* الكروت الأربعة — إجمالي تراكمي كامل */}
+      <WalletCards totals={totals} />
 
       {/* الجدول اليومي المفصّل */}
       <div className="text-sm font-bold text-gray-700 mb-2">📋 حركات الأيام</div>

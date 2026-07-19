@@ -189,12 +189,39 @@ export async function GET(request: NextRequest) {
 
     const daysDesc = [...dayBuckets].sort((a, b) => b.date.localeCompare(a.date));
 
+    // ============================================================
+    // totals — إجمالي تراكمي كامل من أول يوم في النظام لحد دلوقتي
+    // مستقل تماماً عن نافذة العرض
+    // ============================================================
+    const totalsRows: Array<{ total_income: number; total_expense: number; current_balance: number }> =
+      await prisma.$queryRawUnsafe(
+        `SELECT
+           COALESCE(SUM(CASE WHEN entry_type = 'دفعة صادرة لمورد' AND is_pass_through = true THEN amount ELSE 0 END), 0)::float8 AS total_income,
+           COALESCE(SUM(CASE WHEN entry_type = ANY($1::text[]) AND is_pass_through = false THEN amount ELSE 0 END), 0)::float8 AS total_expense,
+           COALESCE(SUM(
+             CASE
+               WHEN entry_type = 'دفعة صادرة لمورد' AND is_pass_through = true THEN amount
+               WHEN entry_type = ANY($1::text[]) AND is_pass_through = false THEN -amount
+               ELSE 0
+             END
+           ), 0)::float8 AS current_balance
+         FROM mazaya.journal_entries`,
+        BOARDS_EXPENSE_TYPES as readonly string[]
+      );
+
+    const totals = {
+      total_income: round2(toNum(totalsRows[0]?.total_income)),
+      total_expense: round2(toNum(totalsRows[0]?.total_expense)),
+      current_balance: round2(toNum(totalsRows[0]?.current_balance)),
+    };
+
     return NextResponse.json({
       ok: true,
       data: {
         today: todayBucket,
         days: daysDesc,
-        current_balance: todayBucket.closing,
+        current_balance: totals.current_balance,
+        totals,
         window: { from: windowFromStr, to: windowToStr },
       },
     });

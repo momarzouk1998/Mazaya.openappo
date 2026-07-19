@@ -41,7 +41,11 @@ export default function RowEditor({
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Record<string, any>>(() => {
     const init: Record<string, any> = {};
-    fields.forEach(f => { init[f.name] = row[f.name] ?? ""; });
+    fields.forEach(f => {
+      const raw = row[f.name] ?? "";
+      const isDateField = !("options" in f) && (f as any).type === "date";
+      init[f.name] = isDateField && raw ? String(raw).slice(0, 10) : raw;
+    });
     return init;
   });
   const [saving, setSaving] = useState(false);
@@ -56,7 +60,16 @@ export default function RowEditor({
   function openEdit() {
     setError(null);
     const init: Record<string, any> = {};
-    fields.forEach(f => { init[f.name] = row[f.name] ?? ""; });
+    fields.forEach(f => {
+      const raw = row[f.name] ?? "";
+      // حقول التاريخ: نرجع YYYY-MM-DD بس، لأن input[type=date] ما بيقبلش ISO كامل
+      const isDateField = !("options" in f) && (f as any).type === "date";
+      if (isDateField && raw) {
+        init[f.name] = String(raw).slice(0, 10);
+      } else {
+        init[f.name] = raw;
+      }
+    });
     setForm(init);
     setOpen(true);
   }
