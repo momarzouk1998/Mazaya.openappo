@@ -3,6 +3,14 @@ name: Build & Push to GHCR
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      no_cache:
+        description: 'Rebuild بدون cache (للحالات العنيدة)'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
 
 env:
   REGISTRY: ghcr.io
@@ -45,8 +53,15 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # cache بيتعطّل لو شغّلنا الـ workflow يدويًا مع no_cache=true
+          cache-from: ${{ github.event.inputs.no_cache == 'true' && '' || 'type=gha' }}
+          cache-to: ${{ github.event.inputs.no_cache == 'true' && '' || 'type=gha,mode=max' }}
+          no-cache: ${{ github.event.inputs.no_cache == 'true' }}
+
+      # The actual deploy is handled by .github/workflows/deploy.yml
+      # (self-hosted runner on the production server).
+      # This job only builds + pushes the image.
+
 
       # The actual deploy is handled by .github/workflows/deploy.yml
       # (self-hosted runner on the production server).
