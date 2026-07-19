@@ -100,6 +100,8 @@ export async function GET(request: NextRequest) {
        LEFT JOIN mazaya.branches b ON je.party_type = 'branch' AND je.party_id = b.id
        LEFT JOIN mazaya.contractors c ON je.party_type = 'contractor' AND je.party_id = c.id
        WHERE je.date >= $1::date AND je.date <= $2::date
+         AND je.is_pass_through = false              -- التمريري مش بيدخل في يومية المصنع
+         AND je.entry_type != 'مشتريات'              -- المشتريات في يومية الألواح
        ORDER BY je.date ASC, je.created_at ASC`,
       windowFromStr, windowToStr
     );
@@ -130,6 +132,17 @@ export async function GET(request: NextRequest) {
       const opening = runningBalance;
       const closing = opening + net;
       runningBalance = closing;
+      // فلترة القيود المعروضة في تفاصيل اليوم: بس اللي بيدخلوا في يومية المصنع
+      // (وارد، نثريات، أجور عمال، دفعات للموردين). المشتريات والتمريري مش هنا.
+      const factoryEntries = dayRows.filter(r => {
+        if (r.is_pass_through) return false; // تمريري مش بيدخل في يومية المصنع
+        const t = r.entry_type;
+        return (
+          (INCOME_TYPES as readonly string[]).includes(t) ||
+          (FACTORY_EXPENSE_TYPES as readonly string[]).includes(t) ||
+          (PAYOUT_TYPES as readonly string[]).includes(t)
+        );
+      });
       dayBuckets.push({
         date,
         opening: round2(opening),
@@ -137,8 +150,8 @@ export async function GET(request: NextRequest) {
         expense: round2(expense + payout), // المصروف المعروض شامل المدفوعات للموردين
         payout: round2(payout),
         closing: round2(closing),
-        count: dayRows.length,
-        entries: dayRows.map(e => ({ ...e, amount: toNum(e.amount) })),
+        count: factoryEntries.length,
+        entries: factoryEntries.map(e => ({ ...e, amount: toNum(e.amount) })),
       });
     }
 
