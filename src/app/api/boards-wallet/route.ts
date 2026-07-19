@@ -6,24 +6,28 @@ import { BOARDS_EXPENSE_TYPES } from '@/lib/finance';
 // ============================================================
 // GET /api/boards-wallet — يومية الألواح
 // ============================================================
-// بتحسب المشتريات (ألواح + إكسسوارات) + التحويل التمريري.
+// يومية الألواح = إجمالي الفلوس اللي اتصرفت على الألواح والإكسسوارات.
+// كل حاجة مصروف (مفيش وارد):
+//   - مشتريات عادية (المصنع دفع من جيبه)
+//   - تمريري صادر لمورد (المعرض دفع للمورد مباشرة علشان ألواح)
 //
-// مهم: التمريري في الداتابيز بيتسجل كقيدين:
-//   1) entry_type='دفعة واردة من معرض' + is_pass_through=true + party_type='branch'
-//   2) entry_type='دفعة صادرة لمورد' + is_pass_through=true + party_type='supplier'
-// (مش كـ 'تحويل تمريري' — الـ entry_type ده بيتسجل لوحده بس مش في القيود التمريرية).
+// ملاحظة على التمريري في الداتابيز: بينشئ قيدين، بس بنحسب بس
+// قيد "الصادر للمورد" (entry_type='دفعة صادرة لمورد' + is_pass_through=true)
+// لأن ده اللي يمثل شراء ألواح. قيد "الوارد من المعرض" نتجاهله هنا.
 //
 // معادلة اليوم:
-//   opening = رصيد آخر يوم قبله (تراكمي)
-//   income  = التمريري الوارد من المعرض
-//   expense = مشتريات + التمريري الصادر للمورد
-//   closing = opening + income - expense
+//   opening     = رصيد آخر يوم قبله (تراكمي)
+//   purchases   = مشتريات عادية
+//   passthrough = تمريري صادر للمورد
+//   expense     = purchases + passthrough
+//   closing     = opening - expense
 // ============================================================
 
 interface DayBucket {
   date: string;
   opening: number;
-  income: number;
+  purchases: number;
+  passthrough: number;
   expense: number;
   closing: number;
   count: number;
@@ -52,6 +56,26 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+// ملخص الرصيد الافتتاحي: صافي (المشتريات + تمريري صادر) قبل تاريخ معيّن.
+// كل القيود دي مصروف، فبنجمعها بالسالب.
+async function getOpeningBalance(beforeDate: string): Promise<number> {
+  const rows: Array<{ total_spent: number }> = await prisma.$queryRawUnsafe(
+    `SELECT COALESCE(SUM(
+       CASE
+         WHEN entry_type = ANY($1::text[]) THEN amount
+         WHEN entry_type = 'دفعة صادرة لمورد' AND is_pass_through = true THEN amount
+         ELSE 0
+       END
+     ), 0)::float8 AS total_spent
+     FROM mazaya.journal_entries
+     WHERE date < $2::date`,
+    BOARDS_EXPENSE_TYPES as readonly string[],
+    beforeDate
+  );
+  // total_spent موجب، لكن ده مصروف، فالرصيد = -spent
+  return -toNum(rows[0]?.total_spent);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const user = await requirePermission('boards_wallet', 'view');
@@ -77,26 +101,12 @@ export async function GET(request: NextRequest) {
     const windowToStr = windowTo.toISOString().slice(0, 10);
     const todayKey = now.toISOString().slice(0, 10);
 
-    // الرصيد الافتتاحي = (وارد تمريري - مشتريات - صادر تمريري) قبل windowFrom
-    // التمريري الوارد = 'دفعة واردة من معرض' + is_pass_through=true + party_type='branch'
-    // التمريري الصادر = 'دفعة صادرة لمورد' + is_pass_through=true + party_type='supplier'
-    const openingRows: Array<{ net: number }> = await prisma.$queryRawUnsafe(
-      `SELECT COALESCE(SUM(
-         CASE
-           WHEN entry_type = 'دفعة واردة من معرض' AND is_pass_through = true THEN amount
-           WHEN entry_type = ANY($1::text[]) THEN -amount
-           WHEN entry_type = 'دفعة صادرة لمورد' AND is_pass_through = true THEN -amount
-           ELSE 0
-         END
-       ), 0)::float8 AS net
-       FROM mazaya.journal_entries
-       WHERE date < $2::date`,
-      BOARDS_EXPENSE_TYPES as readonly string[], // مشتريات
-      windowFromStr
-    );
-    let runningBalance = toNum(openingRows[0]?.net);
+    // الرصيد الافتتاحي قبل النافذة
+    const runningBalance = await getOpeningBalance(windowFromStr);
+    let balance = runningBalance;
 
-    // كل القيود في النافذة
+    // كل القيود المتعلقة بيومية الألواح في النافذة:
+    // مشتريات عادية + تمريري صادر للمورد (بنستثني قيد الوارد من المعرض)
     const entries: any[] = await prisma.$queryRawUnsafe(
       `SELECT je.*,
           CASE
@@ -111,8 +121,8 @@ export async function GET(request: NextRequest) {
        LEFT JOIN mazaya.contractors c ON je.party_type = 'contractor' AND je.party_id = c.id
        WHERE je.date >= $1::date AND je.date <= $2::date
          AND (
-           je.entry_type = ANY($3::text[])            -- مشتريات
-           OR (je.is_pass_through = true)             -- أي تمريري
+           je.entry_type = ANY($3::text[])                              -- مشتريات عادية
+           OR (je.entry_type = 'دفعة صادرة لمورد' AND je.is_pass_through = true)  -- تمريري صادر
          )
        ORDER BY je.date ASC, je.created_at ASC`,
       windowFromStr, windowToStr,
@@ -132,27 +142,23 @@ export async function GET(request: NextRequest) {
 
     for (const date of sortedDates) {
       const dayRows = byDay.get(date)!;
-      // وارد = تمريري وارد من معرض (entry_type='دفعة واردة من معرض' + is_pass_through=true)
-      const income = dayRows
-        .filter(r => r.entry_type === 'دفعة واردة من معرض' && r.is_pass_through)
-        .reduce<number>((s, r) => s + toNum(r.amount), 0);
-      // مشتريات عادية (مش تمريري)
+      // مشتريات عادية (بدون تمريري)
       const purchases = dayRows
         .filter(r => (BOARDS_EXPENSE_TYPES as readonly string[]).includes(r.entry_type) && !r.is_pass_through)
         .reduce<number>((s, r) => s + toNum(r.amount), 0);
-      // تمريري صادر لمورد (entry_type='دفعة صادرة لمورد' + is_pass_through=true)
-      const passOut = dayRows
+      // تمريري صادر للمورد
+      const passthrough = dayRows
         .filter(r => r.entry_type === 'دفعة صادرة لمورد' && r.is_pass_through)
         .reduce<number>((s, r) => s + toNum(r.amount), 0);
-      const expense = purchases + passOut;
-      const net = income - expense;
-      const opening = runningBalance;
-      const closing = opening + net;
-      runningBalance = closing;
+      const expense = purchases + passthrough;
+      const opening = balance;
+      const closing = opening - expense;
+      balance = closing;
       dayBuckets.push({
         date,
         opening: round2(opening),
-        income: round2(income),
+        purchases: round2(purchases),
+        passthrough: round2(passthrough),
         expense: round2(expense),
         closing: round2(closing),
         count: dayRows.length,
@@ -168,31 +174,17 @@ export async function GET(request: NextRequest) {
     } else if (todayKey > windowToStr) {
       todayBucket = {
         date: todayKey,
-        opening: round2(runningBalance),
-        income: 0, expense: 0,
-        closing: round2(runningBalance),
+        opening: round2(balance),
+        purchases: 0, passthrough: 0, expense: 0,
+        closing: round2(balance),
         count: 0, entries: [],
       };
     } else {
-      const beforeToday: Array<{ net: number }> = await prisma.$queryRawUnsafe(
-        `SELECT COALESCE(SUM(
-             CASE
-               WHEN entry_type = 'دفعة واردة من معرض' AND is_pass_through = true THEN amount
-               WHEN entry_type = ANY($1::text[]) THEN -amount
-               WHEN entry_type = 'دفعة صادرة لمورد' AND is_pass_through = true THEN -amount
-               ELSE 0
-             END
-           ), 0)::float8 AS net
-         FROM mazaya.journal_entries
-         WHERE date < $2::date`,
-        BOARDS_EXPENSE_TYPES as readonly string[],
-        todayKey
-      );
-      const openingToday = toNum(beforeToday[0]?.net);
+      const openingToday = await getOpeningBalance(todayKey);
       todayBucket = {
         date: todayKey,
         opening: round2(openingToday),
-        income: 0, expense: 0,
+        purchases: 0, passthrough: 0, expense: 0,
         closing: round2(openingToday),
         count: 0, entries: [],
       };
