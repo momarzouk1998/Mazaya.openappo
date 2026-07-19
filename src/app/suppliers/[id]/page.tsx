@@ -23,7 +23,7 @@ export default function SupplierDetailPage() {
   if (!user) return null;
   if (!supplier && !loading) return <DashboardLayout profile={user}><div className="card">المورد غير موجود</div></DashboardLayout>;
 
-  const totalPurchases = purchases.filter((p: any) => ['مشتريات', 'purchase'].includes(p.entry_type)).reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  const totalPurchases = purchases.filter((p: any) => ['مشتريات', 'purchase', 'شراء إكسسوارات'].includes(p.entry_type)).reduce((sum, p) => sum + Number(p.amount || 0), 0);
   const totalPayments = purchases.filter((p: any) => ['دفعة صادرة لمورد', 'outgoing_to_supplier'].includes(p.entry_type)).reduce((sum, p) => sum + Number(p.amount || 0), 0);
   const balance = totalPurchases - totalPayments;
 
@@ -87,14 +87,39 @@ export default function SupplierDetailPage() {
         ]}
       />
 
-      <h3 className="font-bold text-lg mt-6 mb-3 text-brand-black">💸 سجل المدفوعات</h3>
+      <h3 className="font-bold text-lg mt-6 mb-3 text-brand-black">💸 سجل الحركات المالية</h3>
       <DataTable
         rows={purchases}
-        emptyMessage="لا توجد مدفوعات"
+        emptyMessage="لا توجد حركات"
         columns={[
           { key: "date", label: "التاريخ", render: (r: any) => formatDate(r.date) },
+          { key: "entry_type", label: "النوع", render: (r: any) => {
+            const colors: Record<string, string> = {
+              "مشتريات":           "bg-red-100 text-red-700",
+              "شراء إكسسوارات":    "bg-orange-100 text-orange-700",
+              "دفعة صادرة لمورد":  "bg-green-100 text-green-700",
+            };
+            const labels: Record<string, string> = {
+              "مشتريات":           "شراء ألواح",
+              "شراء إكسسوارات":    "شراء إكسسوارات",
+              "دفعة صادرة لمورد":  "دفعة للمورد",
+              "outgoing_to_supplier": "دفعة للمورد",
+              "purchase":          "شراء ألواح",
+            };
+            const cls = colors[r.entry_type] || "bg-gray-100 text-gray-600";
+            const lbl = labels[r.entry_type] || r.entry_type;
+            return <span className={`badge border ${cls}`}>{lbl}</span>;
+          }},
           { key: "description", label: "البيان" },
-          { key: "amount", label: "المبلغ", render: (r: any) => <span className="font-bold text-red-600">{formatCurrency(r.amount)}</span> },
+          { key: "payment_method", label: "الطريقة", render: (r: any) => r.payment_method || "—" },
+          { key: "amount", label: "المبلغ", render: (r: any) => {
+            const isPayment = ['دفعة صادرة لمورد', 'outgoing_to_supplier'].includes(r.entry_type);
+            return (
+              <span className={`font-bold ${isPayment ? "text-green-600" : "text-red-600"}`}>
+                {isPayment ? "−" : "+"}{formatCurrency(r.amount)}
+              </span>
+            );
+          }},
         ]}
       />
     </DashboardLayout>

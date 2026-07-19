@@ -1,11 +1,13 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useState } from "react";
 import { useUserStore } from "@/store/user-store";
 import { useApi, useApiMutation } from "@/hooks/useApi";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { DataTable } from "@/components/DataTable";
 import { formatCurrency, formatDate, STATUS_LABELS, STATUS_COLORS, ORDER_TYPE_LABELS } from "@/lib/format";
 import { canSeeModule } from "@/lib/auth";
@@ -19,8 +21,13 @@ export default function OrderDetailPage() {
   const { data: order, loading, error, refetch: refetchOrder } = useApi<any>(`/api/orders/${id}`);
   const { data: materialsData } = useApi<any[]>(`/api/orders/${id}/materials`);
   const { data: externalData } = useApi<any[]>(`/api/orders/${id}/external-work`);
-  const { data: extraCostsData } = useApi<any[]>(`/api/orders/${id}/extra-costs`);
+  const { data: extraCostsData, refetch: refetchExtraCosts } = useApi<any[]>(`/api/orders/${id}/extra-costs`);
   const { data: journalResp } = useApi<{ entries: any[] } | any[]>(`/api/journal?order_id=${id}&limit=500`);
+
+  // نثريات الأوردر
+  const [overheadAmount, setOverheadAmount] = useState("");
+  const [overheadDesc, setOverheadDesc] = useState("");
+  const [overheadSaving, setOverheadSaving] = useState(false);
 
   const materials = materialsData ?? (order?.materials ?? []);
   const costs = order ? {
@@ -44,6 +51,32 @@ export default function OrderDetailPage() {
   async function setStatus(status: string) {
     await mutate('PATCH', `/api/orders/${id}`, { status });
     await refetchOrder();
+  }
+
+  async function addOverhead(e: React.FormEvent) {
+    e.preventDefault();
+    if (!overheadAmount || !overheadDesc) return;
+    setOverheadSaving(true);
+    try {
+      await mutate('POST', `/api/orders/${id}/extra-costs`, {
+        cost_type: 'نثريات',
+        amount: Number(overheadAmount),
+        notes: overheadDesc,
+      });
+      setOverheadAmount("");
+      setOverheadDesc("");
+      refetchExtraCosts();
+      refetchOrder();
+    } finally {
+      setOverheadSaving(false);
+    }
+  }
+
+  async function deleteOverhead(extraId: string) {
+    if (!confirm("حذف هذه النثرية؟")) return;
+    await mutate('DELETE', `/api/orders/${id}/extra-costs?extra_id=${extraId}`);
+    refetchExtraCosts();
+    refetchOrder();
   }
 
   async function deleteOrder() {
@@ -125,15 +158,31 @@ export default function OrderDetailPage() {
             <div className="card"><div className="text-xs text-gray-500">نقل داخلي</div><div className="font-bold">{formatCurrency(costs.internal_transport_cost)}</div></div>
             <div className="card"><div className="text-xs text-gray-500">نقل خارجي</div><div className="font-bold">{formatCurrency(costs.external_transport_cost)}</div></div>
             <div className="card"><div className="text-xs text-gray-500">عمولة المصنع</div><div className="font-bold">{formatCurrency(costs.factory_commission)}</div></div>
-            <div className={`card ${extraCostsTotal > 0 ? "bg-brand-orange-light border border-brand-orange/20" : ""}`}><div className="text-xs text-gray-500">تكاليف إضافية</div><div className="font-bold">{formatCurrency(extraCostsTotal)}</div></div>
+            {/* نثريات الأوردر */}
+            {(() => {
+              const overheadItems = extraCosts.filter((e: any) => e.cost_type === 'نثريات');
+              const overheadTotal = overheadItems.reduce((s: number, e: any) => s + Number(e.amount ?? 0), 0);
+              return (
+                <div className={`card ${overheadTotal > 0 ? "bg-yellow-50 border border-yellow-200" : ""}`}>
+                  <div className="text-xs text-gray-500">نثريات</div>
+                  <div className="font-bold text-yellow-700">{formatCurrency(overheadTotal)}</div>
+                </div>
+              );
+            })()}
+            <div className={`card ${extraCosts.filter((e: any) => e.cost_type !== 'نثريات').length > 0 ? "bg-brand-orange-light border border-brand-orange/20" : ""}`}>
+              <div className="text-xs text-gray-500">تكاليف إضافية</div>
+              <div className="font-bold">{formatCurrency(extraCosts.filter((e: any) => e.cost_type !== 'نثريات').reduce((s: number, e: any) => s + Number(e.amount ?? 0), 0))}</div>
+            </div>
             <div className={`card ${external.length > 0 ? "bg-brand-orange-light border border-brand-orange/20" : ""}`}><div className="text-xs text-gray-500">أعمال خارجية</div><div className="font-bold">{formatCurrency(external.reduce((s: number, e: any) => s + Number(e.amount ?? 0), 0))}</div></div>
             <div className="card bg-gradient-to-l from-brand-orange to-brand-orange-dark text-white md:col-span-4"><div className="text-xs opacity-90">الإجمالي (شامل الأعمال الخارجية)</div><div className="font-extrabold text-lg">{formatCurrency(costs.order_total)}</div></div>
           </div>
-          {extraCosts.length > 0 && (
+
+          {/* تفاصيل التكاليف الإضافية (غير النثريات) */}
+          {extraCosts.filter((e: any) => e.cost_type !== 'نثريات').length > 0 && (
             <div className="card mb-4">
               <h4 className="font-bold text-sm mb-2">➕ تفاصيل التكاليف الإضافية</h4>
               <div className="space-y-1 text-sm">
-                {extraCosts.map((e: any) => (
+                {extraCosts.filter((e: any) => e.cost_type !== 'نثريات').map((e: any) => (
                   <div key={e.id} className="flex justify-between py-1 border-b last:border-0">
                     <span>{e.cost_type}{e.notes ? ` — ${e.notes}` : ""}</span>
                     <strong>{formatCurrency(Number(e.amount))}</strong>
@@ -142,6 +191,55 @@ export default function OrderDetailPage() {
               </div>
             </div>
           )}
+
+          {/* قسم نثريات الأوردر */}
+          <div className="card mb-4 border-yellow-200">
+            <h4 className="font-bold text-sm mb-3">🧾 نثريات الأوردر</h4>
+            {extraCosts.filter((e: any) => e.cost_type === 'نثريات').length > 0 && (
+              <div className="mb-3 divide-y border rounded-lg overflow-hidden text-sm">
+                {extraCosts.filter((e: any) => e.cost_type === 'نثريات').map((e: any) => (
+                  <div key={e.id} className="flex items-center justify-between px-3 py-2 hover:bg-yellow-50">
+                    <span className="text-gray-700">{e.notes || "—"}</span>
+                    <div className="flex items-center gap-3">
+                      <strong className="text-yellow-700">{formatCurrency(Number(e.amount))}</strong>
+                      {isAdmin && (
+                        <button
+                          onClick={() => deleteOverhead(e.id)}
+                          className="text-red-400 hover:text-red-600 text-xs px-2 py-0.5 rounded hover:bg-red-50 transition"
+                        >🗑️</button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {isAdmin && (
+              <form onSubmit={addOverhead} className="flex gap-2 items-end">
+                <div className="flex-1">
+                  <Input
+                    label="البيان"
+                    value={overheadDesc}
+                    onChange={e => setOverheadDesc(e.target.value)}
+                    placeholder="مثال: كهرباء، شحن..."
+                    required
+                  />
+                </div>
+                <div className="w-32">
+                  <Input
+                    label="المبلغ"
+                    type="number"
+                    step="0.01"
+                    value={overheadAmount}
+                    onChange={e => setOverheadAmount(e.target.value)}
+                    required
+                  />
+                </div>
+                <Button type="submit" loading={overheadSaving} variant="secondary" size="sm">
+                  ➕ إضافة
+                </Button>
+              </form>
+            )}
+          </div>
         </>
       )}
 
