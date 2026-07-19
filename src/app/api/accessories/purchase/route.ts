@@ -41,7 +41,8 @@ export async function POST(request: NextRequest) {
         journal = await tx.journal_entries.create({
           data: {
             date: date ? new Date(date) : new Date(),
-            entry_type: "مشتريات",
+            // 'شراء إكسسوارات' منفصل عن 'مشتريات' (اللي بتتبع الألواح في يومية الألواح)
+            entry_type: "شراء إكسسوارات",
             description: "شراء " + qty + " " + item.item_name,
             amount: total,
             payment_method: payment_method || "نقدي",
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
             created_by: user.id,
           },
         })
-        auditLog({ user_id: user.id, action: "create", table_name: "journal_entries", row_id: journal.id, after: journal })
+        auditLog({ user_id: user.id, action: 'create', table_name: 'journal_entries', row_id: journal.id, after: journal })
       }
 
       auditLog({ user_id: user.id, action: "update", table_name: "accessories_inventory", row_id: item_id, before, after: updated })

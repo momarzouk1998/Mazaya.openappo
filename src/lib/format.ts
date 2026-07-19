@@ -44,11 +44,13 @@ export const ORDER_TYPE_LABELS: Record<string, string> = {
 };
 export const ENTRY_TYPE_LABELS: Record<string, string> = {
   "مشتريات": "مشتريات",
+  "شراء إكسسوارات": "شراء إكسسوارات",
   "دفعة واردة من معرض": "دفعة واردة من معرض",
   "دفعة صادرة لمورد": "دفعة صادرة لمورد",
   "تحويل تمريري": "تحويل تمريري",
   "نثريات": "نثريات",
   "أجور عمال": "أجور عمال",
+  "نقل داخلي": "نقل داخلي",
 };
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   "نقدي": "نقدي",
@@ -72,11 +74,13 @@ export const STATUS_COLORS: Record<string, string> = {
 };
 export const ENTRY_TYPE_COLORS: Record<string, string> = {
   "مشتريات": "bg-red-100 text-red-700 border-red-300",
+  "شراء إكسسوارات": "bg-rose-100 text-rose-700 border-rose-300",
   "دفعة واردة من معرض": "bg-green-100 text-green-700 border-green-300",
   "دفعة صادرة لمورد": "bg-red-100 text-red-700 border-red-300",
   "تحويل تمريري": "bg-orange-100 text-orange-700 border-orange-300",
   "نثريات": "bg-purple-100 text-purple-700 border-purple-300",
   "أجور عمال": "bg-amber-100 text-amber-700 border-amber-300",
+  "نقل داخلي": "bg-cyan-100 text-cyan-700 border-cyan-300",
   purchase: "bg-red-100 text-red-700 border-red-300",
   income: "bg-green-100 text-green-700 border-green-300",
   expense: "bg-red-100 text-red-700 border-red-300",

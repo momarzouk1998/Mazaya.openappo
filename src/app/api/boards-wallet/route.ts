@@ -6,28 +6,29 @@ import { BOARDS_EXPENSE_TYPES } from '@/lib/finance';
 // ============================================================
 // GET /api/boards-wallet — يومية الألواح
 // ============================================================
-// يومية الألواح = إجمالي الفلوس اللي اتصرفت على الألواح والإكسسوارات.
-// كل حاجة مصروف (مفيش وارد):
-//   - مشتريات عادية (المصنع دفع من جيبه)
-//   - تمريري صادر لمورد (المعرض دفع للمورد مباشرة علشان ألواح)
+// يومية الألواح بتتبع الألواح فقط:
+//   - الوارد = التمريري الصادر للمورد (أي تحويل تمريري = شراء ألواح،
+//     المعرض دفعت للمورد علشان يشتري ألواح للمصنع، فبتدخل المخزن).
+//   - المصروف = شراء الألواح (entry_type='مشتريات' من /api/boards/purchase).
 //
-// ملاحظة على التمريري في الداتابيز: بينشئ قيدين، بس بنحسب بس
-// قيد "الصادر للمورد" (entry_type='دفعة صادرة لمورد' + is_pass_through=true)
-// لأن ده اللي يمثل شراء ألواح. قيد "الوارد من المعرض" نتجاهله هنا.
+// الإكسسوارات مش هنا (لها entry_type='شراء إكسسوارات' بتدخل في يومية المصنع).
+//
+// التمريري في الداتابيز بيتسجل كقيدين:
+//   1) 'دفعة واردة من معرض' + is_pass_through=true  (نتجاهله هنا)
+//   2) 'دفعة صادرة لمورد' + is_pass_through=true   (بنحسبه كوارد في يومية الألواح)
+// القاعدة الذهبية: أي تحويل تمريري → يظهر فورًا في الوارد بقيمته.
 //
 // معادلة اليوم:
-//   opening     = رصيد آخر يوم قبله (تراكمي)
-//   purchases   = مشتريات عادية
-//   passthrough = تمريري صادر للمورد
-//   expense     = purchases + passthrough
-//   closing     = opening - expense
+//   opening = رصيد آخر يوم قبله (تراكمي)
+//   income  = تمريري صادر للمورد
+//   expense = مشتريات الألواح
+//   closing = opening + income - expense
 // ============================================================
 
 interface DayBucket {
   date: string;
   opening: number;
-  purchases: number;
-  passthrough: number;
+  income: number;
   expense: number;
   closing: number;
   count: number;
@@ -56,24 +57,22 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-// ملخص الرصيد الافتتاحي: صافي (المشتريات + تمريري صادر) قبل تاريخ معيّن.
-// كل القيود دي مصروف، فبنجمعها بالسالب.
+// الرصيد الافتتاحي = (تمريري صادر - مشتريات) قبل تاريخ معيّن.
 async function getOpeningBalance(beforeDate: string): Promise<number> {
-  const rows: Array<{ total_spent: number }> = await prisma.$queryRawUnsafe(
+  const rows: Array<{ net: number }> = await prisma.$queryRawUnsafe(
     `SELECT COALESCE(SUM(
        CASE
-         WHEN entry_type = ANY($1::text[]) THEN amount
          WHEN entry_type = 'دفعة صادرة لمورد' AND is_pass_through = true THEN amount
+         WHEN entry_type = ANY($1::text[]) THEN -amount
          ELSE 0
        END
-     ), 0)::float8 AS total_spent
+     ), 0)::float8 AS net
      FROM mazaya.journal_entries
      WHERE date < $2::date`,
     BOARDS_EXPENSE_TYPES as readonly string[],
     beforeDate
   );
-  // total_spent موجب، لكن ده مصروف، فالرصيد = -spent
-  return -toNum(rows[0]?.total_spent);
+  return toNum(rows[0]?.net);
 }
 
 export async function GET(request: NextRequest) {
@@ -101,12 +100,11 @@ export async function GET(request: NextRequest) {
     const windowToStr = windowTo.toISOString().slice(0, 10);
     const todayKey = now.toISOString().slice(0, 10);
 
-    // الرصيد الافتتاحي قبل النافذة
-    const runningBalance = await getOpeningBalance(windowFromStr);
-    let balance = runningBalance;
+    let balance = await getOpeningBalance(windowFromStr);
 
     // كل القيود المتعلقة بيومية الألواح في النافذة:
-    // مشتريات عادية + تمريري صادر للمورد (بنستثني قيد الوارد من المعرض)
+    //  - مشتريات الألواح (entry_type='مشتريات')
+    //  - تمريري صادر لمورد (entry_type='دفعة صادرة لمورد' + is_pass_through=true) → وارد
     const entries: any[] = await prisma.$queryRawUnsafe(
       `SELECT je.*,
           CASE
@@ -121,8 +119,8 @@ export async function GET(request: NextRequest) {
        LEFT JOIN mazaya.contractors c ON je.party_type = 'contractor' AND je.party_id = c.id
        WHERE je.date >= $1::date AND je.date <= $2::date
          AND (
-           je.entry_type = ANY($3::text[])                              -- مشتريات عادية
-           OR (je.entry_type = 'دفعة صادرة لمورد' AND je.is_pass_through = true)  -- تمريري صادر
+           je.entry_type = ANY($3::text[])                              -- مشتريات ألواح
+           OR (je.entry_type = 'دفعة صادرة لمورد' AND je.is_pass_through = true)  -- تمريري صادر = وارد
          )
        ORDER BY je.date ASC, je.created_at ASC`,
       windowFromStr, windowToStr,
@@ -142,23 +140,22 @@ export async function GET(request: NextRequest) {
 
     for (const date of sortedDates) {
       const dayRows = byDay.get(date)!;
-      // مشتريات عادية (بدون تمريري)
-      const purchases = dayRows
-        .filter(r => (BOARDS_EXPENSE_TYPES as readonly string[]).includes(r.entry_type) && !r.is_pass_through)
-        .reduce<number>((s, r) => s + toNum(r.amount), 0);
-      // تمريري صادر للمورد
-      const passthrough = dayRows
+      // وارد = تمريري صادر للمورد
+      const income = dayRows
         .filter(r => r.entry_type === 'دفعة صادرة لمورد' && r.is_pass_through)
         .reduce<number>((s, r) => s + toNum(r.amount), 0);
-      const expense = purchases + passthrough;
+      // مصروف = مشتريات ألواح عادية
+      const expense = dayRows
+        .filter(r => (BOARDS_EXPENSE_TYPES as readonly string[]).includes(r.entry_type) && !r.is_pass_through)
+        .reduce<number>((s, r) => s + toNum(r.amount), 0);
+      const net = income - expense;
       const opening = balance;
-      const closing = opening - expense;
+      const closing = opening + net;
       balance = closing;
       dayBuckets.push({
         date,
         opening: round2(opening),
-        purchases: round2(purchases),
-        passthrough: round2(passthrough),
+        income: round2(income),
         expense: round2(expense),
         closing: round2(closing),
         count: dayRows.length,
@@ -175,7 +172,7 @@ export async function GET(request: NextRequest) {
       todayBucket = {
         date: todayKey,
         opening: round2(balance),
-        purchases: 0, passthrough: 0, expense: 0,
+        income: 0, expense: 0,
         closing: round2(balance),
         count: 0, entries: [],
       };
@@ -184,7 +181,7 @@ export async function GET(request: NextRequest) {
       todayBucket = {
         date: todayKey,
         opening: round2(openingToday),
-        purchases: 0, passthrough: 0, expense: 0,
+        income: 0, expense: 0,
         closing: round2(openingToday),
         count: 0, entries: [],
       };

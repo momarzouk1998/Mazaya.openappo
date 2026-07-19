@@ -18,15 +18,13 @@ interface DayEntry {
   amount: number;
   payment_method: string | null;
   party_name: string | null;
-  party_type: string | null;
   is_pass_through?: boolean;
 }
 interface DayData {
   date: string;
   opening: number;
-  purchases: number;
-  passthrough: number;
-  expense: number;
+  income: number;     // تمريري صادر للمورد (وارد ألواح)
+  expense: number;    // مشتريات ألواح
   closing: number;
   count: number;
   entries: DayEntry[];
@@ -41,7 +39,7 @@ interface WalletResponse {
 const DAY_NAMES = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 const EMPTY_TODAY: DayData = {
   date: new Date().toISOString().slice(0, 10),
-  opening: 0, purchases: 0, passthrough: 0, expense: 0, closing: 0, count: 0, entries: [],
+  opening: 0, income: 0, expense: 0, closing: 0, count: 0, entries: [],
 };
 
 function DayRow({ day, isOpen, onToggle }: { day: DayData; isOpen: boolean; onToggle: () => void }) {
@@ -53,10 +51,12 @@ function DayRow({ day, isOpen, onToggle }: { day: DayData; isOpen: boolean; onTo
           {dName} {formatDate(day.date)}
           <span className="block text-xs text-gray-400">{day.count} حركة ▾</span>
         </td>
-        <td className="p-3 text-gray-700">{formatCurrency(day.opening)}</td>
-        <td className="p-3 text-red-600 font-bold">{day.purchases > 0 ? `-${formatCurrency(day.purchases)}` : "0"}</td>
-        <td className="p-3 text-red-500 font-bold">{day.passthrough > 0 ? `-${formatCurrency(day.passthrough)}` : "0"}</td>
-        <td className="p-3 font-extrabold text-brand-orange-dark">{formatCurrency(day.closing)}</td>
+        <td className={`p-3 ${day.opening < 0 ? "text-red-600" : "text-gray-700"}`}>{formatCurrency(day.opening)}</td>
+        <td className="p-3 text-green-600 font-bold">+{formatCurrency(day.income)}</td>
+        <td className="p-3 text-red-600 font-bold">-{formatCurrency(day.expense)}</td>
+        <td className={`p-3 font-extrabold ${day.closing < 0 ? "text-red-700" : "text-brand-orange-dark"}`}>
+          {formatCurrency(day.closing)}
+        </td>
       </tr>
       {isOpen && (
         <tr className="bg-orange-50/50">
@@ -66,25 +66,30 @@ function DayRow({ day, isOpen, onToggle }: { day: DayData; isOpen: boolean; onTo
                 <tr>
                   <th className="p-2 text-right">النوع</th>
                   <th className="p-2 text-right">البيان</th>
-                  <th className="p-2 text-right">المورد</th>
+                  <th className="p-2 text-right">المورد/الجهة</th>
                   <th className="p-2 text-right">الطريقة</th>
                   <th className="p-2 text-right">المبلغ</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {day.entries.map((e) => (
-                  <tr key={e.id}>
-                    <td className="p-2">
-                      <span className={`badge ${ENTRY_TYPE_COLORS[e.entry_type] || ""}`}>
-                        {e.is_pass_through ? "تمريري" : (ENTRY_TYPE_LABELS[e.entry_type] || e.entry_type)}
-                      </span>
-                    </td>
-                    <td className="p-2">{e.description}</td>
-                    <td className="p-2 text-gray-500">{e.party_name || "-"}</td>
-                    <td className="p-2">{PAYMENT_METHOD_LABELS[e.payment_method] || "-"}</td>
-                    <td className="p-2 font-bold text-red-600">-{formatCurrency(e.amount)}</td>
-                  </tr>
-                ))}
+                {day.entries.map((e) => {
+                  const isIncome = e.entry_type === "دفعة صادرة لمورد" && e.is_pass_through;
+                  return (
+                    <tr key={e.id}>
+                      <td className="p-2">
+                        <span className={`badge ${isIncome ? "bg-green-100 text-green-700 border-green-300" : (ENTRY_TYPE_COLORS[e.entry_type] || "")}`}>
+                          {isIncome ? "وارد (تمريري)" : (ENTRY_TYPE_LABELS[e.entry_type] || e.entry_type)}
+                        </span>
+                      </td>
+                      <td className="p-2">{e.description}</td>
+                      <td className="p-2 text-gray-500">{e.party_name || "-"}</td>
+                      <td className="p-2">{PAYMENT_METHOD_LABELS[e.payment_method] || "-"}</td>
+                      <td className={`p-2 font-bold ${isIncome ? "text-green-600" : "text-red-600"}`}>
+                        {isIncome ? "+" : "-"}{formatCurrency(e.amount)}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </td>
@@ -119,6 +124,7 @@ export default function BoardsWalletPage() {
     );
   }
 
+  const isNeg = (n: number) => n < 0;
   const d = new Date(today.date + "T00:00:00");
   const dayName = isNaN(d.getTime()) ? "" : DAY_NAMES[d.getDay()];
 
@@ -126,9 +132,9 @@ export default function BoardsWalletPage() {
     <DashboardLayout profile={profile}>
       <PageHeader
         title="يومية الألواح"
-        subtitle="إجمالي الفلوس اللي اتصرفت على الألواح والإكسسوارات"
+        subtitle="الألواح فقط — الوارد (تمريري من المعرض) والمشتريات"
         helpTitle="يومية الألواح"
-        helpDescription="بتجمع كل المصاريف على الألواح والإكسسوارات: المشتريات العادية + التحويلات التمريرية (المعرض دفع للمورد مباشرة). الرصيد دايماً بالسالب لأنه مصروف تراكمي."
+        helpDescription="وارد = أي تحويل تمريري (المعرض دفع للمورد علشان ألواح بتدخل المخزن). مصروف = شراء ألواح عادي. الإكسسوارات مش هنا (دي في يومية المصنع)."
         actions={<PWAInstallButton />}
       />
 
@@ -147,39 +153,39 @@ export default function BoardsWalletPage() {
         </div>
       </div>
 
-      {/* كروت اليوم الحالي: بداية + مشتريات + تمريري + الرصيد */}
+      {/* كروت اليوم الحالي */}
       <div className="mb-6">
         <div className="text-sm font-bold text-gray-700 mb-2">📅 {dayName} {formatDate(today.date)} (اليوم الحالي)</div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="card bg-white border-r-4 border-gray-300">
             <div className="text-xs text-gray-500 font-bold">بداية اليوم</div>
-            <div className="text-2xl font-extrabold mb-1 text-gray-800">{formatCurrency(today.opening)}</div>
-            <div className="text-xs text-gray-400">إجمالي مصروف قبل اليوم</div>
+            <div className={`text-2xl font-extrabold mb-1 ${isNeg(today.opening) ? "text-red-600" : "text-gray-800"}`}>{formatCurrency(today.opening)}</div>
+            <div className="text-xs text-gray-400">رصيد آخر يوم قبله</div>
+          </div>
+          <div className="card bg-white border-r-4 border-green-400">
+            <div className="text-xs text-gray-500 font-bold">وارد (اليوم)</div>
+            <div className="text-2xl font-extrabold mb-1 text-green-600">+{formatCurrency(today.income)}</div>
+            <div className="text-xs text-green-500/70">تمريري من المعرض</div>
           </div>
           <div className="card bg-white border-r-4 border-red-400">
-            <div className="text-xs text-gray-500 font-bold">مشتريات اليوم</div>
-            <div className="text-2xl font-extrabold mb-1 text-red-600">-{formatCurrency(today.purchases)}</div>
-            <div className="text-xs text-red-400">المصنع دفع من جيبه</div>
+            <div className="text-xs text-gray-500 font-bold">مشتريات (اليوم)</div>
+            <div className="text-2xl font-extrabold mb-1 text-red-600">-{formatCurrency(today.expense)}</div>
+            <div className="text-xs text-red-400">شراء ألواح</div>
           </div>
-          <div className="card bg-white border-r-4 border-amber-400">
-            <div className="text-xs text-gray-500 font-bold">تمريري اليوم</div>
-            <div className="text-2xl font-extrabold mb-1 text-amber-600">-{formatCurrency(today.passthrough)}</div>
-            <div className="text-xs text-amber-500">المعرض دفع للمورد</div>
-          </div>
-          <div className="card bg-gradient-to-br from-red-500 to-red-700 text-white">
-            <div className="text-xs opacity-90 font-bold">إجمالي المصروف (التراكمي)</div>
+          <div className={`card bg-gradient-to-br ${isNeg(today.closing) ? "from-red-500 to-red-700" : "from-brand-orange to-brand-orange-dark"} text-white`}>
+            <div className="text-xs opacity-90 font-bold">رصيد النهاية (الحالي)</div>
             <div className="text-2xl font-extrabold mb-1">{formatCurrency(today.closing)}</div>
-            <div className="text-xs opacity-80">بداية + مشتريات + تمريري</div>
+            <div className="text-xs opacity-80">بداية + وارد − مشتريات</div>
           </div>
         </div>
       </div>
 
       {/* الجدول اليومي */}
-      <div className="text-sm font-bold text-gray-700 mb-2">📋 مصاريف الأيام</div>
+      <div className="text-sm font-bold text-gray-700 mb-2">📋 حركات الأيام</div>
       {loading ? (
         <div className="card text-center text-gray-400 py-12">جاري التحميل...</div>
       ) : days.length === 0 ? (
-        <div className="card text-center text-gray-500 py-12">مفيش مشتريات في الفترة دي.</div>
+        <div className="card text-center text-gray-500 py-12">مفيش حركات ألواح في الفترة دي.</div>
       ) : (
         <div className="card overflow-hidden">
           <table className="w-full text-sm">
@@ -187,8 +193,8 @@ export default function BoardsWalletPage() {
               <tr>
                 <th className="p-3 text-right">التاريخ</th>
                 <th className="p-3 text-right">بداية اليوم</th>
+                <th className="p-3 text-right text-green-700">وارد</th>
                 <th className="p-3 text-right text-red-700">مشتريات</th>
-                <th className="p-3 text-right text-amber-700">تمريري</th>
                 <th className="p-3 text-right">رصيد النهاية</th>
               </tr>
             </thead>

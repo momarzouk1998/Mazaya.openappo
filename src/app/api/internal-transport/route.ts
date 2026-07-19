@@ -21,10 +21,9 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = (page - 1) * limit;
 
-    // كل قيود النثريات اللي وصْفها يبدأ بـ "نقل داخلي" (عشان نميّزها عن باقي النثريات)
+    // كل قيود النقل الداخلي (entry_type='نقل داخلي')
     const where: any = {
-      entry_type: 'نثريات',
-      description: { startsWith: '[نقل داخلي]', mode: 'insensitive' },
+      entry_type: 'نقل داخلي',
     };
 
     const [total, entries] = await Promise.all([
@@ -74,11 +73,11 @@ export async function POST(request: NextRequest) {
 
     // transaction: قيد يومية + overhead + (لو فيه أوردر) زيادة internal_transport_cost
     const result = await prisma.$transaction(async (tx) => {
-      // 1) قيد يومية "نثريات" → بيخصم من يومية المصنع
+      // 1) قيد يومية "نقل داخلي" → بيخصم من يومية المصنع (FACTORY_EXPENSE_TYPES)
       const journalEntry = await tx.journal_entries.create({
         data: {
           date: entryDate,
-          entry_type: 'نثريات',
+          entry_type: 'نقل داخلي',
           description: desc,
           amount,
           payment_method: payment_method || 'نقدي',
