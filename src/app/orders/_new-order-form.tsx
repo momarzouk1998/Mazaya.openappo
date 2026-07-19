@@ -399,6 +399,16 @@ export default function NewOrderForm() {
             <Input label="نقل خارجي" type="number" step="0.01" value={costs.external_transport_cost} onChange={(e) => setCosts({ ...costs, external_transport_cost: Number(e.target.value) })} />
             <div>
               <Input label="عمولة المصنع" type="number" step="0.01" value={costs.factory_commission} onChange={(e) => setCosts({ ...costs, factory_commission: Number(e.target.value) })} />
+            <Input label="نثريات" type="number" step="0.01" value={extraCosts.filter(e => e.cost_type === 'نثريات').reduce((s, e) => s + e.amount, 0)}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                setExtraCosts(s => {
+                  const without = s.filter(x => x.cost_type !== 'نثريات');
+                  return val > 0 ? [...without, { cost_type: 'نثريات', amount: val, notes: '' }] : without;
+                });
+              }}
+              hint="تكاليف متنوعة صغيرة"
+            />
               <div className="text-xs text-gray-500 mt-1 bg-blue-50 p-2 rounded">
                 💡 إجمالي النثريات آخر 7 أيام: <strong>{formatCurrency(weekOverhead)}</strong>
                 <br />ده بس مرجع — التوزيع نفسه يدوي.
