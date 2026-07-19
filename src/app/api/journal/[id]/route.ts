@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth-server';
 import prisma from '@/lib/db/prisma';
 import { auditLog } from '@/lib/audit';
+import { VALID_ENTRY_TYPES } from '@/lib/finance';
 
 export async function GET(
   request: NextRequest,
@@ -71,7 +72,7 @@ export async function PATCH(
       );
     }
 
-    const validEntryTypes = ['مشتريات', 'دفعة واردة من معرض', 'دفعة صادرة لمورد', 'تحويل تمريري', 'نثريات', 'purchase', 'incoming_from_branch', 'outgoing_to_supplier', 'transfer', 'overhead', 'income', 'expense'];
+    const validEntryTypes = [...(VALID_ENTRY_TYPES as readonly string[]), 'purchase', 'incoming_from_branch', 'outgoing_to_supplier', 'transfer', 'overhead', 'income', 'expense'];
     if (entry_type && !validEntryTypes.includes(entry_type)) {
       return NextResponse.json(
         { ok: false, error: { code: 'VALIDATION_ERROR', message: 'نوع القيد غير صالح' } },
