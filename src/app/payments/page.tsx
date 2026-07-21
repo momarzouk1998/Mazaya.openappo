@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { exportToExcel } from "@/lib/excel";
+import DateInput from "@/components/ui/DateInput";
 
 export default function PaymentsPage() {
   const { user: profile } = useUserStore();
@@ -95,8 +96,8 @@ export default function PaymentsPage() {
             <option value="">كل العملاء</option>
             {customers.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="px-3 py-2.5 border border-gray-300 rounded-lg bg-white" />
-          <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="px-3 py-2.5 border border-gray-300 rounded-lg bg-white" />
+          <DateInput value={fromDate} onChange={e => setFromDate(e.target.value)} placeholder="يوم/شهر/سنة" />
+          <DateInput value={toDate} onChange={e => setToDate(e.target.value)} placeholder="يوم/شهر/سنة" />
           <div className="text-sm text-gray-500 mr-auto">النتائج: <strong>{filtered.length}</strong></div>
         </div>
       </div>

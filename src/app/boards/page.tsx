@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button"
 import { exportToExcel } from "@/lib/excel"
 import { formatCurrency } from "@/lib/format"
 import RowEditor, { type FieldDef } from "@/components/ui/RowEditor"
+import DateInput from "@/components/ui/DateInput";
 
 const boardFields: FieldDef[] = [
   { name: "item_name", label: "اسم الصنف", required: true },
@@ -134,11 +135,11 @@ export default function BoardsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">من تاريخ</label>
-                  <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-full px-3 py-2 border rounded-lg" />
+                  <DateInput value={fromDate} onChange={(e) => setFromDate(e.target.value)} placeholder="يوم/شهر/سنة" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">إلى تاريخ</label>
-                  <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-full px-3 py-2 border rounded-lg" />
+                  <DateInput value={toDate} onChange={(e) => setToDate(e.target.value)} placeholder="يوم/شهر/سنة" />
                 </div>
               </div>
               <label className="flex items-center gap-2 text-sm cursor-pointer bg-gray-50 p-3 rounded-lg">

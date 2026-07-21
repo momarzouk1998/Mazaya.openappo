@@ -7,6 +7,7 @@ import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { exportToExcel } from "@/lib/excel";
 import { formatCurrency, formatDate, formatDateShort } from "@/lib/format";
+import DateInput from "@/components/ui/DateInput";
 
 type ReportType = "inventory" | "orders" | "cashflow" | "suppliers" | "overhead" | "workers" | "customers";
 
@@ -249,11 +250,11 @@ export default function ReportsPage() {
             <>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">من تاريخ</label>
-                <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="w-full px-3 py-2.5 border rounded-lg" />
+                <DateInput value={fromDate} onChange={e => setFromDate(e.target.value)} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">إلى تاريخ</label>
-                <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-full px-3 py-2.5 border rounded-lg" />
+                <DateInput value={toDate} onChange={e => setToDate(e.target.value)} />
               </div>
             </>
           )}

@@ -9,6 +9,7 @@ import { exportToExcel } from "@/lib/excel";
 import { canSeeModule } from "@/lib/auth";
 import { PWAInstallButton } from "@/components/PWAInstallButton";
 import { formatCurrency, formatDate, ENTRY_TYPE_LABELS, ENTRY_TYPE_COLORS, PAYMENT_METHOD_LABELS } from "@/lib/format";
+import DateInput from "@/components/ui/DateInput";
 
 interface DayEntry {
   id: string;
@@ -149,9 +150,9 @@ export default function BoardsWalletPage() {
         <Button variant={range === 7 && !useCustom ? "primary" : "secondary"} size="sm" onClick={() => { setRange(7); setFromDate(""); setToDate(""); }}>آخر 7 أيام</Button>
         <Button variant={range === 30 && !useCustom ? "primary" : "secondary"} size="sm" onClick={() => { setRange(30); setFromDate(""); setToDate(""); }}>آخر 30 يوم</Button>
         <div className="flex items-center gap-2">
-          <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="px-2 py-1 border rounded text-sm" />
+          <DateInput value={fromDate} onChange={(e) => setFromDate(e.target.value)} placeholder="يوم/شهر/سنة" />
           <span className="text-gray-400">→</span>
-          <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="px-2 py-1 border rounded text-sm" />
+          <DateInput value={toDate} onChange={(e) => setToDate(e.target.value)} placeholder="يوم/شهر/سنة" />
         </div>
         <div className="mr-auto">
           <Button variant="secondary" size="sm" onClick={() => exportToExcel(days as any, "boards-wallet")} disabled={days.length === 0}>📥 تصدير</Button>

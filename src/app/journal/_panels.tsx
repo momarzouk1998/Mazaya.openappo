@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input, Select, Textarea } from "@/components/ui/Input";
 import Combobox from "@/components/ui/Combobox";
+import DateInput from "@/components/ui/DateInput";
 import { formatCurrency } from "@/lib/format";
 import { PAYMENT_METHOD_LABELS, ENTRY_TYPE_LABELS } from "@/lib/format";
 
@@ -618,13 +619,11 @@ export function WorkersReportPanel() {
       <div className="flex items-center gap-3 flex-wrap">
         <div>
           <label className="block text-xs text-gray-500 mb-1">من</label>
-          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-            className="px-3 py-2 border rounded-lg text-sm" />
+          <DateInput value={dateFrom} onChange={e => setDateFrom(e.target.value)} placeholder="يوم/شهر/سنة" />
         </div>
         <div>
           <label className="block text-xs text-gray-500 mb-1">إلى</label>
-          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-            className="px-3 py-2 border rounded-lg text-sm" />
+          <DateInput value={dateTo} onChange={e => setDateTo(e.target.value)} placeholder="يوم/شهر/سنة" />
         </div>
         <button onClick={() => { setDateFrom(getLastThursday()); setDateTo(todayStr()); }}
           className="mt-4 text-xs px-3 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">

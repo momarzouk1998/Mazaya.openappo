@@ -10,6 +10,7 @@ import { canSeeModule } from "@/lib/auth";
 import { PWAInstallButton } from "@/components/PWAInstallButton";
 import { WalletCards } from "./_wallet-cards";
 import { WalletTable } from "./_wallet-table";
+import DateInput from "@/components/ui/DateInput";
 
 interface DayData {
   date: string;

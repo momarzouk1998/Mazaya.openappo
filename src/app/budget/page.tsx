@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { formatCurrency, formatDate, ENTRY_TYPE_LABELS, ENTRY_TYPE_COLORS, PAYMENT_METHOD_LABELS } from "@/lib/format";
 import { exportToExcel } from "@/lib/excel";
 import { calcIncome, calcExpense, calcPayout, calcPassthrough } from "@/lib/finance";
+import DateInput from "@/components/ui/DateInput";
 
 export default function BudgetPage() {
   const { user: profile } = useUserStore();
@@ -112,11 +113,11 @@ export default function BudgetPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">من تاريخ</label>
-                <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="w-full px-3 py-2 border rounded-lg" />
+                <DateInput value={fromDate} onChange={e => setFromDate(e.target.value)} placeholder="يوم/شهر/سنة" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">إلى تاريخ</label>
-                <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-full px-3 py-2 border rounded-lg" />
+                <DateInput value={toDate} onChange={e => setToDate(e.target.value)} placeholder="يوم/شهر/سنة" />
               </div>
             </div>
             {activeFiltersCount > 0 && (

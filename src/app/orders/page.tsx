@@ -12,6 +12,7 @@ import { SearchBox } from "@/components/SearchFilter"
 import { Button } from "@/components/ui/Button"
 import { exportToExcel } from "@/lib/excel"
 import { formatCurrency, formatDate, STATUS_LABELS, STATUS_COLORS, ORDER_TYPE_LABELS, daysBetween } from "@/lib/format"
+import DateInput from "@/components/ui/DateInput"
 
 interface Order {
   id: string; order_name: string; status: string; order_type: string
@@ -189,8 +190,8 @@ export default function OrdersPage() {
               <div><label className="block text-sm font-medium text-gray-700 mb-1">الحالة</label><select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full px-3 py-2 border rounded-lg bg-white"><option value="">كل الحالات</option>{Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">النوع</label><select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="w-full px-3 py-2 border rounded-lg bg-white"><option value="">كل الأنواع</option>{Object.entries(ORDER_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">من تاريخ</label><input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-full px-3 py-2 border rounded-lg" /></div>
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">إلى تاريخ</label><input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-full px-3 py-2 border rounded-lg" /></div>
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">من تاريخ</label><DateInput value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></div>
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">إلى تاريخ</label><DateInput value={toDate} onChange={(e) => setToDate(e.target.value)} /></div>
               </div>
               {activeFiltersCount > 0 && <div className="text-xs text-brand-orange-dark bg-brand-orange-light border border-brand-orange/20 p-2 rounded">تم تطبيق {activeFiltersCount} فلتر (يمكن دمجهم معاً)</div>}
             </div>
