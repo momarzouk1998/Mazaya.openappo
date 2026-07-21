@@ -1,12 +1,12 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useRef } from "react";
 
 // ============================================================
-// DateInput — حقل تاريخ بصيغة DD/MM/YYYY (يوم/شهر/سنة)
+// DateInput — حقل تاريخ مع تقويم بصيغة DD/MM/YYYY
 // ============================================================
-// - يعرض للمستخدم: DD/MM/YYYY (مثال: 21/07/2026)
-// - يحفظ داخلياً ويبعت للـ onChange: YYYY-MM-DD (مثال: 2026-07-21)
-// - متوافق مع كل الفورمات اللي بتستخدم value + onChange
+// - input type="date" مخفي يفتح التقويم لما يضغط الأيقونة
+// - يعرض للمستخدم: يوم/شهر/سنة
+// - يحفظ ويبعت للـ onChange: YYYY-MM-DD
 // ============================================================
 
 interface DateInputProps {
@@ -31,63 +31,44 @@ function toDisplay(iso: string): string {
 
 /** تحويل DD/MM/YYYY → YYYY-MM-DD */
 function toISO(display: string): string {
-  const parts = display.replace(/[^0-9]/g, "/").split("/");
-  if (parts.length !== 3) return "";
-  const [d, m, y] = parts;
-  if (!d || !m || !y || y.length !== 4) return "";
-  const dd = d.padStart(2, "0");
-  const mm = m.padStart(2, "0");
-  if (Number(mm) < 1 || Number(mm) > 12) return "";
-  if (Number(dd) < 1 || Number(dd) > 31) return "";
-  return `${y}-${mm}-${dd}`;
+  const clean = display.replace(/[^0-9]/g, "");
+  if (clean.length !== 8) return "";
+  const d = clean.slice(0, 2);
+  const m = clean.slice(2, 4);
+  const y = clean.slice(4, 8);
+  if (Number(m) < 1 || Number(m) > 12) return "";
+  if (Number(d) < 1 || Number(d) > 31) return "";
+  return `${y}-${m}-${d}`;
 }
 
 export function DateInput({
   label, value, onChange, required, hint, error, className = "", placeholder = "يوم/شهر/سنة", disabled,
 }: DateInputProps) {
-  const [display, setDisplay] = useState(() => toDisplay(value));
-  const [focused, setFocused] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const hiddenRef = useRef<HTMLInputElement>(null);
 
-  // لو القيمة الخارجية اتغيرت (مثلاً reset) نحدّث العرض
-  useEffect(() => {
-    if (!focused) {
-      setDisplay(toDisplay(value));
-    }
-  }, [value, focused]);
+  // ما يكتب في الحقل النصي
+  function handleTextChange(raw: string) {
+    let digits = raw.replace(/[^0-9]/g, "");
+    // auto-format: بعد كل رقمين نضيف /
+    if (digits.length > 4) digits = digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4, 8);
+    else if (digits.length > 2) digits = digits.slice(0, 2) + "/" + digits.slice(2);
 
-  function handleChange(raw: string) {
-    // السماح بالأرقام والـ / فقط
-    let cleaned = raw.replace(/[^0-9/]/g, "");
-
-    // auto-insert / بعد اليوم وبعد الشهر
-    if (cleaned.length === 2 && display.length === 1 && !cleaned.includes("/")) {
-      cleaned = cleaned + "/";
-    } else if (cleaned.length === 5 && display.length === 4 && cleaned.split("/").length === 2) {
-      cleaned = cleaned + "/";
-    }
-
-    setDisplay(cleaned);
-
-    // لو الإدخال كامل (DD/MM/YYYY = 10 أحرف)
-    const iso = toISO(cleaned);
-    if (iso) {
-      onChange({ target: { value: iso } });
-    } else if (cleaned === "") {
-      onChange({ target: { value: "" } });
-    }
+    // نبعت للـ onChange لو اكتمل
+    const iso = toISO(digits.replace(/\//g, "").padEnd(8, "0").slice(0, 8) === "00000000" ? "" : digits);
+    onChange({ target: { value: iso || "" } });
   }
 
-  function handleBlur() {
-    setFocused(false);
-    // لو المستخدم كتب تاريخ ناقص — نعيد العرض للقيمة المحفوظة
-    const iso = toISO(display);
-    if (iso) {
-      setDisplay(toDisplay(iso));
-    } else if (!display) {
-      setDisplay("");
-    }
+  // لما يختار من التقويم
+  function handlePickerChange(e: React.ChangeEvent<HTMLInputElement>) {
+    onChange({ target: { value: e.target.value } });
   }
+
+  function openPicker() {
+    hiddenRef.current?.showPicker?.();
+    hiddenRef.current?.click();
+  }
+
+  const display = toDisplay(value);
 
   return (
     <div className="space-y-1.5">
@@ -96,24 +77,46 @@ export function DateInput({
           {label}{required && " *"}
         </label>
       )}
-      <input
-        ref={inputRef}
-        type="text"
-        inputMode="numeric"
-        value={display}
-        onChange={e => handleChange(e.target.value)}
-        onFocus={() => setFocused(true)}
-        onBlur={handleBlur}
-        placeholder={placeholder}
-        disabled={disabled}
-        maxLength={10}
-        dir="ltr"
-        className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 transition-all text-left ${
-          error
-            ? "border-red-400 focus:ring-red-200"
-            : "border-gray-300 focus:ring-brand-orange/30 focus:border-brand-orange"
-        } ${disabled ? "bg-gray-50 text-gray-400 cursor-not-allowed" : ""} ${className}`}
-      />
+      <div className="relative">
+        {/* حقل العرض النصي */}
+        <input
+          type="text"
+          inputMode="numeric"
+          value={display}
+          onChange={e => handleTextChange(e.target.value)}
+          placeholder={placeholder}
+          disabled={disabled}
+          maxLength={10}
+          dir="ltr"
+          className={`w-full px-4 py-2.5 pr-10 border rounded-lg focus:outline-none focus:ring-2 transition-all text-left ${
+            error
+              ? "border-red-400 focus:ring-red-200"
+              : "border-gray-300 focus:ring-brand-orange/30 focus:border-brand-orange"
+          } ${disabled ? "bg-gray-50 text-gray-400 cursor-not-allowed" : ""} ${className}`}
+        />
+        {/* زر فتح التقويم */}
+        {!disabled && (
+          <button
+            type="button"
+            onClick={openPicker}
+            className="absolute left-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-brand-orange transition-colors"
+            tabIndex={-1}
+            title="اختر من التقويم"
+          >
+            📅
+          </button>
+        )}
+        {/* input type=date مخفي للتقويم */}
+        <input
+          ref={hiddenRef}
+          type="date"
+          value={value || ""}
+          onChange={handlePickerChange}
+          disabled={disabled}
+          className="absolute inset-0 opacity-0 pointer-events-none w-full"
+          tabIndex={-1}
+        />
+      </div>
       {hint && !error && <p className="text-xs text-gray-500">{hint}</p>}
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
