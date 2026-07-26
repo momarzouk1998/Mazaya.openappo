@@ -112,7 +112,7 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               date: form.date,
-              entry_type: "مشتريات",
+              entry_type: cat === "accessory" ? "شراء إكسسوارات" : "مشتريات",
               description: `شراء ${form.quantity} ${form.item_name} (جديد)`,
               amount: Number(form.quantity) * Number(form.unit_price || 0),
               payment_method: form.payment_method,
