@@ -31,6 +31,7 @@ jobs:
             set -e
 
             echo "=== [1/6] Pulling latest image from GHCR ==="
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker pull ghcr.io/momarzouk1998/mazaya.openappo:latest
 
             echo "=== [2/6] Tagging local image ==="
