@@ -35,6 +35,7 @@ export default function BoardsPage() {
   const [search, setSearch] = useState("")
   const [supplierFilter, setSupplierFilter] = useState("")
   const [materialFilter, setMaterialFilter] = useState("")
+  const [codeFilter, setCodeFilter] = useState("")
   const [availableOnly, setAvailableOnly] = useState(false)
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
@@ -42,10 +43,10 @@ export default function BoardsPage() {
 
   const [materialTypes, setMaterialTypes] = useState<string[]>([])
 
-  const activeFiltersCount = [supplierFilter, materialFilter, availableOnly ? "1" : "", fromDate, toDate].filter(Boolean).length
+  const activeFiltersCount = [supplierFilter, materialFilter, codeFilter, availableOnly ? "1" : "", fromDate, toDate].filter(Boolean).length
 
   function clearFilters() {
-    setSupplierFilter(""); setMaterialFilter(""); setAvailableOnly(false); setFromDate(""); setToDate("")
+    setSupplierFilter(""); setMaterialFilter(""); setCodeFilter(""); setAvailableOnly(false); setFromDate(""); setToDate("")
   }
 
   // Load material types from the normalized lookup table (no duplicates)
@@ -64,11 +65,12 @@ export default function BoardsPage() {
     const matchSearch = !search || b.item_name.toLowerCase().includes(search.toLowerCase()) || (b.code ?? "").toLowerCase().includes(search.toLowerCase())
     const matchSup = !supplierFilter || String(b.supplier_id) === supplierFilter
     const matchMat = !materialFilter || (b.material_type || "").trim().toLowerCase() === materialFilter.trim().toLowerCase()
+    const matchCode = !codeFilter || (b.code || "").trim().toLowerCase().includes(codeFilter.trim().toLowerCase())
     const matchAvail = !availableOnly || b.quantity_remaining > 0
     const matchFrom = !fromDate || String(b.date_added ?? "") >= fromDate
     const matchTo = !toDate || String(b.date_added ?? "") <= toDate
-    return matchSearch && matchSup && matchMat && matchAvail && matchFrom && matchTo
-  }), [rows, search, supplierFilter, materialFilter, availableOnly, fromDate, toDate])
+    return matchSearch && matchSup && matchMat && matchCode && matchAvail && matchFrom && matchTo
+  }), [rows, search, supplierFilter, materialFilter, codeFilter, availableOnly, fromDate, toDate])
 
   if (!profile) return null
 
@@ -118,6 +120,10 @@ export default function BoardsPage() {
               <button onClick={() => setFilterOpen(false)} className="p-1 hover:bg-gray-100 rounded-lg">✕</button>
             </div>
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">الكود</label>
+                <input type="text" value={codeFilter} onChange={(e) => setCodeFilter(e.target.value)} className="w-full px-3 py-2 border rounded-lg bg-white" placeholder="أدخل الكود..." />
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">المورد</label>
                 <select value={supplierFilter} onChange={(e) => setSupplierFilter(e.target.value)} className="w-full px-3 py-2 border rounded-lg bg-white">
