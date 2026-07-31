@@ -81,7 +81,7 @@ async function checkSubscription(): Promise<{ active: boolean; status?: string; 
     if (!adminUrl || !systemName) return { active: true }; // Fallback if not configured
 
     const res = await fetch(`${adminUrl}/api/subscription/verify?system=${systemName}`, {
-      next: { revalidate: 3600 }, // Cache for 1 hour
+      next: { revalidate: 60 }, // Cache for 1 minute for faster updates
     });
     
     if (!res.ok) return { active: true };
