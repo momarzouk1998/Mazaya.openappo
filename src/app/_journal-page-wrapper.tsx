@@ -42,7 +42,7 @@ interface ActionBtn { key: PanelKey; icon: string; label: string; color: string;
 const ACTIONS: ActionBtn[] = [
   { key: "board", icon: "🪵", label: "شراء ألواح", color: "border-brand-orange text-brand-orange hover:bg-brand-orange hover:text-white" },
   { key: "accessory", icon: "🔩", label: "شراء إكسسوارات", color: "border-brand-orange text-brand-orange hover:bg-brand-orange hover:text-white" },
-  { key: "overhead", icon: "💵", label: "نثريات / أجور عمال", color: "border-brand-orange text-brand-orange hover:bg-brand-orange hover:text-white" },
+  { key: "overhead", icon: "💵", label: "نثريات", color: "border-brand-orange text-brand-orange hover:bg-brand-orange hover:text-white" },
   { key: "income", icon: "📥", label: "دفعة من معرض", color: "border-brand-orange text-brand-orange hover:bg-brand-orange hover:text-white" },
   { key: "search", icon: "🔍", label: "بحث في المخزن", color: "border-brand-orange text-brand-orange hover:bg-brand-orange hover:text-white" },
   { key: "today", icon: "📅", label: "تقرير اليوم", color: "border-brand-orange text-brand-orange hover:bg-brand-orange hover:text-white" },
@@ -53,7 +53,7 @@ const ACTIONS: ActionBtn[] = [
 const PANEL_TITLES: Record<Exclude<PanelKey, null>, string> = {
   board: "🪵 شراء ألواح",
   accessory: "🔩 شراء إكسسوارات",
-  overhead: "💵 نثريات / أجور عمال",
+  overhead: "💵 نثريات",
   income: "📥 دفعة من معرض",
   search: "🔍 بحث في المخزن",
   workers: "🧑‍🔧 تقرير العمال",
@@ -135,10 +135,6 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
   const todayDetail = todayRows.slice().reverse(); // الأحدث أولاً
   const dayNames = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 
-  const lowStockBoards = useMemo(() => boards.filter((b: any) => Number(b.quantity_remaining ?? 0) <= 5), [boards]);
-  const lowStockAccessories = useMemo(() => accessories.filter((a: any) => Number(a.quantity_remaining ?? 0) <= 5), [accessories]);
-  const totalLowStockCount = lowStockBoards.length + lowStockAccessories.length;
-
   const totalSupplierDebt = useMemo(() => (
     suppliersList.reduce((sum: number, s: any) => sum + (Number(s.balance ?? 0) > 0 ? Number(s.balance) : 0), 0)
   ), [suppliersList]);
@@ -183,7 +179,7 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
         <div className="card text-center text-gray-500 py-12">🔒 هذه الصفحة للمصنع فقط.</div>
       ) : (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
             {/* 1. قيمة المخزون */}
             <div className="card bg-white border-r-4 border-brand-orange">
               <div className="text-xs text-gray-500 font-bold">قيمة المخزون</div>
@@ -192,39 +188,24 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
                 + accessories.reduce((s: number, a: any) => s + (Number(a.unit_price ?? 0) * Number(a.quantity_remaining ?? 0)), 0)
               )}</div>
               <div className="text-[11px] text-black font-semibold flex justify-between border-t pt-1.5 mt-1">
-                <span>ألواح: <strong>{boards.length}</strong></span>
-                <span>إكسسوارات: <strong>{accessories.length}</strong></span>
+                <span>ألواح: <strong className="text-brand-orange font-bold">{boards.length}</strong></span>
+                <span>إكسسوارات: <strong className="text-brand-orange font-bold">{accessories.length}</strong></span>
               </div>
             </div>
 
-            {/* 2. نواقص المخزن (مباشرة بجانب قيمة المخزون بالوان وتنسيق مطابق) */}
-            <div className="card bg-white border-r-4 border-brand-orange">
-              <div className="text-xs text-gray-500 font-bold flex items-center justify-between">
-                <span>⚠️ نواقص المخزن</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${totalLowStockCount > 0 ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>
-                  {totalLowStockCount > 0 ? "تنبيه" : "مستقر"}
-                </span>
-              </div>
-              <div className="text-2xl font-extrabold text-brand-orange mb-1">{totalLowStockCount} <span className="text-sm font-normal text-gray-500">صنف</span></div>
-              <div className="text-[11px] text-black font-semibold flex justify-between border-t pt-1.5 mt-1">
-                <span>ألواح: <strong>{lowStockBoards.length}</strong></span>
-                <span>إكسسوارات: <strong>{lowStockAccessories.length}</strong></span>
-              </div>
-            </div>
-
-            {/* 3. إجمالي الأوردرات */}
+            {/* 2. إجمالي الأوردرات */}
             <div className="card bg-white border-r-4 border-brand-orange">
               <div className="text-xs text-gray-500 font-bold">إجمالي الأوردرات ({allOrders.length})</div>
               <div className="text-2xl font-extrabold text-brand-orange mb-1">
                 {formatCurrency(allOrders.reduce((s: number, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0))}
               </div>
               <div className="text-[11px] text-black font-semibold flex justify-between border-t pt-1.5 mt-1">
-                <span>مفتوحة: <strong>{openOrdersCount}</strong></span>
-                <span>مكتملة: <strong>{completedOrdersCount}</strong></span>
+                <span>مفتوحة: <strong className="text-brand-orange font-bold">{openOrdersCount}</strong></span>
+                <span>مكتملة: <strong className="text-brand-orange font-bold">{completedOrdersCount}</strong></span>
               </div>
             </div>
 
-            {/* 4. مستحقات الموردين */}
+            {/* 3. مستحقات الموردين */}
             <div className="card bg-white border-r-4 border-rose-500">
               <div className="text-xs text-gray-500 font-bold flex items-center justify-between">
                 <span>🤝 مستحقات الموردين</span>
@@ -232,7 +213,7 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
               </div>
               <div className="text-2xl font-extrabold text-rose-600 mb-1">{formatCurrency(totalSupplierDebt)}</div>
               <div className="text-[11px] text-black font-semibold border-t pt-1.5 mt-1">
-                مطلوب سدادها للموردين
+                مطلوب سدادها للموردين: <strong className="text-rose-600 font-bold">{formatCurrency(totalSupplierDebt)}</strong>
               </div>
             </div>
           </div>
@@ -250,8 +231,8 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
               </div>
               <div className="text-2xl font-extrabold text-brand-orange mb-1">{formatCurrency(totalIncome)}</div>
               <div className="text-[11px] text-black font-semibold flex items-center justify-between border-t pt-1.5 mt-1">
-                <span>مباشر: <strong>{formatCurrency(totalDirectIncome)}</strong></span>
-                <span>تمريري: <strong>{formatCurrency(totalPassthroughIncome)}</strong></span>
+                <span>مباشر: <strong className="text-brand-orange font-bold">{formatCurrency(totalDirectIncome)}</strong></span>
+                <span>تمريري: <strong className="text-brand-orange font-bold">{formatCurrency(totalPassthroughIncome)}</strong></span>
               </div>
             </div>
             <div className="card bg-white border-r-4 border-brand-orange">
@@ -266,9 +247,9 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
               </div>
               <div className="text-2xl font-extrabold text-brand-orange mb-1">{formatCurrency(totalExpense)}</div>
               <div className="text-[11px] text-black font-semibold flex items-center justify-between border-t pt-1.5 mt-1 gap-1">
-                <span>ألواح: <strong>{formatCurrency(boardExpenses)}</strong></span>
-                <span>إكسسوارات: <strong>{formatCurrency(accessoryExpenses)}</strong></span>
-                <span>نثريات: <strong>{formatCurrency(overheadExpenses)}</strong></span>
+                <span>ألواح: <strong className="text-brand-orange font-bold">{formatCurrency(boardExpenses)}</strong></span>
+                <span>إكسسوارات: <strong className="text-brand-orange font-bold">{formatCurrency(accessoryExpenses)}</strong></span>
+                <span>نثريات: <strong className="text-brand-orange font-bold">{formatCurrency(overheadExpenses)}</strong></span>
               </div>
             </div>
             <div className="card bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white">
