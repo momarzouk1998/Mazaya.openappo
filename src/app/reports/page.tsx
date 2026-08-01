@@ -221,7 +221,7 @@ export default function ReportsPage() {
       />
 
       {/* اختيار نوع التقرير - كاردات */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 print:hidden">
         {(Object.entries(REPORT_CONFIG) as [ReportType, typeof REPORT_CONFIG[ReportType]][]).map(([key, cfg]) => (
           <button
             key={key}
@@ -236,7 +236,7 @@ export default function ReportsPage() {
       </div>
 
       {/* لوحة التحكم في التقرير */}
-      <div className="card mb-4">
+      <div className="card mb-4 print:hidden">
         <div className="flex items-center gap-2 mb-3">
           <span className="text-2xl">{config.icon}</span>
           <div>
@@ -284,6 +284,7 @@ export default function ReportsPage() {
                   الفترة: {fromDate ? formatDateShort(fromDate) : "البداية"} ← {toDate ? formatDateShort(toDate) : "اليوم"}
                 </span>
               )}
+              <Button variant="secondary" onClick={() => window.print()}>🖨️ طباعة</Button>
               <Button variant="secondary" onClick={() => exportToExcel(data, `report_${type}_${new Date().toISOString().slice(0, 10)}`)}>📥 تصدير Excel</Button>
             </div>
           </div>

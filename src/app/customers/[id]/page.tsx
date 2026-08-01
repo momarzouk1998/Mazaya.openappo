@@ -80,7 +80,12 @@ export default function CustomerDetailPage() {
         subtitle={customer?.branch_name ?? ""}
         backHref="/customers"
         actions={
-          <Button onClick={() => setShowPayment(true)}>💰 تسجيل دفعة</Button>
+          <div className="flex gap-2">
+            <Link href={`/customers/${id}/statement`}>
+              <Button variant="secondary">📄 طباعة كشف حساب</Button>
+            </Link>
+            <Button onClick={() => setShowPayment(true)}>💰 تسجيل دفعة</Button>
+          </div>
         }
       />
 
