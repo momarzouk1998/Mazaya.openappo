@@ -67,8 +67,9 @@ export default function BoardsPage() {
     const matchMat = !materialFilter || (b.material_type || "").trim().toLowerCase() === materialFilter.trim().toLowerCase()
     const matchCode = !codeFilter || (b.code || "").trim().toLowerCase().includes(codeFilter.trim().toLowerCase())
     const matchAvail = !availableOnly || b.quantity_remaining > 0
-    const matchFrom = !fromDate || String(b.date_added ?? "") >= fromDate
-    const matchTo = !toDate || String(b.date_added ?? "") <= toDate
+    const bDate = String(b.date_added ?? "").slice(0, 10)
+    const matchFrom = !fromDate || bDate >= fromDate
+    const matchTo = !toDate || bDate <= toDate
     return matchSearch && matchSup && matchMat && matchCode && matchAvail && matchFrom && matchTo
   }), [rows, search, supplierFilter, materialFilter, codeFilter, availableOnly, fromDate, toDate])
 

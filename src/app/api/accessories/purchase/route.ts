@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
             date: date ? new Date(date) : new Date(),
             // 'شراء إكسسوارات' منفصل عن 'مشتريات' (اللي بتتبع الألواح في يومية الألواح)
             entry_type: "شراء إكسسوارات",
-            description: "شراء " + qty + " " + item.item_name,
+            description: body.description || ("شراء " + qty + " " + item.item_name),
             amount: total,
             payment_method: payment_method || "نقدي",
             party_type: supplier_id ? "supplier" : null,

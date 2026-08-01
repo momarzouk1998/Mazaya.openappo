@@ -10,7 +10,7 @@ import { SearchBox } from "@/components/SearchFilter";
 import { Button } from "@/components/ui/Button";
 import { exportToExcel } from "@/lib/excel";
 import { formatCurrency, formatDate, ENTRY_TYPE_LABELS, ENTRY_TYPE_COLORS, PAYMENT_METHOD_LABELS } from "@/lib/format";
-import { calcIncome, calcExpense, calcPayout, calcOpeningBalance, calcClosingBalance, dateKey } from "@/lib/finance";
+import { calcIncome, calcPassthroughIncome, calcTotalIncoming, calcExpense, calcPayout, calcOpeningBalance, calcClosingBalance, dateKey } from "@/lib/finance";
 import { canSeeModule } from "@/lib/auth";
 import RowEditor, { type FieldDef } from "@/components/ui/RowEditor";
 import { PWAInstallButton } from "@/components/PWAInstallButton";
@@ -64,12 +64,13 @@ const PANEL_TITLES: Record<Exclude<PanelKey, null>, string> = {
 export default function JournalPageWrapper({ showSummary = false }: { showSummary?: boolean }) {
   const { user: profile } = useUserStore();
   const { can } = useCan();
-  const { data, loading, refetch } = useApi<{ entries: any[] }>("/api/journal?limit=500");
+  const { data, loading, refetch } = useApi<{ entries: any[]; summary?: any }>("/api/journal?limit=500");
   const { data: boardsData } = useApi<{ items: any[] }>("/api/boards?limit=500");
   const { data: accessoriesData } = useApi<{ items: any[] }>("/api/accessories?limit=500");
   const { data: ordersData } = useApi<{ items: any[] }>("/api/orders?limit=500");
   const { data: suppliersData } = useApi<{ items: any[] }>("/api/suppliers?limit=500");
   const rows = data?.entries ?? [];
+  const serverSummary = data?.summary;
   const boards = boardsData?.items ?? [];
   const accessories = accessoriesData?.items ?? [];
   const allOrders = ordersData?.items ?? [];
@@ -85,38 +86,49 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
   const activeFiltersCount = [typeFilter, payFilter, fromDate, toDate].filter(Boolean).length;
 
   const filtered = useMemo(() => rows.filter(r => {
+    const rDate = (r.date ?? '').slice(0, 10);
     const matchSearch = !search || r.description.toLowerCase().includes(search.toLowerCase());
     const matchType = !typeFilter || r.entry_type === typeFilter;
     const matchPay = !payFilter || r.payment_method === payFilter;
-    const matchDate = (!fromDate || r.date >= fromDate) && (!toDate || r.date <= toDate);
+    const matchDate = (!fromDate || rDate >= fromDate) && (!toDate || rDate <= toDate);
     return matchSearch && matchType && matchPay && matchDate;
   }), [rows, search, typeFilter, payFilter, fromDate, toDate]);
 
   // ====== 3 مستويات للملخص ======
-  // (SSoT — F1, F2) كل الحسابات المالية من src/lib/finance.ts
+  // (SSoT — F1, F2) كل الحسابات المالية من src/lib/finance.ts + server summary
   const todayKey = dateKey();
   const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - 6);
   const weekStartKey = dateKey(weekStart);
 
-  const todayRows = rows.filter(r => r.date === todayKey);
-  const weekRows = rows.filter(r => r.date >= weekStartKey);
+  const todayRows = rows.filter(r => (r.date ?? '').slice(0, 10) === todayKey);
+  const weekRows = rows.filter(r => (r.date ?? '').slice(0, 10) >= weekStartKey);
 
-  const todayIncome = calcIncome(todayRows);
+  const todayDirectIncome = calcIncome(todayRows);
+  const todayPassthroughIncome = calcPassthroughIncome(todayRows);
+  const todayTotalIncoming = todayDirectIncome + todayPassthroughIncome;
+  const todayIncome = todayTotalIncoming;
   const todayExpense = calcExpense(todayRows);
-  const weekIncome = calcIncome(weekRows);
+  const todayPayout = calcPayout(todayRows);
+  const todayNet = todayDirectIncome - todayExpense - todayPayout;
+
+  const weekDirectIncome = calcIncome(weekRows);
+  const weekPassthroughIncome = calcPassthroughIncome(weekRows);
+  const weekTotalIncoming = weekDirectIncome + weekPassthroughIncome;
   const weekExpense = calcExpense(weekRows);
-  const totalIncome = calcIncome(rows);
-  const totalExpense = calcExpense(rows);
-  const totalPayout = calcPayout(rows);
-  const totalNet = totalIncome - totalExpense - totalPayout;
+  const weekPayout = calcPayout(weekRows);
+  const weekNet = weekDirectIncome - weekExpense - weekPayout;
+
+  // إجماليات النظام (من السيرفر مباشرة لعدم الاقتطاع، أو من المصفوفة كبديل)
+  const totalDirectIncome = serverSummary?.direct_income ?? calcIncome(rows);
+  const totalPassthroughIncome = serverSummary?.passthrough_income ?? calcPassthroughIncome(rows);
+  const totalIncome = serverSummary?.total_incoming ?? (totalDirectIncome + totalPassthroughIncome);
+
+  const totalExpense = serverSummary?.total_expense ?? calcExpense(rows);
+  const totalPayout = serverSummary?.total_payout ?? calcPayout(rows);
+  const totalNet = serverSummary?.total_net ?? (totalDirectIncome - totalExpense - totalPayout);
 
   // ====== الرصيد الجاري (Running Balance) ======
-  // SSoT — يشمل الوارد والمصروف والدفوع (F1).
-  // كان قبل كده بيحسب openingBalance = income_before - expense_before
-  // وبيتجاهل الـ payout، فكان الرقم مش متطابق مع totalNet.
   const openingBalance = calcOpeningBalance(rows, todayKey);
-  const todayNet = todayIncome - todayExpense;
-  // closingBalance = opening + dayNet (نفس المعادلة الموحدة)
   const closingBalance = calcClosingBalance(rows, todayKey);
 
   // ====== تفاصيل اليوم لجدول "تقرير اليوم" ======
@@ -162,13 +174,13 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
             </div>
             <div className="card bg-white border-r-4 border-brand-orange">
               <div className="text-xs text-gray-500 font-bold">أوردرات مفتوحة</div>
-              <div className="text-2xl font-extrabold text-brand-orange mb-1">{allOrders.filter((o: any) => o.status === "مفتوح" || o.status === "قيد التنفيذ").length}</div>
-              <div className="text-lg font-bold text-brand-orange">{formatCurrency(allOrders.filter((o: any) => o.status === "مفتوح" || o.status === "قيد التنفيذ").reduce((s: number, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0))}</div>
+              <div className="text-2xl font-extrabold text-brand-orange mb-1">{allOrders.filter((o: any) => ["مفتوح", "open", "قيد التنفيذ", "in_progress"].includes(o.status)).length}</div>
+              <div className="text-lg font-bold text-brand-orange">{formatCurrency(allOrders.filter((o: any) => ["مفتوح", "open", "قيد التنفيذ", "in_progress"].includes(o.status)).reduce((s: number, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0))}</div>
             </div>
             <div className="card bg-white border-r-4 border-brand-orange">
               <div className="text-xs text-gray-500 font-bold">أوردرات مكتملة</div>
-              <div className="text-2xl font-extrabold text-brand-orange mb-1">{allOrders.filter((o: any) => o.status === "مكتمل" || o.status === "تم التسليم").length}</div>
-              <div className="text-lg font-bold text-brand-orange">{formatCurrency(allOrders.filter((o: any) => o.status === "مكتمل" || o.status === "تم التسليم").reduce((s: number, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0))}</div>
+              <div className="text-2xl font-extrabold text-brand-orange mb-1">{allOrders.filter((o: any) => ["مكتمل", "completed", "تم التسليم", "delivered"].includes(o.status)).length}</div>
+              <div className="text-lg font-bold text-brand-orange">{formatCurrency(allOrders.filter((o: any) => ["مكتمل", "completed", "تم التسليم", "delivered"].includes(o.status)).reduce((s: number, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0))}</div>
             </div>
             <div className="card bg-white border-r-4 border-brand-orange">
               <div className="text-xs text-gray-500 font-bold">إجمالي الأوردرات</div>
@@ -180,15 +192,19 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <div className="card bg-white border-r-4 border-brand-orange">
               <div className="text-xs text-gray-500 font-bold flex items-center gap-1">
-                إجمالي الوارد 
+                إجمالي الوارد الشامل
                 <span className="relative group cursor-help text-gray-400">
                   ❓
                   <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none z-10">
-                    كل التحويلات الواردة من المعارض
+                    يشمل الوارد المباشر + تحويلات المعارض التمريرية
                   </div>
                 </span>
               </div>
               <div className="text-2xl font-extrabold text-brand-orange mb-1">{formatCurrency(totalIncome)}</div>
+              <div className="text-[11px] text-gray-500 flex items-center justify-between border-t pt-1 mt-1 font-medium">
+                <span>مباشر: <strong>{formatCurrency(totalDirectIncome)}</strong></span>
+                <span>تمريري: <strong>{formatCurrency(totalPassthroughIncome)}</strong></span>
+              </div>
             </div>
             <div className="card bg-white border-r-4 border-brand-orange">
               <div className="text-xs text-gray-500 font-bold flex items-center gap-1">
@@ -220,7 +236,7 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
                 <span className="relative group cursor-help opacity-70">
                   ❓
                   <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-gray-800 bg-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none z-10">
-                    الوارد − المصروف − المدفوعات
+                    الوارد المباشر − المصروف − المدفوعات
                   </div>
                 </span>
               </div>
@@ -232,20 +248,44 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
             {/* تقرير اليوم */}
             <div className="card bg-white border border-gray-200">
-              <div className="text-xs font-bold text-gray-700 mb-2 border-b pb-2">📅 تقرير اليوم ({formatDate(todayKey)})</div>
+              <div className="text-xs font-bold text-gray-700 mb-2 border-b pb-2 flex justify-between items-center">
+                <span>📅 تقرير اليوم ({formatDate(todayKey)})</span>
+                {todayPassthroughIncome > 0 && <span className="text-[10px] bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded font-normal">تمريري: +{formatCurrency(todayPassthroughIncome)}</span>}
+              </div>
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="bg-brand-orange-light rounded p-1.5"><div className="text-[10px] text-gray-500">وارد</div><div className="font-bold text-brand-orange-dark text-sm">{formatCurrency(todayIncome)}</div></div>
-                <div className="bg-gray-50 rounded p-1.5"><div className="text-[10px] text-gray-500">مصروف</div><div className="font-bold text-gray-700 text-sm">{formatCurrency(todayExpense)}</div></div>
-                <div className="bg-white border rounded p-1.5"><div className="text-[10px] text-gray-500">الصافي</div><div className={`font-bold text-sm ${todayIncome - todayExpense >= 0 ? "text-green-600" : "text-red-600"}`}>{formatCurrency(todayIncome - todayExpense)}</div></div>
+                <div className="bg-brand-orange-light rounded p-1.5">
+                  <div className="text-[10px] text-gray-500">وارد شامل</div>
+                  <div className="font-bold text-brand-orange-dark text-sm">{formatCurrency(todayTotalIncoming)}</div>
+                </div>
+                <div className="bg-gray-50 rounded p-1.5">
+                  <div className="text-[10px] text-gray-500">مصروف</div>
+                  <div className="font-bold text-gray-700 text-sm">{formatCurrency(todayExpense)}</div>
+                </div>
+                <div className="bg-white border rounded p-1.5">
+                  <div className="text-[10px] text-gray-500">الصافي</div>
+                  <div className={`font-bold text-sm ${todayNet >= 0 ? "text-green-600" : "text-red-600"}`}>{formatCurrency(todayNet)}</div>
+                </div>
               </div>
             </div>
             {/* تقرير آخر 7 أيام */}
             <div className="card bg-white border border-gray-200">
-              <div className="text-xs font-bold text-gray-700 mb-2 border-b pb-2">📆 آخر 7 أيام</div>
+              <div className="text-xs font-bold text-gray-700 mb-2 border-b pb-2 flex justify-between items-center">
+                <span>📆 آخر 7 أيام</span>
+                {weekPassthroughIncome > 0 && <span className="text-[10px] bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded font-normal">تمريري: +{formatCurrency(weekPassthroughIncome)}</span>}
+              </div>
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="bg-brand-orange-light rounded p-1.5"><div className="text-[10px] text-gray-500">وارد</div><div className="font-bold text-brand-orange-dark text-sm">{formatCurrency(weekIncome)}</div></div>
-                <div className="bg-gray-50 rounded p-1.5"><div className="text-[10px] text-gray-500">مصروف</div><div className="font-bold text-gray-700 text-sm">{formatCurrency(weekExpense)}</div></div>
-                <div className="bg-white border rounded p-1.5"><div className="text-[10px] text-gray-500">الصافي</div><div className={`font-bold text-sm ${weekIncome - weekExpense >= 0 ? "text-green-600" : "text-red-600"}`}>{formatCurrency(weekIncome - weekExpense)}</div></div>
+                <div className="bg-brand-orange-light rounded p-1.5">
+                  <div className="text-[10px] text-gray-500">وارد شامل</div>
+                  <div className="font-bold text-brand-orange-dark text-sm">{formatCurrency(weekTotalIncoming)}</div>
+                </div>
+                <div className="bg-gray-50 rounded p-1.5">
+                  <div className="text-[10px] text-gray-500">مصروف</div>
+                  <div className="font-bold text-gray-700 text-sm">{formatCurrency(weekExpense)}</div>
+                </div>
+                <div className="bg-white border rounded p-1.5">
+                  <div className="text-[10px] text-gray-500">الصافي</div>
+                  <div className={`font-bold text-sm ${weekNet >= 0 ? "text-green-600" : "text-red-600"}`}>{formatCurrency(weekNet)}</div>
+                </div>
               </div>
             </div>
           </div>

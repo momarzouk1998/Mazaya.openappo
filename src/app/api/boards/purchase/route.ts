@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
           data: {
             date: date ? new Date(date) : new Date(),
             entry_type: "مشتريات",
-            description: "شراء " + qty + " " + item.item_name,
+            description: body.description || ("شراء " + qty + " " + item.item_name + (item.code ? " (كود: " + item.code + ")" : "")),
             amount: total,
             payment_method: payment_method || "نقدي",
             party_type: supplier_id ? "supplier" : null,

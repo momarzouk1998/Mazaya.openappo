@@ -36,9 +36,10 @@ export default function OverheadPage() {
   const activeFiltersCount = [categoryFilter, fromDate, toDate].filter(Boolean).length
 
   const filtered = useMemo(() => rows.filter((r) => {
+    const rDate = String(r.date ?? "").slice(0, 10)
     const matchSearch = !search || (r.description ?? "").toLowerCase().includes(search.toLowerCase())
     const matchCategory = !categoryFilter || (r.category ?? "") === categoryFilter
-    const matchDate = (!fromDate || String(r.date) >= fromDate) && (!toDate || String(r.date) <= toDate)
+    const matchDate = (!fromDate || rDate >= fromDate) && (!toDate || rDate <= toDate)
     return matchSearch && matchCategory && matchDate
   }), [rows, search, categoryFilter, fromDate, toDate])
 

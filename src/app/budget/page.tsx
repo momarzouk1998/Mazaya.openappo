@@ -27,10 +27,11 @@ export default function BudgetPage() {
   const activeFiltersCount = [typeFilter, payFilter, fromDate, toDate].filter(Boolean).length;
 
   const filtered = useMemo(() => rows.filter(r => {
+    const rDate = (r.date ?? '').slice(0, 10);
     const matchSearch = !search || r.description.toLowerCase().includes(search.toLowerCase());
     const matchType = !typeFilter || r.entry_type === typeFilter;
     const matchPay = !payFilter || r.payment_method === payFilter;
-    const matchDate = (!fromDate || r.date >= fromDate) && (!toDate || r.date <= toDate);
+    const matchDate = (!fromDate || rDate >= fromDate) && (!toDate || rDate <= toDate);
     return matchSearch && matchType && matchPay && matchDate;
   }), [rows, search, typeFilter, payFilter, fromDate, toDate]);
 

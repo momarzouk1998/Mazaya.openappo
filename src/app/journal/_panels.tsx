@@ -31,7 +31,7 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
   const [form, setForm] = useState({
     item_id: "", item_name: "", code: "", material_type: "",
     quantity: "", unit_price: "", supplier_id: "",
-    payment_method: "نقدي", date: todayStr(), notes: "",
+    payment_method: "نقدي", date: todayStr(), description: "", notes: "",
     order_id: "",
   });
   const [saving, setSaving] = useState(false);
@@ -45,16 +45,25 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
   }, []);
 
   const filtered = useMemo(() => {
-    if (!q.trim()) return items.filter(i => i.quantity_remaining > 0).slice(0, 15);
-    const s = q.toLowerCase();
-    return items.filter(i => (i.item_name?.toLowerCase().includes(s) || i.code?.toLowerCase().includes(s))).slice(0, 20);
+    if (!q.trim()) return items.slice(0, 15);
+    const s = q.toLowerCase().trim();
+    return items.filter(i => (
+      (i.code && i.code.toLowerCase().includes(s)) ||
+      (i.item_name && i.item_name.toLowerCase().includes(s)) ||
+      (i.supplier_name && i.supplier_name.toLowerCase().includes(s))
+    )).slice(0, 25);
   }, [items, q]);
+
+  const selectedItem = useMemo(() => items.find(i => i.id === form.item_id), [items, form.item_id]);
 
   function pick(it: any) {
     setIsNew(false);
+    setQ(it.code || it.item_name || "");
     setForm(f => ({
       ...f,
-      item_id: it.id, item_name: it.item_name, code: it.code,
+      item_id: it.id,
+      item_name: it.item_name,
+      code: it.code || "",
       material_type: it.material_type || "",
       unit_price: String(it.unit_price ?? ""),
       supplier_id: String(it.supplier_id ?? ""),
@@ -63,11 +72,32 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
 
   function handleQChange(val: string) {
     setQ(val);
-    const s = val.toLowerCase();
-    const found = items.some(i => i.item_name?.toLowerCase().includes(s) || i.code?.toLowerCase().includes(s));
-    if (!found && val.trim().length > 1) {
+    const s = val.toLowerCase().trim();
+    if (!s) {
+      setIsNew(false);
+      setForm(f => ({ ...f, item_id: "", item_name: "", code: "" }));
+      return;
+    }
+    const foundExact = items.find(i => (
+      (i.code && i.code.toLowerCase() === s) ||
+      (i.item_name && i.item_name.toLowerCase() === s)
+    ));
+    if (foundExact) {
+      pick(foundExact);
+      return;
+    }
+    const foundAny = items.some(i => (
+      (i.code && i.code.toLowerCase().includes(s)) ||
+      (i.item_name && i.item_name.toLowerCase().includes(s))
+    ));
+    if (!foundAny && s.length >= 1) {
       setIsNew(true);
-      setForm(f => ({ ...f, item_id: "", item_name: val, code: "", material_type: "" }));
+      setForm(f => ({
+        ...f,
+        item_id: "",
+        code: cat === "board" ? val : f.code,
+        item_name: cat === "accessory" ? val : f.item_name,
+      }));
     } else {
       setIsNew(false);
     }
@@ -77,23 +107,26 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
     e.preventDefault();
     setErr(null); setMsg(null);
 
+    const customDesc = form.description.trim();
+
     if (isNew) {
       // صنف جديد → أنشئه أولاً ثم اشتريه
-      if (!form.item_name || !form.quantity) {
-        setErr("الاسم والكمية مطلوبين");
+      const finalItemName = form.item_name || (cat === "board" ? `لوح ${form.code || q}` : q);
+      if (!finalItemName || !form.quantity) {
+        setErr("اسم الصنف والكمية مطلوبين");
         return;
       }
       setSaving(true);
       try {
         const createPayload: any = {
-          item_name: form.item_name,
+          item_name: finalItemName,
           supplier_id: form.supplier_id || null,
           unit_price: Number(form.unit_price || 0),
           quantity_in: Number(form.quantity),
-          notes: form.notes || null,
+          notes: form.notes || customDesc || null,
         };
         if (cat === "board") {
-          if (form.code) createPayload.code = form.code;
+          createPayload.code = form.code || q;
           createPayload.material_type = form.material_type || null;
         }
 
@@ -106,6 +139,8 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
         const newItem = createData?.data;
         const newItemId = newItem?.id;
 
+        const journalDesc = customDesc || `شراء ${form.quantity} ${finalItemName}${form.code ? ` (كود: ${form.code})` : ""} (جديد)`;
+
         // تسجيل في اليومية
         if (Number(form.unit_price || 0) > 0 && Number(form.quantity) > 0) {
           await fetch("/api/journal", {
@@ -113,12 +148,12 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
             body: JSON.stringify({
               date: form.date,
               entry_type: cat === "accessory" ? "شراء إكسسوارات" : "مشتريات",
-              description: `شراء ${form.quantity} ${form.item_name} (جديد)`,
+              description: journalDesc,
               amount: Number(form.quantity) * Number(form.unit_price || 0),
               payment_method: form.payment_method,
               party_type: form.supplier_id ? "supplier" : null,
               party_id: form.supplier_id || null,
-              notes: form.notes || null,
+              notes: form.notes || customDesc || null,
             }),
           });
         }
@@ -139,8 +174,8 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
           } catch (e) { /* ignore */ }
         }
 
-        setMsg(`✅ تم إضافة وشراء ${form.quantity} × ${form.item_name}${form.order_id ? " + إضافتها للأوردر" : ""}`);
-        setForm(f => ({ ...f, item_id: "", item_name: "", code: "", material_type: "", quantity: "", notes: "", supplier_id: "", order_id: "" }));
+        setMsg(`✅ تم إضافة وشراء ${form.quantity} × ${finalItemName}${form.order_id ? " + إضافتها للأوردر" : ""}`);
+        setForm(f => ({ ...f, item_id: "", item_name: "", code: "", material_type: "", quantity: "", description: "", notes: "", supplier_id: "", order_id: "" }));
         setMaterialTypeId("");
         setQ(""); setIsNew(false);
         onSaved?.();
@@ -150,6 +185,7 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
       if (!form.item_id || !form.quantity) { setErr("اختر الصنف واكتب الكمية"); return; }
       setSaving(true);
       try {
+        const itemDesc = customDesc || `شراء ${form.quantity} ${form.item_name}${form.code ? ` (كود: ${form.code})` : ""}`;
         const res = await fetch(apiPurchase, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -159,7 +195,8 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
             supplier_id: form.supplier_id || null,
             payment_method: form.payment_method,
             date: form.date,
-            notes: form.notes || null,
+            description: itemDesc,
+            notes: form.notes || customDesc || null,
             create_journal: true,
           }),
         });
@@ -185,7 +222,7 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
         }
 
         setMsg(`✅ تم شراء ${form.quantity} × ${form.item_name}${form.order_id ? " + إضافتها للأوردر" : ""}`);
-        setForm(f => ({ ...f, item_id: "", item_name: "", code: "", material_type: "", quantity: "", notes: "", supplier_id: "", order_id: "" }));
+        setForm(f => ({ ...f, item_id: "", item_name: "", code: "", material_type: "", quantity: "", description: "", notes: "", supplier_id: "", order_id: "" }));
         setMaterialTypeId("");
         setQ(""); setIsNew(false);
         onSaved?.();
@@ -197,41 +234,81 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
 
   return (
     <form onSubmit={submit} className="space-y-3">
-      {/* بحث + اختيار */}
+      {/* بحث بالكود / اسم اللوح */}
       <div>
-        <Input label={`ابحث عن ${catLabel}...`} value={q} onChange={e => handleQChange(e.target.value)}
-          placeholder="اكتب الاسم لو موجود تختاره، لو مش موجود تضيفه" />
+        <Input
+          label={cat === "board" ? "ابحث بالكود أو اسم اللوح *" : `ابحث عن ${catLabel}...`}
+          value={q}
+          onChange={e => handleQChange(e.target.value)}
+          placeholder={cat === "board" ? "اكتب الكود (مثال: S-620) أو اسم اللوح للبحث..." : "اكتب الاسم أو الكود..."}
+        />
         {!isNew && q.trim() && (
-          <div className="mt-1 max-h-40 overflow-y-auto divide-y border rounded-lg">
+          <div className="mt-1 max-h-52 overflow-y-auto divide-y border rounded-xl bg-white shadow-md z-20">
             {filtered.map(it => (
-              <button type="button" key={it.id} onClick={() => pick(it)}
-                className={`w-full text-right px-3 py-2 hover:bg-brand-orange/10 text-sm ${form.item_id === it.id ? "bg-brand-orange/10 font-semibold" : ""}`}>
-                {it.item_name} <span className="text-xs text-gray-500">({it.code}) • متبقي: {it.quantity_remaining}</span>
+              <button
+                type="button"
+                key={it.id}
+                onClick={() => pick(it)}
+                className={`w-full text-right px-3 py-2.5 hover:bg-brand-orange/10 transition-colors text-sm ${form.item_id === it.id ? "bg-brand-orange/10 font-semibold border-r-4 border-brand-orange" : ""}`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-gray-800">
+                    {it.code ? `📌 كود: ${it.code}` : ""} {it.item_name}
+                  </span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded bg-orange-100 text-brand-orange-dark">
+                    المتاح حالياً: {Number(it.quantity_remaining ?? 0)}
+                  </span>
+                </div>
+                <div className="text-xs text-gray-500 mt-1 flex justify-between">
+                  <span>المورد: <strong>{it.supplier_name || "بدون مورد"}</strong></span>
+                  {it.material_type && <span>الخامة: {it.material_type}</span>}
+                </div>
               </button>
             ))}
-            {filtered.length === 0 && <div className="px-3 py-2 text-gray-400 text-sm">لا توجد نتائج — اكتب التفاصيل وسيُنشأ صنف جديد</div>}
+            {filtered.length === 0 && (
+              <div className="px-3 py-3 text-center text-sm text-amber-700 bg-amber-50">
+                💡 لا توجد نتائج مطابقة لـ "{q}". اضغط الزر لإنشاء صنف/كود جديد.
+                <div className="mt-2">
+                  <Button type="button" variant="secondary" size="sm" onClick={() => {
+                    setIsNew(true);
+                    setForm(f => ({ ...f, item_id: "", code: cat === "board" ? q : "", item_name: cat === "accessory" ? q : "" }));
+                  }}>
+                    ➕ إضافة كود/صنف جديد "{q}"
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
 
+      {/* صندوق معلومات الصنف المحدد أو الجديد */}
       {isNew && (
-        <div className="bg-amber-50 border border-amber-200 p-2 rounded text-sm text-amber-700">
-          🆕 <strong>{catLabel} جديد</strong> — اكتب التفاصيل وسيُنشأ تلقائياً
+        <div className="bg-amber-50 border border-amber-300 p-2.5 rounded-lg text-sm text-amber-800 flex items-center justify-between">
+          <div>
+            🆕 <strong>كود/صنف جديد ({form.code || q})</strong> — اكتب التفاصيل وسيُنشأ في المخزن تلقائياً
+          </div>
+          <button type="button" onClick={() => { setIsNew(false); setQ(""); }} className="text-xs text-amber-600 underline">إلغاء</button>
         </div>
       )}
-      {!isNew && form.item_name && (
-        <div className="bg-green-50 p-2 rounded text-sm">
-          المختار: <strong>{form.item_name}</strong>
+      {!isNew && selectedItem && (
+        <div className="bg-green-50 border border-green-200 p-2.5 rounded-lg text-sm text-green-800 space-y-1">
+          <div className="font-bold flex justify-between">
+            <span>المختار: {selectedItem.item_name} {selectedItem.code ? `(كود: ${selectedItem.code})` : ""}</span>
+            <span className="text-xs bg-green-200 text-green-900 px-2 py-0.5 rounded">الكمية المتاحة حالياً: {Number(selectedItem.quantity_remaining ?? 0)}</span>
+          </div>
+          <div className="text-xs text-green-700">
+            المورد: <strong>{selectedItem.supplier_name || "بدون مورد"}</strong> {selectedItem.material_type ? `• الخامة: ${selectedItem.material_type}` : ""}
+          </div>
         </div>
       )}
 
       {/* حقول الصنف الجديد */}
       {isNew && cat === "board" && (
-        <Input label="الكود (اختياري)" value={form.code} onChange={e => setForm({ ...form, code: e.target.value })}
-          placeholder="مثال: S-620 — لو فارغ بيتولد تلقائياً" />
-      )}
-      {isNew && cat === "board" && (
-        <Input label="اسم الصنف *" value={form.item_name} onChange={e => setForm({ ...form, item_name: e.target.value })} required />
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="الكود *" value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} placeholder="مثال: S-620" required />
+          <Input label="اسم اللوح *" value={form.item_name} onChange={e => setForm({ ...form, item_name: e.target.value })} placeholder="اسم اللوح..." required />
+        </div>
       )}
       {isNew && cat === "board" && (
         <Combobox
@@ -248,6 +325,14 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
       {isNew && cat === "accessory" && (
         <Input label="اسم الصنف *" value={form.item_name} onChange={e => setForm({ ...form, item_name: e.target.value })} required />
       )}
+
+      {/* البيان (Statement / Description) */}
+      <Input
+        label="البيان (توضيح الحركة)"
+        value={form.description}
+        onChange={e => setForm({ ...form, description: e.target.value })}
+        placeholder="اكتب بيان الحركة (مثال: شراء ألواح كود S-620 لورشة المعارض)..."
+      />
 
       {/* المورد */}
       <Combobox

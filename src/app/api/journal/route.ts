@@ -76,23 +76,44 @@ export async function GET(request: NextRequest) {
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
 
-    const entries: any[] = await prisma.$queryRawUnsafe(
-      `SELECT je.*,
-        CASE
-          WHEN je.party_type = 'supplier' THEN s.name
-          WHEN je.party_type = 'branch' THEN b.name
-          WHEN je.party_type = 'contractor' THEN c.name
-          ELSE NULL
-        END as party_name
-       FROM mazaya.journal_entries je
-       LEFT JOIN mazaya.suppliers s ON je.party_type = 'supplier' AND je.party_id = s.id
-       LEFT JOIN mazaya.branches b ON je.party_type = 'branch' AND je.party_id = b.id
-       LEFT JOIN mazaya.contractors c ON je.party_type = 'contractor' AND je.party_id = c.id
-       ${whereClause}
-       ORDER BY je.date DESC, je.created_at DESC
-       LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
-      ...rawParams, limit, offset
-    );
+    const [entries, summaryRows] = await Promise.all([
+      prisma.$queryRawUnsafe<any[]>(
+        `SELECT je.*,
+          CASE
+            WHEN je.party_type = 'supplier' THEN s.name
+            WHEN je.party_type = 'branch' THEN b.name
+            WHEN je.party_type = 'contractor' THEN c.name
+            ELSE NULL
+          END as party_name
+         FROM mazaya.journal_entries je
+         LEFT JOIN mazaya.suppliers s ON je.party_type = 'supplier' AND je.party_id = s.id
+         LEFT JOIN mazaya.branches b ON je.party_type = 'branch' AND je.party_id = b.id
+         LEFT JOIN mazaya.contractors c ON je.party_type = 'contractor' AND je.party_id = c.id
+         ${whereClause}
+         ORDER BY je.date DESC, je.created_at DESC
+         LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+        ...rawParams, limit, offset
+      ),
+      prisma.$queryRawUnsafe<any[]>(
+        `SELECT
+          COALESCE(SUM(CASE WHEN je.entry_type = 'دفعة واردة من معرض' AND (je.is_pass_through IS FALSE OR je.is_pass_through IS NULL) THEN je.amount ELSE 0 END), 0)::float8 AS direct_income,
+          COALESCE(SUM(CASE WHEN (je.entry_type = 'دفعة واردة من معرض' AND je.is_pass_through IS TRUE) OR je.entry_type IN ('تحويل تمريري', 'transfer') THEN je.amount ELSE 0 END), 0)::float8 AS passthrough_income,
+          COALESCE(SUM(CASE WHEN je.entry_type IN ('مشتريات', 'شراء إكسسوارات', 'نثريات', 'أجور عمال', 'نقل داخلي') AND (je.is_pass_through IS FALSE OR je.is_pass_through IS NULL) THEN je.amount ELSE 0 END), 0)::float8 AS total_expense,
+          COALESCE(SUM(CASE WHEN je.entry_type = 'دفعة صادرة لمورد' AND (je.is_pass_through IS FALSE OR je.is_pass_through IS NULL) THEN je.amount ELSE 0 END), 0)::float8 AS total_payout,
+          COALESCE(SUM(CASE WHEN je.entry_type = 'دفعة صادرة لمورد' AND je.is_pass_through IS TRUE THEN je.amount ELSE 0 END), 0)::float8 AS passthrough_payout
+         FROM mazaya.journal_entries je
+         ${whereClause}`,
+        ...rawParams
+      ),
+    ]);
+
+    const s = summaryRows[0] || {};
+    const directIncome = Number(s.direct_income ?? 0);
+    const passthroughIncome = Number(s.passthrough_income ?? 0);
+    const totalIncoming = directIncome + passthroughIncome;
+    const totalExpense = Number(s.total_expense ?? 0);
+    const totalPayout = Number(s.total_payout ?? 0);
+    const totalNet = directIncome - totalExpense - totalPayout;
 
     const serialized = entries.map((e: any) => ({ ...e, amount: Number(e.amount) }));
 
@@ -101,6 +122,14 @@ export async function GET(request: NextRequest) {
       data: {
         entries: serialized,
         pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+        summary: {
+          direct_income: directIncome,
+          passthrough_income: passthroughIncome,
+          total_incoming: totalIncoming,
+          total_expense: totalExpense,
+          total_payout: totalPayout,
+          total_net: totalNet,
+        },
       },
     });
   } catch (e: any) {

@@ -52,6 +52,11 @@ export function isIncome(r: JournalRow): boolean {
   return (INCOME_TYPES as readonly string[]).includes(r.entry_type) && !isPassThrough(r);
 }
 
+/** هل الحركة تحويل وارد تمريري من معرض (للألواح/الموردين)؟ */
+export function isPassthroughIncome(r: JournalRow): boolean {
+  return isPassThrough(r) && ((INCOME_TYPES as readonly string[]).includes(r.entry_type) || (PASSTHROUGH_TYPES as readonly string[]).includes(r.entry_type));
+}
+
 /** هل الحركة مصروف (مشتريات أو نثريات)؟ — التمريري ما بيدخلش */
 export function isExpense(r: JournalRow): boolean {
   return (EXPENSE_TYPES as readonly string[]).includes(r.entry_type) && !isPassThrough(r);
@@ -69,8 +74,6 @@ export function isPassThrough(r: JournalRow): boolean {
 
 function toNum(v: number | string | { toNumber?: () => number; toString?: () => string } | null | undefined): number {
   if (v == null) return 0;
-  // Prisma بيرجّع Decimal كـ object. لو سبّبناه زي ما هو،
-  // الـ reduce هيحصل فيه string concatenation بدل جمع.
   if (typeof v === 'object') {
     const obj = v as { toNumber?: () => number; toString?: () => string };
     if (typeof obj.toNumber === 'function') return obj.toNumber();
@@ -87,9 +90,19 @@ function toNum(v: number | string | { toNumber?: () => number; toString?: () => 
   return isNaN(v) ? 0 : v;
 }
 
-/** إجمالي الوارد الحقيقي (من غير تمريري) */
+/** إجمالي الوارد المباشر (من غير تمريري) */
 export function calcIncome(rows: JournalRow[]): number {
   return rows.filter(isIncome).reduce<number>((s, r) => s + toNum(r.amount), 0);
+}
+
+/** إجمالي الوارد التمريري من المعارض (للألواح/الموردين) */
+export function calcPassthroughIncome(rows: JournalRow[]): number {
+  return rows.filter(isPassthroughIncome).reduce<number>((s, r) => s + toNum(r.amount), 0);
+}
+
+/** إجمالي الوارد الشامل (المباشر + التمريري) */
+export function calcTotalIncoming(rows: JournalRow[]): number {
+  return calcIncome(rows) + calcPassthroughIncome(rows);
 }
 
 /** إجمالي المصروف الحقيقي (مشتريات + نثريات، من غير تمريري) */
@@ -132,9 +145,19 @@ export function calcClosingBalance(rows: JournalRow[], dateKey: string): number 
   return calcOpeningBalance(rows, dateKey) + calcDayNet(rows.filter(r => (r.date ?? '').slice(0, 10) === dateKey));
 }
 
-/** مفتاح الـ YYYY-MM-DD من كائن Date */
+/** مفتاح الـ YYYY-MM-DD من كائن Date أو نص ISO */
 export function dateKey(d: Date | string = new Date()): string {
-  const dt = typeof d === 'string' ? new Date(d) : d;
-  if (isNaN(dt.getTime())) return '';
-  return dt.toISOString().slice(0, 10);
+  if (typeof d === 'string') {
+    if (d.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(d)) {
+      return d.slice(0, 10);
+    }
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return '';
+    d = dt;
+  }
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
+

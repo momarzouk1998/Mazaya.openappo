@@ -56,8 +56,9 @@ export default function AccessoriesPage() {
     const matchSup = !supplierFilter || String(a.supplier_id) === supplierFilter
     const matchType = !typeFilter || a.type === typeFilter
     const matchAvail = !availableOnly || a.quantity_remaining > 0
-    const matchFrom = !fromDate || String(a.date_added ?? "") >= fromDate
-    const matchTo = !toDate || String(a.date_added ?? "") <= toDate
+    const aDate = String(a.date_added ?? "").slice(0, 10)
+    const matchFrom = !fromDate || aDate >= fromDate
+    const matchTo = !toDate || aDate <= toDate
     return matchSearch && matchSup && matchType && matchAvail && matchFrom && matchTo
   }), [rows, search, supplierFilter, typeFilter, availableOnly, fromDate, toDate])
 
