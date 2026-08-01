@@ -13,7 +13,7 @@ interface Props {
 }
 export default function PageHeader({ title, subtitle, helpTitle, helpDescription, actions, backHref }: Props) {
   return (
-    <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 print:hidden">
+    <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
       <div className="flex items-start gap-3">
         {backHref && (
           <Link href={backHref} className="p-2 -m-2 text-gray-500 hover:text-brand-orange transition" aria-label="رجوع">

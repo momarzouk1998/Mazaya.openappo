@@ -31,7 +31,7 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
   const [form, setForm] = useState({
     item_id: "", item_name: "", code: "", material_type: "",
     quantity: "", unit_price: "", supplier_id: "",
-    payment_method: "نقدي", date: todayStr(), description: "", notes: "",
+    payment_method: "نقدي", date: todayStr(), notes: "",
     order_id: "",
   });
   const [saving, setSaving] = useState(false);
@@ -107,7 +107,7 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
     e.preventDefault();
     setErr(null); setMsg(null);
 
-    const customDesc = form.description.trim();
+    const customNotes = form.notes.trim();
 
     if (isNew) {
       // صنف جديد → أنشئه أولاً ثم اشتريه
@@ -123,7 +123,7 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
           supplier_id: form.supplier_id || null,
           unit_price: Number(form.unit_price || 0),
           quantity_in: Number(form.quantity),
-          notes: form.notes || customDesc || null,
+          notes: customNotes || null,
         };
         if (cat === "board") {
           createPayload.code = form.code || q;
@@ -139,7 +139,7 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
         const newItem = createData?.data;
         const newItemId = newItem?.id;
 
-        const journalDesc = customDesc || `شراء ${form.quantity} ${finalItemName}${form.code ? ` (كود: ${form.code})` : ""} (جديد)`;
+        const journalDesc = customNotes || `شراء ${form.quantity} ${finalItemName}${form.code ? ` (كود: ${form.code})` : ""} (جديد)`;
 
         // تسجيل في اليومية
         if (Number(form.unit_price || 0) > 0 && Number(form.quantity) > 0) {
@@ -153,7 +153,7 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
               payment_method: form.payment_method,
               party_type: form.supplier_id ? "supplier" : null,
               party_id: form.supplier_id || null,
-              notes: form.notes || customDesc || null,
+              notes: customNotes || null,
             }),
           });
         }
@@ -175,7 +175,7 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
         }
 
         setMsg(`✅ تم إضافة وشراء ${form.quantity} × ${finalItemName}${form.order_id ? " + إضافتها للأوردر" : ""}`);
-        setForm(f => ({ ...f, item_id: "", item_name: "", code: "", material_type: "", quantity: "", description: "", notes: "", supplier_id: "", order_id: "" }));
+        setForm(f => ({ ...f, item_id: "", item_name: "", code: "", material_type: "", quantity: "", notes: "", supplier_id: "", order_id: "" }));
         setMaterialTypeId("");
         setQ(""); setIsNew(false);
         onSaved?.();
@@ -185,7 +185,7 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
       if (!form.item_id || !form.quantity) { setErr("اختر الصنف واكتب الكمية"); return; }
       setSaving(true);
       try {
-        const itemDesc = customDesc || `شراء ${form.quantity} ${form.item_name}${form.code ? ` (كود: ${form.code})` : ""}`;
+        const itemDesc = customNotes || `شراء ${form.quantity} ${form.item_name}${form.code ? ` (كود: ${form.code})` : ""}`;
         const res = await fetch(apiPurchase, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -196,7 +196,7 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
             payment_method: form.payment_method,
             date: form.date,
             description: itemDesc,
-            notes: form.notes || customDesc || null,
+            notes: customNotes || null,
             create_journal: true,
           }),
         });
@@ -222,7 +222,7 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
         }
 
         setMsg(`✅ تم شراء ${form.quantity} × ${form.item_name}${form.order_id ? " + إضافتها للأوردر" : ""}`);
-        setForm(f => ({ ...f, item_id: "", item_name: "", code: "", material_type: "", quantity: "", description: "", notes: "", supplier_id: "", order_id: "" }));
+        setForm(f => ({ ...f, item_id: "", item_name: "", code: "", material_type: "", quantity: "", notes: "", supplier_id: "", order_id: "" }));
         setMaterialTypeId("");
         setQ(""); setIsNew(false);
         onSaved?.();
@@ -243,7 +243,7 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
           placeholder={cat === "board" ? "اكتب الكود (مثال: S-620) أو اسم اللوح للبحث..." : "اكتب الاسم أو الكود..."}
         />
         {!isNew && q.trim() && (
-          <div className="mt-1 max-h-52 overflow-y-auto divide-y border rounded-xl bg-white shadow-md z-20">
+          <div className="mt-1 max-h-56 overflow-y-auto divide-y border rounded-xl bg-white shadow-md z-20">
             {filtered.map(it => (
               <button
                 type="button"
@@ -265,19 +265,17 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
                 </div>
               </button>
             ))}
-            {filtered.length === 0 && (
-              <div className="px-3 py-3 text-center text-sm text-amber-700 bg-amber-50">
-                💡 لا توجد نتائج مطابقة لـ "{q}". اضغط الزر لإنشاء صنف/كود جديد.
-                <div className="mt-2">
-                  <Button type="button" variant="secondary" size="sm" onClick={() => {
-                    setIsNew(true);
-                    setForm(f => ({ ...f, item_id: "", code: cat === "board" ? q : "", item_name: cat === "accessory" ? q : "" }));
-                  }}>
-                    ➕ إضافة كود/صنف جديد "{q}"
-                  </Button>
-                </div>
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                setIsNew(true);
+                setForm(f => ({ ...f, item_id: "", code: cat === "board" ? q : "", item_name: cat === "accessory" ? q : "" }));
+              }}
+              className="w-full text-right px-3 py-2.5 bg-orange-50 hover:bg-orange-100 text-brand-orange-dark font-bold text-sm flex items-center justify-between transition-colors"
+            >
+              <span>➕ إضافة كود/صنف جديد "{q}"</span>
+              <span className="text-xs bg-brand-orange text-white px-2 py-0.5 rounded">+ جديد</span>
+            </button>
           </div>
         )}
       </div>
@@ -326,15 +324,7 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
         <Input label="اسم الصنف *" value={form.item_name} onChange={e => setForm({ ...form, item_name: e.target.value })} required />
       )}
 
-      {/* البيان (Statement / Description) */}
-      <Input
-        label="البيان (توضيح الحركة)"
-        value={form.description}
-        onChange={e => setForm({ ...form, description: e.target.value })}
-        placeholder="اكتب بيان الحركة (مثال: شراء ألواح كود S-620 لورشة المعارض)..."
-      />
-
-      {/* المورد */}
+      {/* المورد (يُحدد أوتوماتيكياً عند اختيار الصنف ويمكن تغييره) */}
       <Combobox
         label="المورد"
         placeholder="ابحث عن مورد..."
@@ -365,6 +355,16 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
         <Input label="التاريخ" type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
         <Select label="طريقة الدفع" value={form.payment_method} onChange={e => setForm({ ...form, payment_method: e.target.value })} options={PAY_OPTS} />
       </div>
+
+      {/* ملاحظات (في نهاية النموذج قبل زر التسجيل) */}
+      <Textarea
+        label="ملاحظات"
+        value={form.notes}
+        onChange={e => setForm({ ...form, notes: e.target.value })}
+        placeholder="ملاحظات على الحركة (اختياري)..."
+        rows={2}
+      />
+
       {err && <div className="bg-red-50 text-red-700 p-2 rounded text-sm">{err}</div>}
       {msg && <div className="bg-brand-orange-light text-brand-orange-dark p-2 rounded text-sm">{msg}</div>}
       {total > 0 && (

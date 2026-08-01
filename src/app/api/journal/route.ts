@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
     const totalIncoming = directIncome + passthroughIncome;
     const totalExpense = Number(s.total_expense ?? 0);
     const totalPayout = Number(s.total_payout ?? 0);
-    const totalNet = directIncome - totalExpense - totalPayout;
+    const totalNet = totalIncoming - totalExpense - totalPayout;
 
     const serialized = entries.map((e: any) => ({ ...e, amount: Number(e.amount) }));
 
