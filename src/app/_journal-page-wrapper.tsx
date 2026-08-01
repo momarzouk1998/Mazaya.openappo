@@ -143,6 +143,18 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
     suppliersList.reduce((sum: number, s: any) => sum + (Number(s.balance ?? 0) > 0 ? Number(s.balance) : 0), 0)
   ), [suppliersList]);
 
+  const openOrdersCount = useMemo(() => (
+    allOrders.filter((o: any) => ["مفتوح", "open", "قيد التنفيذ", "in_progress"].includes(o.status)).length
+  ), [allOrders]);
+
+  const completedOrdersCount = useMemo(() => (
+    allOrders.filter((o: any) => ["مكتمل", "completed", "تم التسليم", "delivered"].includes(o.status)).length
+  ), [allOrders]);
+
+  const boardExpenses = useMemo(() => calcExpense(rows.filter(r => r.entry_type === "مشتريات")), [rows]);
+  const accessoryExpenses = useMemo(() => calcExpense(rows.filter(r => r.entry_type === "شراء إكسسوارات")), [rows]);
+  const overheadExpenses = useMemo(() => calcExpense(rows.filter(r => ["نثريات", "أجور عمال", "نقل داخلي"].includes(r.entry_type))), [rows]);
+
   if (!profile) return null;
   const canSee = canSeeModule(profile, "journal");
 
@@ -172,39 +184,56 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
       ) : (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            {/* 1. قيمة المخزون */}
             <div className="card bg-white border-r-4 border-brand-orange">
               <div className="text-xs text-gray-500 font-bold">قيمة المخزون</div>
               <div className="text-2xl font-extrabold text-brand-orange mb-1">{formatCurrency(
                 boards.reduce((s: number, b: any) => s + (Number(b.unit_price ?? 0) * Number(b.quantity_remaining ?? 0)), 0)
                 + accessories.reduce((s: number, a: any) => s + (Number(a.unit_price ?? 0) * Number(a.quantity_remaining ?? 0)), 0)
               )}</div>
-              <div className="text-xs font-semibold text-brand-orange">{boards.length + accessories.length} صنف بالمخزن</div>
+              <div className="text-[11px] text-black font-semibold flex justify-between border-t pt-1.5 mt-1">
+                <span>ألواح: <strong>{boards.length}</strong></span>
+                <span>إكسسوارات: <strong>{accessories.length}</strong></span>
+              </div>
             </div>
+
+            {/* 2. نواقص المخزن (مباشرة بجانب قيمة المخزون بالوان وتنسيق مطابق) */}
             <div className="card bg-white border-r-4 border-brand-orange">
-              <div className="text-xs text-gray-500 font-bold">إجمالي الأوردرات</div>
-              <div className="text-2xl font-extrabold text-brand-orange mb-1">{allOrders.length}</div>
-              <div className="text-xs font-semibold text-brand-orange">{formatCurrency(allOrders.reduce((s: number, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0))}</div>
-            </div>
-            <div className={`card bg-white border-r-4 ${totalLowStockCount > 0 ? "border-amber-500" : "border-emerald-500"}`}>
               <div className="text-xs text-gray-500 font-bold flex items-center justify-between">
                 <span>⚠️ نواقص المخزن</span>
                 <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${totalLowStockCount > 0 ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>
                   {totalLowStockCount > 0 ? "تنبيه" : "مستقر"}
                 </span>
               </div>
-              <div className="text-2xl font-extrabold text-gray-800 mb-1">{totalLowStockCount} <span className="text-sm font-normal text-gray-500">صنف</span></div>
-              <div className="text-[11px] text-gray-500 flex justify-between border-t pt-1 font-medium">
-                <span>ألواح: <strong className="text-amber-700">{lowStockBoards.length}</strong></span>
-                <span>إكسسوارات: <strong className="text-amber-700">{lowStockAccessories.length}</strong></span>
+              <div className="text-2xl font-extrabold text-brand-orange mb-1">{totalLowStockCount} <span className="text-sm font-normal text-gray-500">صنف</span></div>
+              <div className="text-[11px] text-black font-semibold flex justify-between border-t pt-1.5 mt-1">
+                <span>ألواح: <strong>{lowStockBoards.length}</strong></span>
+                <span>إكسسوارات: <strong>{lowStockAccessories.length}</strong></span>
               </div>
             </div>
+
+            {/* 3. إجمالي الأوردرات */}
+            <div className="card bg-white border-r-4 border-brand-orange">
+              <div className="text-xs text-gray-500 font-bold">إجمالي الأوردرات ({allOrders.length})</div>
+              <div className="text-2xl font-extrabold text-brand-orange mb-1">
+                {formatCurrency(allOrders.reduce((s: number, o: any) => s + Number(o.order_total ?? o.total ?? 0), 0))}
+              </div>
+              <div className="text-[11px] text-black font-semibold flex justify-between border-t pt-1.5 mt-1">
+                <span>مفتوحة: <strong>{openOrdersCount}</strong></span>
+                <span>مكتملة: <strong>{completedOrdersCount}</strong></span>
+              </div>
+            </div>
+
+            {/* 4. مستحقات الموردين */}
             <div className="card bg-white border-r-4 border-rose-500">
               <div className="text-xs text-gray-500 font-bold flex items-center justify-between">
                 <span>🤝 مستحقات الموردين</span>
                 <span className="text-[10px] bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded font-bold">ديون قائمة</span>
               </div>
               <div className="text-2xl font-extrabold text-rose-600 mb-1">{formatCurrency(totalSupplierDebt)}</div>
-              <div className="text-xs font-semibold text-rose-700">مطلوب سدادها للموردين</div>
+              <div className="text-[11px] text-black font-semibold border-t pt-1.5 mt-1">
+                مطلوب سدادها للموردين
+              </div>
             </div>
           </div>
 
@@ -220,7 +249,7 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
                 </span>
               </div>
               <div className="text-2xl font-extrabold text-brand-orange mb-1">{formatCurrency(totalIncome)}</div>
-              <div className="text-[11px] text-gray-500 flex items-center justify-between border-t pt-1 mt-1 font-medium">
+              <div className="text-[11px] text-black font-semibold flex items-center justify-between border-t pt-1.5 mt-1">
                 <span>مباشر: <strong>{formatCurrency(totalDirectIncome)}</strong></span>
                 <span>تمريري: <strong>{formatCurrency(totalPassthroughIncome)}</strong></span>
               </div>
@@ -236,6 +265,11 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
                 </span>
               </div>
               <div className="text-2xl font-extrabold text-brand-orange mb-1">{formatCurrency(totalExpense)}</div>
+              <div className="text-[11px] text-black font-semibold flex items-center justify-between border-t pt-1.5 mt-1 gap-1">
+                <span>ألواح: <strong>{formatCurrency(boardExpenses)}</strong></span>
+                <span>إكسسوارات: <strong>{formatCurrency(accessoryExpenses)}</strong></span>
+                <span>نثريات: <strong>{formatCurrency(overheadExpenses)}</strong></span>
+              </div>
             </div>
             <div className="card bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white">
               <div className="text-xs opacity-90 font-bold flex items-center gap-1">
@@ -248,6 +282,9 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
                 </span>
               </div>
               <div className="text-2xl font-extrabold mb-1">{formatCurrency(totalNet)}</div>
+              <div className="text-[11px] opacity-90 border-t border-white/20 pt-1.5 mt-1 font-semibold">
+                صافي الحركة المالية بالمصنع
+              </div>
             </div>
           </div>
 
