@@ -25,7 +25,7 @@ export default function OverheadPage() {
   const router = useRouter()
   const { user: profile } = useUserStore()
   const { can } = useCan()
-  const { data, loading } = useApi<{ expenses: any[]; items?: any[] }>("/api/overhead?limit=500")
+  const { data, loading } = useApi<{ expenses: any[]; items?: any[] }>("/api/overhead?limit=500&exclude_wages=true")
   const rows: any[] = data?.expenses ?? data?.items ?? []
   const [search, setSearch] = useState("")
   const [fromDate, setFromDate] = useState("")
@@ -36,6 +36,7 @@ export default function OverheadPage() {
   const activeFiltersCount = [categoryFilter, fromDate, toDate].filter(Boolean).length
 
   const filtered = useMemo(() => rows.filter((r) => {
+    if (r.worker_id || r.category === "أجور عمال") return false
     const rDate = String(r.date ?? "").slice(0, 10)
     const matchSearch = !search || (r.description ?? "").toLowerCase().includes(search.toLowerCase())
     const matchCategory = !categoryFilter || (r.category ?? "") === categoryFilter
@@ -46,7 +47,14 @@ export default function OverheadPage() {
   const total = filtered.reduce((s, r) => s + Number(r.amount ?? 0), 0)
 
   const uniqueCategories = useMemo(() => {
-    return Array.from(new Set(rows.map((r) => r.category).filter((c) => Boolean(c)))).sort()
+    return Array.from(
+      new Set(
+        rows
+          .filter((r) => !r.worker_id && r.category !== "أجور عمال")
+          .map((r) => r.category)
+          .filter((c) => Boolean(c))
+      )
+    ).sort()
   }, [rows])
 
   function clearFilters() {

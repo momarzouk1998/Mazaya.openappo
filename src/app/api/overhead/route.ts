@@ -14,16 +14,35 @@ export async function GET(request: NextRequest) {
     const date_to = searchParams.get('date_to') || '';
     const search = searchParams.get('search') || '';
 
+    const exclude_wages = searchParams.get('exclude_wages') === 'true';
+    const only_wages = searchParams.get('only_wages') === 'true';
+
     const offset = (page - 1) * limit;
 
-    const where: any = {};
-    if (category) where.category = category;
+    const conditions: any[] = [];
+    if (category) conditions.push({ category });
     if (date_from || date_to) {
-      where.date = {};
-      if (date_from) where.date.gte = new Date(date_from);
-      if (date_to) where.date.lte = new Date(date_to);
+      const dateCond: any = {};
+      if (date_from) dateCond.gte = new Date(date_from);
+      if (date_to) dateCond.lte = new Date(date_to);
+      conditions.push({ date: dateCond });
     }
-    if (search) where.description = { contains: search, mode: 'insensitive' };
+    if (search) {
+      conditions.push({ description: { contains: search, mode: 'insensitive' } });
+    }
+    if (exclude_wages) {
+      conditions.push({ worker_id: null });
+      conditions.push({ OR: [{ category: null }, { category: { not: 'أجور عمال' } }] });
+    } else if (only_wages) {
+      conditions.push({
+        OR: [
+          { worker_id: { not: null } },
+          { category: 'أجور عمال' },
+        ],
+      });
+    }
+
+    const where = conditions.length > 0 ? { AND: conditions } : {};
 
     const total = await prisma.overhead_expenses.count({ where });
 
