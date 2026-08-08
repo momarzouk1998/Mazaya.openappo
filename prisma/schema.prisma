@@ -116,6 +116,8 @@ model orders {
   extra_costs             order_extra_costs[]
   journal_entries         journal_entries[]
   customer_payments       customer_payments[]
+  daily_logs              worker_daily_logs[]     @relation("order_daily_logs")
+  travel_expenses         worker_travel_expenses[] @relation("order_travel_expenses")
 
   @@map("orders")
   @@schema("mazaya")
@@ -231,16 +233,93 @@ model contractors {
 }
 
 model workers {
-  id         String              @id @default(uuid()) @db.Uuid
-  name       String              @db.Text
-  phone      String?             @db.Text
-  notes      String?             @db.Text
-  deleted_at DateTime?           @db.Timestamptz()
-  created_at DateTime?           @default(now()) @db.Timestamptz()
-  updated_at DateTime?           @default(now()) @db.Timestamptz()
-  expenses   overhead_expenses[]
+  id                String                      @id @default(uuid()) @db.Uuid
+  name              String                      @db.Text
+  phone             String?                     @db.Text
+  daily_rate        Decimal                     @default(0)
+  travel_daily_rate Decimal                     @default(0)
+  notes             String?                     @db.Text
+  deleted_at        DateTime?                   @db.Timestamptz()
+  created_at        DateTime?                   @default(now()) @db.Timestamptz()
+  updated_at        DateTime?                   @default(now()) @db.Timestamptz()
+  expenses          overhead_expenses[]
+  daily_logs        worker_daily_logs[]
+  bonuses           worker_bonuses[]
+  settlements       worker_weekly_settlements[]
 
   @@map("workers")
+  @@schema("mazaya")
+}
+
+model worker_daily_logs {
+  id          String    @id @default(uuid()) @db.Uuid
+  worker_id   String    @db.Uuid
+  order_id    String?   @db.Uuid
+  work_date   DateTime  @default(now()) @db.Date
+  daily_rate  Decimal   @default(0)
+  is_travel   Boolean   @default(false)
+  notes       String?   @db.Text
+  created_by  Int?
+  created_at  DateTime? @default(now()) @db.Timestamptz()
+  updated_at  DateTime? @default(now()) @db.Timestamptz()
+  worker      workers   @relation(fields: [worker_id], references: [id])
+  order       orders?   @relation("order_daily_logs", fields: [order_id], references: [id])
+
+  @@map("worker_daily_logs")
+  @@schema("mazaya")
+}
+
+model worker_travel_expenses {
+  id             String    @id @default(uuid()) @db.Uuid
+  order_id       String?   @db.Uuid
+  description    String    @default("") @db.Text
+  amount         Decimal   @default(0)
+  expense_date   DateTime  @default(now()) @db.Date
+  payment_method String?   @default("نقدي") @db.Text
+  notes          String?   @db.Text
+  created_by     Int?
+  created_at     DateTime? @default(now()) @db.Timestamptz()
+  updated_at     DateTime? @default(now()) @db.Timestamptz()
+  order          orders?   @relation("order_travel_expenses", fields: [order_id], references: [id])
+
+  @@map("worker_travel_expenses")
+  @@schema("mazaya")
+}
+
+model worker_bonuses {
+  id          String    @id @default(uuid()) @db.Uuid
+  worker_id   String    @db.Uuid
+  bonus_type  String    @default("مكافأة") @db.Text
+  amount      Decimal   @default(0)
+  reason      String    @default("") @db.Text
+  bonus_date  DateTime  @default(now()) @db.Date
+  notes       String?   @db.Text
+  created_by  Int?
+  created_at  DateTime? @default(now()) @db.Timestamptz()
+  updated_at  DateTime? @default(now()) @db.Timestamptz()
+  worker      workers   @relation(fields: [worker_id], references: [id])
+
+  @@map("worker_bonuses")
+  @@schema("mazaya")
+}
+
+model worker_weekly_settlements {
+  id              String    @id @default(uuid()) @db.Uuid
+  worker_id       String?   @db.Uuid
+  period_start    DateTime  @db.Date
+  period_end      DateTime  @db.Date
+  total_days      Int       @default(0)
+  total_wages     Decimal   @default(0)
+  total_bonuses   Decimal   @default(0)
+  total_discounts Decimal   @default(0)
+  total_advances  Decimal   @default(0)
+  net_payable     Decimal   @default(0)
+  settled_at      DateTime  @default(now()) @db.Timestamptz()
+  notes           String?   @db.Text
+  created_by      Int?
+  worker          workers?  @relation(fields: [worker_id], references: [id])
+
+  @@map("worker_weekly_settlements")
   @@schema("mazaya")
 }
 

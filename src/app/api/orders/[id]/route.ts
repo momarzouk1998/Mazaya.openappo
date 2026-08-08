@@ -36,7 +36,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
     // لازم نرجّع المواد والأعمال الخارجية كمان عشان باقي الواجهات
     // تعتمد على نفس الـ payload
-    const [materialsR, extWorkR] = await Promise.all([
+    const [materialsR, extWorkR, workerLogsR, roadExpensesR] = await Promise.all([
       prisma.$queryRawUnsafe<any[]>(`
         SELECT om.*,
           CASE
@@ -58,10 +58,23 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         LEFT JOIN mazaya.contractors co ON oew.contractor_id = co.id
         WHERE oew.order_id = $1::uuid
       `, orderId).catch(() => []),
+      prisma.$queryRawUnsafe<any[]>(`
+        SELECT wdl.*, w.name as worker_name
+        FROM mazaya.worker_daily_logs wdl
+        LEFT JOIN mazaya.workers w ON wdl.worker_id = w.id
+        WHERE wdl.order_id = $1::uuid
+      `, orderId).catch(() => []),
+      prisma.$queryRawUnsafe<any[]>(`
+        SELECT wte.*
+        FROM mazaya.worker_travel_expenses wte
+        WHERE wte.order_id = $1::uuid
+      `, orderId).catch(() => []),
     ]);
 
     const totals = totalsR[0] || { boards_cost: 0, accessories_cost: 0, order_total: 0, extra_costs_total: 0 };
     const extraCostsTotal = extraCostsR.reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0);
+    const workerLogsTotal = workerLogsR.reduce((s: number, r: any) => s + Number(r.daily_rate ?? 0), 0);
+    const roadExpensesTotal = roadExpensesR.reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0);
     const { customer, branch, ...orderData } = order;
 
     return NextResponse.json({
@@ -73,11 +86,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         materials: materialsR,
         external_work: extWorkR,
         extra_costs: extraCostsR.map((r: any) => ({ ...r, amount: Number(r.amount) })),
+        worker_logs: workerLogsR.map((r: any) => ({ ...r, daily_rate: Number(r.daily_rate) })),
+        road_expenses: roadExpensesR.map((r: any) => ({ ...r, amount: Number(r.amount) })),
         boards_cost: Number(totals.boards_cost),
         accessories_cost: Number(totals.accessories_cost),
         extra_costs_total: extraCostsTotal,
-        // order_total = كل التكاليف (ماشية من الـ view)
-        order_total: Number(totals.order_total),
+        worker_logs_total: workerLogsTotal,
+        road_expenses_total: roadExpensesTotal,
+        // order_total = كل التكاليف (إجمالي التكاليف البصرية المتراكمة)
+        order_total: Number(totals.order_total) + workerLogsTotal + roadExpensesTotal,
       },
     });
   } catch (e: any) {

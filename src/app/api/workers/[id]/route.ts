@@ -28,11 +28,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     const body = await request.json();
-    const allowed = ['name', 'phone', 'notes'];
+    const allowed = ['name', 'phone', 'notes', 'daily_rate', 'travel_daily_rate'];
     const data: any = {};
     for (const key of allowed) {
       if (body[key] !== undefined) {
-        data[key] = body[key];
+        data[key] = (key === 'daily_rate' || key === 'travel_daily_rate') ? Number(body[key]) : body[key];
       }
     }
     if (Object.keys(data).length === 0) {
@@ -60,11 +60,16 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       return NextResponse.json({ ok: false, error: { code: 'NOT_FOUND', message: 'العامل غير موجود' } }, { status: 404 });
     }
 
-    // Check for expenses referencing this worker
-    const ref = await prisma.overhead_expenses.findFirst({ where: { worker_id: id }, select: { id: true } });
-    if (ref) {
+    // Check for expenses, daily logs, bonuses, or settlements referencing this worker
+    const [refExpense, refLog, refBonus] = await Promise.all([
+      prisma.overhead_expenses.findFirst({ where: { worker_id: id }, select: { id: true } }),
+      prisma.worker_daily_logs.findFirst({ where: { worker_id: id }, select: { id: true } }),
+      prisma.worker_bonuses.findFirst({ where: { worker_id: id }, select: { id: true } }),
+    ]);
+
+    if (refExpense || refLog || refBonus) {
       return NextResponse.json(
-        { ok: false, error: { code: 'REFERENCE_ERROR', message: 'لا يمكن حذف هذا العامل لوجود مصروفات مرتبطة به' } },
+        { ok: false, error: { code: 'REFERENCE_ERROR', message: 'لا يمكن حذف هذا العامل لوجود حركات مالية أو يوميات مرتبطة به' } },
         { status: 409 }
       );
     }
@@ -72,10 +77,10 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     await prisma.workers.update({ where: { id }, data: { deleted_at: new Date() } });
     auditLog({ user_id: user.id, action: 'delete', table_name: 'workers', row_id: id, before: before as any });
 
-    return NextResponse.json({ ok: true, data: { message: 'تم الحذف' } });
+    return NextResponse.json({ ok: true, data: { message: 'تم الحذف بنجاح' } });
   } catch (e: any) {
     if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status });
     console.error('Worker delete error:', e);
-    return NextResponse.json({ ok: false, error: { code: 'INTERNAL_ERROR', message: e?.message || 'حدث خطأ' } }, { status: 500 });
+    return NextResponse.json({ ok: false, error: { code: 'INTERNAL_ERROR', message: e?.message || 'حدث خطأ أثناء الحذف' } }, { status: 500 });
   }
 }

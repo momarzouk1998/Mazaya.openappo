@@ -34,13 +34,16 @@ export default function OrderDetailPage() {
     boards_cost: order.boards_cost ?? 0,
     accessories_cost: order.accessories_cost ?? 0,
     installation_cost: order.installation_cost ?? 0,
-    // (F6) — اقرأ القيمة الحقيقية من الأوردر بدل ما تكون ثابت 0
     installation_travel_days: order.installation_travel_days ?? 0,
     internal_transport_cost: order.internal_transport_cost ?? 0,
     external_transport_cost: order.external_transport_cost ?? 0,
     factory_commission: order.factory_commission ?? 0,
+    worker_logs_total: order.worker_logs_total ?? 0,
+    road_expenses_total: order.road_expenses_total ?? 0,
     order_total: order.order_total ?? 0,
   } : null;
+  const workerLogs = order?.worker_logs ?? [];
+  const roadExpenses = order?.road_expenses ?? [];
   const external = externalData ?? (order?.external_work ?? []);
   const extraCosts = extraCostsData ?? (order?.extra_costs ?? []);
   const extraCostsTotal = extraCosts.reduce((s: number, e: any) => s + Number(e.amount ?? 0), 0);
@@ -158,6 +161,14 @@ export default function OrderDetailPage() {
             <div className="card"><div className="text-xs text-gray-500">نقل داخلي</div><div className="font-bold">{formatCurrency(costs.internal_transport_cost)}</div></div>
             <div className="card"><div className="text-xs text-gray-500">نقل خارجي</div><div className="font-bold">{formatCurrency(costs.external_transport_cost)}</div></div>
             <div className="card"><div className="text-xs text-gray-500">عمولة المصنع</div><div className="font-bold">{formatCurrency(costs.factory_commission)}</div></div>
+            <div className={`card ${costs.worker_logs_total > 0 ? "bg-orange-50 border border-orange-200" : ""}`}>
+              <div className="text-xs text-gray-500">أجور العمال (يوميات)</div>
+              <div className="font-bold text-orange-700">{formatCurrency(costs.worker_logs_total)}</div>
+            </div>
+            <div className={`card ${costs.road_expenses_total > 0 ? "bg-amber-50 border border-amber-200" : ""}`}>
+              <div className="text-xs text-gray-500">مصاريف الطريق</div>
+              <div className="font-bold text-amber-700">{formatCurrency(costs.road_expenses_total)}</div>
+            </div>
             {/* نثريات الأوردر */}
             {(() => {
               const overheadItems = extraCosts.filter((e: any) => e.cost_type === 'نثريات');
@@ -174,7 +185,7 @@ export default function OrderDetailPage() {
               <div className="font-bold">{formatCurrency(extraCosts.filter((e: any) => e.cost_type !== 'نثريات').reduce((s: number, e: any) => s + Number(e.amount ?? 0), 0))}</div>
             </div>
             <div className={`card ${external.length > 0 ? "bg-brand-orange-light border border-brand-orange/20" : ""}`}><div className="text-xs text-gray-500">أعمال خارجية</div><div className="font-bold">{formatCurrency(external.reduce((s: number, e: any) => s + Number(e.amount ?? 0), 0))}</div></div>
-            <div className="card bg-gradient-to-l from-brand-orange to-brand-orange-dark text-white md:col-span-4"><div className="text-xs opacity-90">الإجمالي (شامل الأعمال الخارجية)</div><div className="font-extrabold text-lg">{formatCurrency(costs.order_total)}</div></div>
+            <div className="card bg-gradient-to-l from-brand-orange to-brand-orange-dark text-white md:col-span-4"><div className="text-xs opacity-90">الإجمالي الشامل للتكاليف والأجور</div><div className="font-extrabold text-lg">{formatCurrency(costs.order_total)}</div></div>
           </div>
 
           {/* تفاصيل التكاليف الإضافية (غير النثريات) */}
@@ -240,6 +251,43 @@ export default function OrderDetailPage() {
               </form>
             )}
           </div>
+
+          {/* يوميات العمال المسجلة للأوردر */}
+          {workerLogs.length > 0 && (
+            <div className="card mb-4 border-orange-200">
+              <h4 className="font-bold text-sm mb-3 text-orange-800">🧑‍🔧 يوميات العمال على هذا الأوردر</h4>
+              <div className="divide-y border rounded-lg overflow-hidden text-sm">
+                {workerLogs.map((l: any) => (
+                  <div key={l.id} className="flex items-center justify-between px-3 py-2 hover:bg-orange-50/50">
+                    <div>
+                      <span className="font-bold text-gray-800">{l.worker_name || "عامل"}</span>
+                      <span className="text-xs text-gray-500 mr-2">({formatDate(l.work_date)})</span>
+                      {l.is_travel && <span className="badge bg-amber-100 text-amber-800 mr-2">✈️ سفر</span>}
+                    </div>
+                    <strong className="text-orange-700">{formatCurrency(Number(l.daily_rate))}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* مصاريف الطريق المسجلة للأوردر */}
+          {roadExpenses.length > 0 && (
+            <div className="card mb-4 border-amber-200">
+              <h4 className="font-bold text-sm mb-3 text-amber-800">🛣️ مصاريف الطريق الخاصة بالأوردر</h4>
+              <div className="divide-y border rounded-lg overflow-hidden text-sm">
+                {roadExpenses.map((re: any) => (
+                  <div key={re.id} className="flex items-center justify-between px-3 py-2 hover:bg-amber-50/50">
+                    <div>
+                      <span className="text-gray-800">{re.description || re.notes || "مصروف طريق"}</span>
+                      <span className="text-xs text-gray-500 mr-2">({formatDate(re.expense_date)})</span>
+                    </div>
+                    <strong className="text-amber-700">{formatCurrency(Number(re.amount))}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
 

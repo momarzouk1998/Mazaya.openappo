@@ -42,14 +42,20 @@ export async function POST(request: Request) {
   try {
     const user = await requirePermission('workers', 'add');
     const body = await request.json();
-    const { name, phone, notes } = body;
+    const { name, phone, notes, daily_rate, travel_daily_rate } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json({ ok: false, error: { code: 'VALIDATION_ERROR', message: 'اسم العامل مطلوب' } }, { status: 400 });
     }
 
     const item = await prisma.workers.create({
-      data: { name: name.trim(), phone: phone || null, notes: notes || null },
+      data: {
+        name: name.trim(),
+        phone: phone || null,
+        notes: notes || null,
+        daily_rate: daily_rate ? Number(daily_rate) : 0,
+        travel_daily_rate: travel_daily_rate ? Number(travel_daily_rate) : 0,
+      },
     });
 
     auditLog({ user_id: user.id, action: 'create', table_name: 'workers', row_id: item.id, after: item as any });

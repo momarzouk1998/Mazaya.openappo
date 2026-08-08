@@ -17,6 +17,7 @@ export const ALL_MODULES = [
   { key: 'factory_wallet', label: 'يومية المصنع', icon: '👛', path: '/factory-wallet' },
   { key: 'boards_wallet', label: 'يومية الألواح', icon: '🪵', path: '/boards-wallet' },
   { key: 'internal_transport', label: 'النقل الداخلي', icon: '🚚', path: '/internal-transport' },
+  { key: 'road_expenses', label: 'مصاريف الطريق', icon: '🛣️', path: '/road-expenses' },
   { key: 'budget', label: 'الميزانية', icon: '📊', path: '/budget' },
   { key: 'orders', label: 'الأوردرات', icon: '📦', path: '/orders' },
   { key: 'suppliers', label: 'الموردين', icon: '🏭', path: '/suppliers' },
