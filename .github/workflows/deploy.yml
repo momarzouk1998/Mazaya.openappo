@@ -44,11 +44,12 @@ jobs:
             echo "=== [3/6] Updating swarm service ==="
             docker service update --image furniture-xhl2yk:latest --force furniture-xhl2yk
 
-            echo "=== [3.5/6] Running Database Migrations ==="
+            echo "=== [3.5/6] Running Database Migrations & Direct Schema Updates ==="
             CONTAINER_ID=$(docker ps --filter "name=furniture-xhl2yk" --format "{{.ID}}" | head -n 1)
             if [ -n "$CONTAINER_ID" ]; then
               docker exec $CONTAINER_ID npx prisma db push --accept-data-loss || echo "Prisma db push warning"
               docker exec $CONTAINER_ID npx prisma migrate deploy || echo "Prisma migrate deploy warning"
+              docker exec $CONTAINER_ID sh -c "npx prisma db execute --file ./prisma/migrations/20260809_worker_daily_system/migration.sql" || echo "Prisma db execute warning"
             fi
 
             echo "=== [4/6] Waiting 15s for service to settle ==="
