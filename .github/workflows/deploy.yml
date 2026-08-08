@@ -11,12 +11,16 @@ name: Deploy to Server
 
 on:
   workflow_dispatch:
-  push:
+  workflow_run:
+    workflows: ["Build & Push to GHCR"]
+    types:
+      - completed
     branches: [main]
 
 jobs:
   deploy:
     name: Deploy via SSH
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
