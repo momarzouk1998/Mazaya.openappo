@@ -40,6 +40,12 @@ jobs:
             echo "=== [3/6] Updating swarm service ==="
             docker service update --image furniture-xhl2yk:latest --force furniture-xhl2yk
 
+            echo "=== [3.5/6] Running Database Migrations ==="
+            CONTAINER_ID=$(docker ps --filter "name=furniture-xhl2yk" --format "{{.ID}}" | head -n 1)
+            if [ -n "$CONTAINER_ID" ]; then
+              docker exec $CONTAINER_ID npx prisma db push --accept-data-loss || echo "Prisma db push warning"
+            fi
+
             echo "=== [4/6] Waiting 15s for service to settle ==="
             sleep 15
 
