@@ -26,14 +26,14 @@ export async function GET(request: NextRequest) {
     }
 
     const [items, total] = await Promise.all([
-      prisma.worker_weekly_settlements.findMany({
+      (prisma as any).worker_weekly_settlements.findMany({
         where,
         orderBy: [{ period_end: 'desc' }, { settled_at: 'desc' }],
         include: { worker: { select: { id: true, name: true } } },
         skip: offset,
         take: limit,
       }),
-      prisma.worker_weekly_settlements.count({ where }),
+      (prisma as any).worker_weekly_settlements.count({ where }),
     ]);
 
     const serialized = items.map((i: any) => ({
@@ -90,24 +90,24 @@ export async function POST(request: NextRequest) {
 
       for (const w of targetWorkers) {
         // 1) Fetch daily logs in period
-        const dailyLogs = await tx.worker_daily_logs.findMany({
+        const dailyLogs = await (tx as any).worker_daily_logs.findMany({
           where: {
             worker_id: w.id,
             work_date: { gte: startDate, lte: endDate },
           },
         });
-        const totalWages = dailyLogs.reduce((sum, l) => sum + Number(l.daily_rate), 0);
+        const totalWages = dailyLogs.reduce((sum: number, l: any) => sum + Number(l.daily_rate), 0);
         const totalDays = dailyLogs.length;
 
         // 2) Fetch bonuses/discounts in period
-        const adjustments = await tx.worker_bonuses.findMany({
+        const adjustments = await (tx as any).worker_bonuses.findMany({
           where: {
             worker_id: w.id,
             bonus_date: { gte: startDate, lte: endDate },
           },
         });
-        const totalBonuses = adjustments.filter(a => a.bonus_type === 'مكافأة').reduce((s, a) => s + Number(a.amount), 0);
-        const totalDiscounts = adjustments.filter(a => a.bonus_type === 'خصم').reduce((s, a) => s + Number(a.amount), 0);
+        const totalBonuses = adjustments.filter((a: any) => a.bonus_type === 'مكافأة').reduce((s: number, a: any) => s + Number(a.amount), 0);
+        const totalDiscounts = adjustments.filter((a: any) => a.bonus_type === 'خصم').reduce((s: number, a: any) => s + Number(a.amount), 0);
 
         // 3) Fetch advances (سلف) in period from overhead_expenses
         const advances = await tx.overhead_expenses.findMany({
@@ -117,12 +117,12 @@ export async function POST(request: NextRequest) {
             date: { gte: startDate, lte: endDate },
           },
         });
-        const totalAdvances = advances.reduce((s, a) => s + Number(a.amount), 0);
+        const totalAdvances = advances.reduce((s: number, a: any) => s + Number(a.amount), 0);
 
         const netPayable = totalWages + totalBonuses - totalDiscounts - totalAdvances;
 
         // Create settlement record
-        const settlement = await tx.worker_weekly_settlements.create({
+        const settlement = await (tx as any).worker_weekly_settlements.create({
           data: {
             worker_id: w.id,
             period_start: startDate,

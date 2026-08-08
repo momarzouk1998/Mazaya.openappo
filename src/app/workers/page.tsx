@@ -1,14 +1,14 @@
 "use client";
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useUserStore } from "@/store/user-store";
-import { useApi } from "@/hooks/useApi";
+import { useApi, useApiMutation } from "@/hooks/useApi";
 import { useCan } from "@/hooks/useCan";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
 import { SearchBox, FilterBar } from "@/components/SearchFilter";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { exportToExcel } from "@/lib/excel";
 import { formatCurrency } from "@/lib/format";
 import RowEditor, { type FieldDef } from "@/components/ui/RowEditor";
@@ -26,15 +26,50 @@ const workerFields: FieldDef[] = [
 ];
 
 export default function WorkersPage() {
-  const router = useRouter();
   const { user: profile } = useUserStore();
   const { can } = useCan();
-  const { data, loading } = useApi<{ items: any[] }>("/api/workers?limit=500");
+  const { data, loading, refetch } = useApi<{ items: any[] }>("/api/workers?limit=500");
   const { data: ohData } = useApi<{ expenses: any[] }>("/api/overhead?limit=2000");
+  const { mutate: createWorker, loading: savingWorker } = useApiMutation();
+
   const rows = data?.items ?? [];
   const expenses = ohData?.expenses ?? [];
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<"daily" | "settlements" | "adjustments" | "wages" | "workers">("daily");
+
+  // Modal State for New Worker
+  const [showNewWorkerModal, setShowNewWorkerModal] = useState(false);
+  const [newWorkerForm, setNewWorkerForm] = useState({
+    name: "",
+    phone: "",
+    daily_rate: "",
+    travel_daily_rate: "",
+    notes: "",
+  });
+  const [modalError, setModalError] = useState<string | null>(null);
+
+  async function handleCreateWorker(e: React.FormEvent) {
+    e.preventDefault();
+    setModalError(null);
+    if (!newWorkerForm.name.trim()) {
+      setModalError("اسم العامل مطلوب");
+      return;
+    }
+    const { error } = await createWorker("POST", "/api/workers", {
+      name: newWorkerForm.name.trim(),
+      phone: newWorkerForm.phone.trim() || null,
+      daily_rate: newWorkerForm.daily_rate ? Number(newWorkerForm.daily_rate) : 0,
+      travel_daily_rate: newWorkerForm.travel_daily_rate ? Number(newWorkerForm.travel_daily_rate) : 0,
+      notes: newWorkerForm.notes.trim() || null,
+    });
+    if (error) {
+      setModalError(error);
+      return;
+    }
+    setShowNewWorkerModal(false);
+    setNewWorkerForm({ name: "", phone: "", daily_rate: "", travel_daily_rate: "", notes: "" });
+    refetch();
+  }
 
   const totalsByWorker = useMemo(() => {
     const m: Record<string, number> = {};
@@ -86,10 +121,85 @@ export default function WorkersPage() {
             <Button variant="secondary" onClick={() => exportToExcel(rowsWithStats, "workers")}>
               📥 تصدير قائمة العمال
             </Button>
-            {can("workers", "add") && <Button onClick={() => router.push("/workers/new")}>+ عامل جديد</Button>}
+            {can("workers", "add") && (
+              <Button onClick={() => setShowNewWorkerModal(true)}>+ عامل جديد</Button>
+            )}
           </>
         }
       />
+
+      {/* مودال إضافة عامل جديد الفوري */}
+      {showNewWorkerModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4 relative animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="font-bold text-lg text-brand-orange">🧑‍🔧 إضافة عامل جديد</h3>
+              <button
+                onClick={() => setShowNewWorkerModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateWorker} className="space-y-3">
+              <Input
+                label="اسم العامل *"
+                value={newWorkerForm.name}
+                onChange={(e) => setNewWorkerForm({ ...newWorkerForm, name: e.target.value })}
+                placeholder="مثال: أحمد محمود"
+                required
+              />
+
+              <Input
+                label="رقم التواصل"
+                value={newWorkerForm.phone}
+                onChange={(e) => setNewWorkerForm({ ...newWorkerForm, phone: e.target.value })}
+                placeholder="01xxxxxxxxx"
+              />
+
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="اليومية العادية (ج.م)"
+                  type="number"
+                  step="0.01"
+                  value={newWorkerForm.daily_rate}
+                  onChange={(e) => setNewWorkerForm({ ...newWorkerForm, daily_rate: e.target.value })}
+                  placeholder="0"
+                />
+                <Input
+                  label="يومية السفر (ج.م)"
+                  type="number"
+                  step="0.01"
+                  value={newWorkerForm.travel_daily_rate}
+                  onChange={(e) => setNewWorkerForm({ ...newWorkerForm, travel_daily_rate: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
+
+              <Input
+                label="ملاحظات"
+                value={newWorkerForm.notes}
+                onChange={(e) => setNewWorkerForm({ ...newWorkerForm, notes: e.target.value })}
+                placeholder="تخصص، ملاحظات..."
+              />
+
+              {modalError && (
+                <div className="bg-red-50 text-red-700 p-2 rounded text-sm">{modalError}</div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="secondary" onClick={() => setShowNewWorkerModal(false)}>
+                  إلغاء
+                </Button>
+                <Button type="submit" loading={savingWorker}>
+                  حفظ العامل
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* التبويبات الفائقة السلاسة */}
       <div className="flex flex-wrap gap-2 mb-6 border-b pb-1">

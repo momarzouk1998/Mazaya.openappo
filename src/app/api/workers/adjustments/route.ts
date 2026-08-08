@@ -26,14 +26,14 @@ export async function GET(request: NextRequest) {
     }
 
     const [items, total] = await Promise.all([
-      prisma.worker_bonuses.findMany({
+      (prisma as any).worker_bonuses.findMany({
         where,
         orderBy: [{ bonus_date: 'desc' }, { created_at: 'desc' }],
         include: { worker: { select: { id: true, name: true } } },
         skip: offset,
         take: limit,
       }),
-      prisma.worker_bonuses.count({ where }),
+      (prisma as any).worker_bonuses.count({ where }),
     ]);
 
     const serialized = items.map((i: any) => ({
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     const type = bonus_type === 'خصم' ? 'خصم' : 'مكافأة';
     const date = bonus_date ? new Date(bonus_date) : new Date();
 
-    const item = await prisma.worker_bonuses.create({
+    const item = await (prisma as any).worker_bonuses.create({
       data: {
         worker_id,
         bonus_type: type,
@@ -102,7 +102,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ ok: false, error: { code: 'VALIDATION_ERROR', message: 'المعرف مطلوب' } }, { status: 400 });
     }
 
-    await prisma.worker_bonuses.delete({ where: { id } });
+    await (prisma as any).worker_bonuses.delete({ where: { id } });
     return NextResponse.json({ ok: true, data: { message: 'تم الحذف' } });
   } catch (e: any) {
     if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status });

@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     if (orderId) where.order_id = orderId;
 
     const [items, total] = await Promise.all([
-      prisma.worker_daily_logs.findMany({
+      (prisma as any).worker_daily_logs.findMany({
         where,
         orderBy: [{ work_date: 'desc' }, { created_at: 'desc' }],
         include: {
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
         skip: offset,
         take: limit,
       }),
-      prisma.worker_daily_logs.count({ where }),
+      (prisma as any).worker_daily_logs.count({ where }),
     ]);
 
     const serialized = items.map((i: any) => ({
@@ -88,13 +88,13 @@ export async function POST(request: NextRequest) {
         const notes = entry.notes || null;
 
         // Check if log exists for this worker on this date
-        const existing = await tx.worker_daily_logs.findFirst({
+        const existing = await (tx as any).worker_daily_logs.findFirst({
           where: { worker_id: entry.worker_id, work_date: workDate },
         });
 
         let logRecord;
         if (existing) {
-          logRecord = await tx.worker_daily_logs.update({
+          logRecord = await (tx as any).worker_daily_logs.update({
             where: { id: existing.id },
             data: {
               order_id: orderId,
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
             },
           });
         } else {
-          logRecord = await tx.worker_daily_logs.create({
+          logRecord = await (tx as any).worker_daily_logs.create({
             data: {
               worker_id: entry.worker_id,
               order_id: orderId,
@@ -148,7 +148,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ ok: false, error: { code: 'VALIDATION_ERROR', message: 'معرف اليومية مطلوب' } }, { status: 400 });
     }
 
-    await prisma.worker_daily_logs.delete({ where: { id } });
+    await (prisma as any).worker_daily_logs.delete({ where: { id } });
     return NextResponse.json({ ok: true, data: { message: 'تم حذف اليومية' } });
   } catch (e: any) {
     if (e.status) return NextResponse.json({ ok: false, error: { code: e.code || 'FORBIDDEN', message: e?.message || 'غير مسجل الدخول' } }, { status: e.status });

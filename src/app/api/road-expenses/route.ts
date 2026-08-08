@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
       // 3) لو فيه أوردر، سجل مصروف طريق في worker_travel_expenses أو order_extra_costs
       let travelExpense = null;
       if (order_id) {
-        travelExpense = await tx.worker_travel_expenses.create({
+        travelExpense = await (tx as any).worker_travel_expenses.create({
           data: {
             order_id,
             description: notes || 'مصاريف طريق',

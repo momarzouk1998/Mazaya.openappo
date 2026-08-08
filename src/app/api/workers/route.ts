@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: { code: 'VALIDATION_ERROR', message: 'اسم العامل مطلوب' } }, { status: 400 });
     }
 
-    const item = await prisma.workers.create({
+    const item = await (prisma.workers as any).create({
       data: {
         name: name.trim(),
         phone: phone || null,

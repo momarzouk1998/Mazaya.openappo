@@ -63,8 +63,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     // Check for expenses, daily logs, bonuses, or settlements referencing this worker
     const [refExpense, refLog, refBonus] = await Promise.all([
       prisma.overhead_expenses.findFirst({ where: { worker_id: id }, select: { id: true } }),
-      prisma.worker_daily_logs.findFirst({ where: { worker_id: id }, select: { id: true } }),
-      prisma.worker_bonuses.findFirst({ where: { worker_id: id }, select: { id: true } }),
+      (prisma as any).worker_daily_logs?.findFirst({ where: { worker_id: id }, select: { id: true } }),
+      (prisma as any).worker_bonuses?.findFirst({ where: { worker_id: id }, select: { id: true } }),
     ]);
 
     if (refExpense || refLog || refBonus) {
