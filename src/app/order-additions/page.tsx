@@ -40,9 +40,9 @@ export default function OrderAdditionsPage() {
     },
     {
       id: "external",
-      label: "🔨 الأعمال الخارجية والمقاولين",
-      path: "/contractors",
-      desc: "أعمال المقاولين الخارجية المضافة على الأوردرات",
+      label: "🔨 الأعمال الخارجية للمقاولين",
+      path: "/external-work",
+      desc: "تسجيل وتتبع تكاليف الأعمال الخارجية المسندة للورش والمقاولين للأوردرات",
       color: "from-emerald-600 to-teal-700",
       icon: "🔨",
     },
