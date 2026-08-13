@@ -144,7 +144,7 @@ export default function BudgetPage() {
         emptyMessage="لا توجد حركات مالية"
         columns={[
           { key: "date", label: "التاريخ", render: r => formatDate(r.date) },
-          { key: "entry_type", label: "النوع", render: r => <span className={`badge ${ENTRY_TYPE_COLORS[r.entry_type]}`}>{ENTRY_TYPE_LABELS[r.entry_type]}</span> },
+          { key: "entry_type", label: "النوع", render: r => <span className={`badge ${ENTRY_TYPE_COLORS[r.entry_type] || "bg-gray-100 text-gray-700 border-gray-300"}`}>{ENTRY_TYPE_LABELS[r.entry_type] || r.entry_type || "مصروف"}</span> },
           { key: "description", label: "البيان" },
           { key: "party", label: "الجهة", render: r => r.party_name || "-" },
           { key: "payment_method", label: "الطريقة", render: r => PAYMENT_METHOD_LABELS[r.payment_method] || "-" },
