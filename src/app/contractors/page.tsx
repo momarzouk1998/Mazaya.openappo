@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useUserStore } from "@/store/user-store";
 import { useApi } from "@/hooks/useApi";
 import { useCan } from "@/hooks/useCan";
+import HubTabs, { PARTNER_TABS } from "@/components/ui/HubTabs"
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
@@ -47,6 +48,8 @@ export default function ContractorsPage() {
           {can('contractors', 'add') && <Button onClick={() => router.push("/contractors/new")}>+ مقاول جديد</Button>}
         </>}
       />
+
+      <HubTabs tabs={PARTNER_TABS} />
 
       <div className="card mb-4">
         <FilterBar>

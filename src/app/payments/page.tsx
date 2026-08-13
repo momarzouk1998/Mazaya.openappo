@@ -5,6 +5,7 @@ import { useUserStore } from "@/store/user-store";
 import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApi";
 import { useCan } from "@/hooks/useCan";
+import HubTabs, { CUSTOMER_BRANCH_TABS } from "@/components/ui/HubTabs"
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
@@ -63,6 +64,8 @@ export default function PaymentsPage() {
           {can('payments', 'add') && <Button onClick={() => setShowAdd(true)}>💰 تسجيل دفعة</Button>}
         </>}
       />
+
+      <HubTabs tabs={CUSTOMER_BRANCH_TABS} />
 
       {payments.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">

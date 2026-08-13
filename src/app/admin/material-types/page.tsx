@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUserStore } from "@/store/user-store";
 import { useApi, useApiMutation } from "@/hooks/useApi";
+import HubTabs, { ADMIN_SETTINGS_TABS } from "@/components/ui/HubTabs"
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
@@ -65,6 +66,8 @@ export default function MaterialTypesPage() {
         helpDescription="من هنا بتتحكم في أنواع الخامات اللي بتظهر في صفحة مخازن الألواح والإكسسوارات. أي إضافة أو تعديل يظهر فوراً في القوائم."
         backHref="/admin-settings"
       />
+
+      <HubTabs tabs={ADMIN_SETTINGS_TABS} />
 
       <div className="card mb-4">
         <div className="flex flex-wrap gap-3 items-end">

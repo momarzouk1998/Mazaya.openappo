@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { useUserStore } from "@/store/user-store";
 import { useApi } from "@/hooks/useApi";
+import HubTabs, { FINANCE_TABS } from "@/components/ui/HubTabs";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
@@ -61,6 +62,8 @@ export default function BudgetPage() {
         helpDescription="زي الحركات المالية في اليومية لكن مع كاردات تلخّص الوارد والمصروف والصافي. الفلتر بيأثر على الأرقام — يعني تقدر تقارن شهر بشهر أو نوع بنوع."
         backHref="/finances"
       />
+
+      <HubTabs tabs={FINANCE_TABS} />
 
       {/* ===== كاردات الملخص (بتتغير مع الفلتر) ===== */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">

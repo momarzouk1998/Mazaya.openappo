@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUserStore } from "@/store/user-store";
 import { useApi, toErrorMessage } from "@/hooks/useApi";
+import HubTabs, { ADMIN_SETTINGS_TABS } from "@/components/ui/HubTabs";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -131,6 +132,8 @@ export default function UsersPage() {
         backHref="/admin-settings"
         actions={<Button onClick={() => setShowAdd(true)}>+ إضافة موظف جديد</Button>}
       />
+
+      <HubTabs tabs={ADMIN_SETTINGS_TABS} />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <StatCard label="إجمالي الموظفين" value={users.length} icon="👥" />

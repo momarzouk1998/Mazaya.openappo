@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useUserStore } from "@/store/user-store";
 import { useApi } from "@/hooks/useApi";
 import { useCan } from "@/hooks/useCan";
+import HubTabs, { PARTNER_TABS } from "@/components/ui/HubTabs"
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
@@ -61,6 +62,8 @@ export default function SuppliersPage() {
           {can('suppliers', 'add') && <Button onClick={() => router.push("/suppliers/new")}>+ مورد جديد</Button>}
         </>}
       />
+
+      <HubTabs tabs={PARTNER_TABS} />
 
       {/* كاردات الإحصائيات */}
       {!loading && (

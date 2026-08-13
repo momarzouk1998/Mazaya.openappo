@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { useUserStore } from "@/store/user-store"
 import { useApi } from "@/hooks/useApi"
 import { useCan } from "@/hooks/useCan"
+import HubTabs, { FINANCE_TABS } from "@/components/ui/HubTabs"
 import DashboardLayout from "@/components/layout/DashboardLayout"
 import PageHeader from "@/components/PageHeader"
 import { DataTable } from "@/components/DataTable"
@@ -70,6 +71,8 @@ export default function OverheadPage() {
   return (
     <DashboardLayout profile={profile}>
       <PageHeader title="النثريات" subtitle="مصاريف تشغيل المصنع العامة" helpTitle="النثريات" helpDescription="نثريات عامة، كهرباء، شحن، إلخ. أجور العمال بتتسجل من صفحة العمال." backHref="/finances" actions={can('overhead', 'add') ? <Button onClick={() => router.push("/overhead/new")}>+ نثريات جديدة</Button> : undefined} />
+
+      <HubTabs tabs={FINANCE_TABS} />
 
       {/* كارد الإجمالي الوحيد */}
       <div className="mb-4">

@@ -41,6 +41,8 @@ const EMPTY_TODAY: DayData = {
   opening: 0, income: 0, expense: 0, payout: 0, closing: 0, count: 0, entries: [],
 };
 
+import HubTabs, { WALLET_TABS } from "@/components/ui/HubTabs";
+
 export default function FactoryWalletPage() {
   const { user: profile } = useUserStore();
   const [range, setRange] = useState<7 | 30>(7);
@@ -77,6 +79,8 @@ export default function FactoryWalletPage() {
         helpDescription="الكروت فوق بتعكس اليوم الحالي. الجدول تحته فيه كل الأيام (اضغط أي يوم يشوف تفاصيله). التحويل التمريري مش بيدخل هنا لأنه معدّش على المحفظة. مشتريات الألواح والإكسسوارات مش بتحسب هنا (دي في يومية الألواح)."
         actions={<PWAInstallButton />}
       />
+
+      <HubTabs tabs={WALLET_TABS} />
 
       {/* فلتر المدى */}
       <div className="card mb-4 flex flex-wrap items-center gap-3">

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useUserStore } from "@/store/user-store";
 import { useApi, useApiMutation } from "@/hooks/useApi";
 import { useCan } from "@/hooks/useCan";
+import HubTabs, { ORDER_ADDITION_TABS } from "@/components/ui/HubTabs";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -141,13 +142,12 @@ export default function InternalTransportPage() {
         helpDescription="كل نقل داخلي بيخصم من رصيد يومية المصنع كمصروف عادي. لو اخترت أوردر، المبلغ كمان بيتراكم على تكلفة النقل الداخلي بتاعة الأوردر. الحذف والتعديل بيعكسوا الأوردر تلقائياً."
         actions={
           <div className="flex gap-2 items-center">
-            <Button variant="secondary" size="sm" onClick={() => window.location.href = "/order-additions"}>
-              ⬅️ إضافات الأوردرات
-            </Button>
             <PWAInstallButton />
           </div>
         }
       />
+
+      <HubTabs tabs={ORDER_ADDITION_TABS} />
 
       {/* كروت ملخصة */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">

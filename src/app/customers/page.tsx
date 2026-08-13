@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useUserStore } from "@/store/user-store";
 import { useApi } from "@/hooks/useApi";
 import { useCan } from "@/hooks/useCan";
+import HubTabs, { CUSTOMER_BRANCH_TABS } from "@/components/ui/HubTabs"
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
@@ -78,12 +79,12 @@ export default function CustomersPage() {
         helpDescription="هنا بتسجل العملاء بتوع المعارض. كل عميل مرتبط بمعرض محدد. صفحة العميل بتعرض كل أوردراته — بما فيها أوردرات الصيانة اللاحقة — في مكان واحد."
         backHref="/customers-branches"
         actions={<div className="flex gap-2 items-center flex-wrap">
-          <Button variant="secondary" size="sm" onClick={() => router.push("/payments")}>💳 مدفوعات العملاء</Button>
-          <Button variant="secondary" size="sm" onClick={() => router.push("/branches")}>🏪 المعارض</Button>
           <Button variant="secondary" size="sm" onClick={() => exportToExcel(filtered, "customers")}>📥 تصدير</Button>
           {can('customers', 'add') && <Button size="sm" onClick={() => router.push("/customers/new")}>+ عميل جديد</Button>}
         </div>}
       />
+
+      <HubTabs tabs={CUSTOMER_BRANCH_TABS} />
 
       <div className="card mb-4">
         <FilterBar>

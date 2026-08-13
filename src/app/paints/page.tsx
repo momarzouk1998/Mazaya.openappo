@@ -3,6 +3,7 @@ import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useUserStore } from "@/store/user-store"
 import { useApi, useApiMutation } from "@/hooks/useApi"
+import HubTabs, { ORDER_ADDITION_TABS } from "@/components/ui/HubTabs"
 import DashboardLayout from "@/components/layout/DashboardLayout"
 import PageHeader from "@/components/PageHeader"
 import { DataTable } from "@/components/DataTable"
@@ -118,13 +119,12 @@ export default function PaintsPage() {
         backHref="/order-additions"
         actions={
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => router.push("/order-additions")}>
-              ⬅️ إضافات الأوردرات
-            </Button>
             <Button onClick={() => setShowModal(true)}>+ حركة دهانات جديدة</Button>
           </div>
         }
       />
+
+      <HubTabs tabs={ORDER_ADDITION_TABS} />
 
       {/* كارد الإجمالي */}
       <div className="mb-4">

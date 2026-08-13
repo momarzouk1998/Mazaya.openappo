@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useUserStore } from "@/store/user-store"
 import { useApi } from "@/hooks/useApi"
 import { useCan } from "@/hooks/useCan"
+import HubTabs, { INVENTORY_TABS } from "@/components/ui/HubTabs"
 import DashboardLayout from "@/components/layout/DashboardLayout"
 import PageHeader from "@/components/PageHeader"
 import { DataTable } from "@/components/DataTable"
@@ -69,6 +70,8 @@ export default function AccessoriesPage() {
       <PageHeader title="مخزون الاكسسوارات" subtitle={rows.length + " صنف إجمالي"} helpTitle="مخزون الاكسسوارات" helpDescription="إدارة مفصلات، سكك درج، مجاري، كاوتش، إلخ. الشراء والإضافة الجديدة من صفحة اليومية." backHref="/inventory-hub" actions={
         <Button variant="secondary" onClick={() => exportToExcel(filtered.map(({ id, supplier_name, total_price, ...rest }: any) => rest as any), "accessories_inventory")}>📥 تصدير</Button>
       } />
+
+      <HubTabs tabs={INVENTORY_TABS} />
       {/* إجمالي المخزون */}
       {rows.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">

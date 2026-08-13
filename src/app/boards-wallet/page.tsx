@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useUserStore } from "@/store/user-store";
 import { useApi } from "@/hooks/useApi";
+import HubTabs, { WALLET_TABS } from "@/components/ui/HubTabs";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -144,6 +145,8 @@ export default function BoardsWalletPage() {
         helpDescription="وارد = أي تحويل تمريري (المعرض دفع للمورد علشان ألواح بتدخل المخزن). مصروف = شراء ألواح عادي. الإكسسوارات مش هنا (دي في يومية المصنع)."
         actions={<PWAInstallButton />}
       />
+
+      <HubTabs tabs={WALLET_TABS} />
 
       {/* فلتر المدى */}
       <div className="card mb-4 flex flex-wrap items-center gap-3">
