@@ -136,9 +136,17 @@ export default function InternalTransportPage() {
       <PageHeader
         title="النقل الداخلي"
         subtitle="نقل داخلي بين المصنع والمعارض — بيخصم من يومية المصنع، ولو ربطته بأوردر بيتحسب عليه"
+        backHref="/order-additions"
         helpTitle="النقل الداخلي"
         helpDescription="كل نقل داخلي بيخصم من رصيد يومية المصنع كمصروف عادي. لو اخترت أوردر، المبلغ كمان بيتراكم على تكلفة النقل الداخلي بتاعة الأوردر. الحذف والتعديل بيعكسوا الأوردر تلقائياً."
-        actions={<PWAInstallButton />}
+        actions={
+          <div className="flex gap-2 items-center">
+            <Button variant="secondary" size="sm" onClick={() => window.location.href = "/order-additions"}>
+              ⬅️ إضافات الأوردرات
+            </Button>
+            <PWAInstallButton />
+          </div>
+        }
       />
 
       {/* كروت ملخصة */}

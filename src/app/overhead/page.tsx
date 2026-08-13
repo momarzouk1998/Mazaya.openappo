@@ -35,8 +35,10 @@ export default function OverheadPage() {
 
   const activeFiltersCount = [categoryFilter, fromDate, toDate].filter(Boolean).length
 
+  const EXCLUDED_CATEGORIES = ['أجور عمال', 'نقل داخلي', 'مصاريف الطريق', 'مصاريف دهانات', 'دهانات', 'مصاريف ليد', 'ليد']
+
   const filtered = useMemo(() => rows.filter((r) => {
-    if (r.worker_id || r.category === "أجور عمال") return false
+    if (r.worker_id || EXCLUDED_CATEGORIES.includes(r.category)) return false
     const rDate = String(r.date ?? "").slice(0, 10)
     const matchSearch = !search || (r.description ?? "").toLowerCase().includes(search.toLowerCase())
     const matchCategory = !categoryFilter || (r.category ?? "") === categoryFilter
@@ -50,7 +52,7 @@ export default function OverheadPage() {
     return Array.from(
       new Set(
         rows
-          .filter((r) => !r.worker_id && r.category !== "أجور عمال")
+          .filter((r) => !r.worker_id && !EXCLUDED_CATEGORIES.includes(r.category))
           .map((r) => r.category)
           .filter((c) => Boolean(c))
       )

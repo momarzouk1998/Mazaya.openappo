@@ -20,6 +20,7 @@ export const ALL_MODULES = [
   { key: 'road_expenses', label: 'مصاريف الطريق', icon: '🛣️', path: '/road-expenses' },
   { key: 'budget', label: 'الميزانية', icon: '📊', path: '/budget' },
   { key: 'orders', label: 'الأوردرات', icon: '📦', path: '/orders' },
+  { key: 'order_additions', label: 'إضافات الأوردرات', icon: '🧩', path: '/order-additions' },
   { key: 'suppliers', label: 'الموردين', icon: '🏭', path: '/suppliers' },
   { key: 'boards_inventory', label: 'مخزون الألواح', icon: '📋', path: '/boards' },
   { key: 'accessories_inventory', label: 'مخزون الاكسسوارات', icon: '🔩', path: '/accessories' },

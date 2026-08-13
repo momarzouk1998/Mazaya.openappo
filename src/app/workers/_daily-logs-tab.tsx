@@ -43,7 +43,7 @@ export function DailyLogsTab() {
     new Date().toISOString().slice(0, 10)
   );
 
-  const { data: workersData, loading: workersLoading } = useApi<{ items: Worker[] }>("/api/workers?limit=500");
+  const { data: workersData, loading: workersLoading, error: workersError, refetch: refetchWorkers } = useApi<{ items: Worker[] }>("/api/workers?limit=500");
   const { data: ordersData } = useApi<{ items: Order[] }>("/api/orders?limit=500");
   const { data: existingLogsData, refetch: refetchLogs } = useApi<{ items: SavedLog[] }>(
     `/api/workers/daily-logs?date=${selectedDate}`
@@ -199,6 +199,11 @@ export function DailyLogsTab() {
 
           {workersLoading ? (
             <div className="p-8 text-center text-gray-500">جاري تحميل قائمة العمال...</div>
+          ) : workersError ? (
+            <div className="p-8 text-center text-red-600 font-semibold flex flex-col items-center gap-2">
+              <div>⚠️ تعذر جلب قائمة العمال حالياً: {workersError}</div>
+              <Button size="sm" variant="secondary" onClick={() => refetchWorkers()}>🔄 إعادة التحديث</Button>
+            </div>
           ) : workers.length === 0 ? (
             <div className="p-8 text-center text-gray-500">لا يوجد عمال مسجلين في النظام. أضف عمالاً أولاً.</div>
           ) : (

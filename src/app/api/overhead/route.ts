@@ -30,9 +30,10 @@ export async function GET(request: NextRequest) {
     if (search) {
       conditions.push({ description: { contains: search, mode: 'insensitive' } });
     }
+    const EXCLUDED_CATEGORIES = ['أجور عمال', 'نقل داخلي', 'مصاريف الطريق', 'مصاريف دهانات', 'دهانات', 'مصاريف ليد', 'ليد'];
     if (exclude_wages) {
       conditions.push({ worker_id: null });
-      conditions.push({ OR: [{ category: null }, { category: { not: 'أجور عمال' } }] });
+      conditions.push({ OR: [{ category: null }, { category: { notIn: EXCLUDED_CATEGORIES } }] });
     } else if (only_wages) {
       conditions.push({
         OR: [
