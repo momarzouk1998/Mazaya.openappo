@@ -72,6 +72,7 @@ export default function FactoryWalletPage() {
       <PageHeader
         title="يومية المصنع"
         subtitle="الرصيد التراكمي اليومي — وارد من المعارض − مصروف"
+        backHref="/wallets"
         helpTitle="يومية المصنع"
         helpDescription="الكروت فوق بتعكس اليوم الحالي. الجدول تحته فيه كل الأيام (اضغط أي يوم يشوف تفاصيله). التحويل التمريري مش بيدخل هنا لأنه معدّش على المحفظة. مشتريات الألواح والإكسسوارات مش بتحسب هنا (دي في يومية الألواح)."
         actions={<PWAInstallButton />}

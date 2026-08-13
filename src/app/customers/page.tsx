@@ -76,7 +76,7 @@ export default function CustomersPage() {
         subtitle="عملاء المصنع عبر المعارض"
         helpTitle="العملاء"
         helpDescription="هنا بتسجل العملاء بتوع المعارض. كل عميل مرتبط بمعرض محدد. صفحة العميل بتعرض كل أوردراته — بما فيها أوردرات الصيانة اللاحقة — في مكان واحد."
-        backHref="/journal"
+        backHref="/customers-branches"
         actions={<div className="flex gap-2 items-center flex-wrap">
           <Button variant="secondary" size="sm" onClick={() => router.push("/payments")}>💳 مدفوعات العملاء</Button>
           <Button variant="secondary" size="sm" onClick={() => router.push("/branches")}>🏪 المعارض</Button>

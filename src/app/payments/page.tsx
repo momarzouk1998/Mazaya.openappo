@@ -54,7 +54,7 @@ export default function PaymentsPage() {
         subtitle={`${payments.length} دفعة مسجلة`}
         helpTitle="مدفوعات العملاء"
         helpDescription="تسجيل وتتبع مدفوعات العملاء. هذه البيانات للتوثيق فقط ولا تدخل في حسابات اليومية أو الأرباح."
-        backHref="/customers"
+        backHref="/customers-branches"
         actions={<>
           <Button variant="secondary" onClick={() => exportToExcel(filtered.map((p: any) => ({
             التاريخ: p.date, العميل: p.customer?.name || "", الأوردر: p.order?.order_name || "عامة",

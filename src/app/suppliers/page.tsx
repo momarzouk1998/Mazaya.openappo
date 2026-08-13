@@ -55,7 +55,7 @@ export default function SuppliersPage() {
         subtitle="إدارة شركات توريد الخامات"
         helpTitle="الموردون"
         helpDescription="هنا بتسجل الـ 7 شركات اللي بتشتري منهم ألواح واكسسوارات، وتقدر تتابع حساباتهم (دائن ومدين)."
-        backHref="/journal"
+        backHref="/partners"
         actions={<>
           <Button variant="secondary" onClick={() => exportToExcel(filtered, "suppliers")}>📥 تصدير Excel</Button>
           {can('suppliers', 'add') && <Button onClick={() => router.push("/suppliers/new")}>+ مورد جديد</Button>}

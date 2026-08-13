@@ -41,7 +41,7 @@ export default function ContractorsPage() {
         subtitle="ورش الألوميتال والتنجيد وغيرها"
         helpTitle="المقاولون"
         helpDescription="الورش اللي المصنع بيشتغل معاها بره: ألوميتال، تنجيد، نقل. المبالغ هنا بتتسجل للتتبع بس ومش بتدخل في تكلفة الأوردر لأن المعرض بيحول للمقاول مباشرة."
-        backHref="/journal"
+        backHref="/partners"
         actions={<>
           <Button variant="secondary" onClick={() => exportToExcel(filtered, "contractors")}>📥 تصدير</Button>
           {can('contractors', 'add') && <Button onClick={() => router.push("/contractors/new")}>+ مقاول جديد</Button>}

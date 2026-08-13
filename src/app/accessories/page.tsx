@@ -66,7 +66,7 @@ export default function AccessoriesPage() {
 
   return (
     <DashboardLayout profile={profile}>
-      <PageHeader title="مخزون الاكسسوارات" subtitle={rows.length + " صنف إجمالي"} helpTitle="مخزون الاكسسوارات" helpDescription="إدارة مفصلات، سكك درج، مجاري، كاوتش، إلخ. الشراء والإضافة الجديدة من صفحة اليومية." backHref="/journal" actions={
+      <PageHeader title="مخزون الاكسسوارات" subtitle={rows.length + " صنف إجمالي"} helpTitle="مخزون الاكسسوارات" helpDescription="إدارة مفصلات، سكك درج، مجاري، كاوتش، إلخ. الشراء والإضافة الجديدة من صفحة اليومية." backHref="/inventory-hub" actions={
         <Button variant="secondary" onClick={() => exportToExcel(filtered.map(({ id, supplier_name, total_price, ...rest }: any) => rest as any), "accessories_inventory")}>📥 تصدير</Button>
       } />
       {/* إجمالي المخزون */}

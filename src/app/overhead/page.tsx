@@ -69,7 +69,7 @@ export default function OverheadPage() {
 
   return (
     <DashboardLayout profile={profile}>
-      <PageHeader title="النثريات" subtitle="مصاريف تشغيل المصنع العامة" helpTitle="النثريات" helpDescription="نثريات عامة، كهرباء، شحن، إلخ. أجور العمال بتتسجل من صفحة العمال." backHref="/journal" actions={can('overhead', 'add') ? <Button onClick={() => router.push("/overhead/new")}>+ نثريات جديدة</Button> : undefined} />
+      <PageHeader title="النثريات" subtitle="مصاريف تشغيل المصنع العامة" helpTitle="النثريات" helpDescription="نثريات عامة، كهرباء، شحن، إلخ. أجور العمال بتتسجل من صفحة العمال." backHref="/finances" actions={can('overhead', 'add') ? <Button onClick={() => router.push("/overhead/new")}>+ نثريات جديدة</Button> : undefined} />
 
       {/* كارد الإجمالي الوحيد */}
       <div className="mb-4">

@@ -139,6 +139,7 @@ export default function BoardsWalletPage() {
       <PageHeader
         title="يومية الألواح"
         subtitle="الألواح فقط — الوارد (تمريري من المعرض) والمشتريات"
+        backHref="/wallets"
         helpTitle="يومية الألواح"
         helpDescription="وارد = أي تحويل تمريري (المعرض دفع للمورد علشان ألواح بتدخل المخزن). مصروف = شراء ألواح عادي. الإكسسوارات مش هنا (دي في يومية المصنع)."
         actions={<PWAInstallButton />}

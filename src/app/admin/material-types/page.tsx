@@ -63,7 +63,7 @@ export default function MaterialTypesPage() {
         subtitle="خامات الألواح والإكسسوارات — تظهر في القوائم المنسدلة بالمخازن"
         helpTitle="أنواع المواد"
         helpDescription="من هنا بتتحكم في أنواع الخامات اللي بتظهر في صفحة مخازن الألواح والإكسسوارات. أي إضافة أو تعديل يظهر فوراً في القوائم."
-        backHref="/journal"
+        backHref="/admin-settings"
       />
 
       <div className="card mb-4">

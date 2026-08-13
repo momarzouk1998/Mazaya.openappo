@@ -128,7 +128,7 @@ export default function UsersPage() {
         subtitle={`${users.length} موظف`}
         helpTitle="إدارة المستخدمين"
         helpDescription="من هنا تقدر تضيف موظفين جداد أو تعدل بيانات الموجودين، وتتحكم في الصفحات اللي يشوفها كل موظف من الـ Checkboxes، وتعطل حساب أو تريست الباسورد. كل موظف بيشوف بس الصفحات اللي مفعّلها."
-        backHref="/journal"
+        backHref="/admin-settings"
         actions={<Button onClick={() => setShowAdd(true)}>+ إضافة موظف جديد</Button>}
       />
 

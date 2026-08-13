@@ -77,7 +77,7 @@ export default function BoardsPage() {
 
   return (
     <DashboardLayout profile={profile}>
-      <PageHeader title="مخزون الألواح" subtitle={rows.length + " صنف إجمالي"} helpTitle="مخزون الألواح" helpDescription="من هنا بتدير ألواح المصنع. الشراء والإضافة الجديدة من صفحة اليومية." backHref="/journal" actions={
+      <PageHeader title="مخزون الألواح" subtitle={rows.length + " صنف إجمالي"} helpTitle="مخزون الألواح" helpDescription="من هنا بتدير ألواح المصنع. الشراء والإضافة الجديدة من صفحة اليومية." backHref="/inventory-hub" actions={
         <Button variant="secondary" onClick={() => exportToExcel(filtered.map(({ id, supplier_name, total_price, ...rest }: any) => rest as any), "boards_inventory")}>📥 تصدير</Button>
       } />
       {/* إجمالي المخزون */}
