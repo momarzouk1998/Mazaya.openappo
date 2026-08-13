@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUserStore } from "@/store/user-store";
-import { useApi } from "@/hooks/useApi";
+import { useApi, toErrorMessage } from "@/hooks/useApi";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -308,7 +308,7 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
     });
     setSaving(false);
     const j = await res.json();
-    if (!res.ok) { setError(j.error); return; }
+    if (!res.ok) { setError(toErrorMessage(j?.error || j, "حدث خطأ في إضافة الموظف")); return; }
     onSuccess();
   }
 
@@ -426,7 +426,7 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserRow; onClose: (
     const res = await fetch(`/api/admin/users/${user.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setSaving(false);
     const j = await res.json();
-    if (!res.ok) { setError(j.error); return; }
+    if (!res.ok) { setError(toErrorMessage(j?.error || j, "حدث خطأ في تعديل الموظف")); return; }
     onSuccess();
   }
 

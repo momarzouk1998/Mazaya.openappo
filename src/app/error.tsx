@@ -12,7 +12,11 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
         <div className="max-w-xl w-full bg-white rounded-2xl shadow-lg p-8 border border-red-200">
           <div className="text-5xl mb-3">⚠️</div>
           <h1 className="text-2xl font-bold text-red-700 mb-2">حدث خطأ</h1>
-          <p className="text-gray-700 mb-4">{error.message || "Unknown error"}</p>
+          <p className="text-gray-700 mb-4">
+            {typeof error?.message === 'object'
+              ? JSON.stringify(error.message)
+              : String(error?.message || "حدث خطأ غير متوقع")}
+          </p>
           {error.digest && <p className="text-xs text-gray-500 mb-4">Digest: <code>{error.digest}</code></p>}
           <details className="mb-4 bg-gray-50 p-3 rounded text-xs">
             <summary className="cursor-pointer font-medium">Stack trace (للتشخيص)</summary>

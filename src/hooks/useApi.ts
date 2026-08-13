@@ -9,14 +9,25 @@ interface ApiState<T> {
 }
 
 /**
+ * تحويل أي كائن خطأ إلى نص لتجنب خطأ React #31
+ */
+export function toErrorMessage(err: any, fallback = 'حدث خطأ'): string {
+  if (!err) return fallback
+  if (typeof err === 'string') return err
+  if (typeof err.message === 'string') return err.message
+  if (typeof err.error === 'string') return err.error
+  if (typeof err.error?.message === 'string') return err.error.message
+  if (typeof err.code === 'string') return err.message ? `${err.code}: ${err.message}` : err.code
+  try {
+    const s = JSON.stringify(err)
+    return s === '{}' ? fallback : s
+  } catch {
+    return fallback
+  }
+}
+
+/**
  * useApi<T>(path) — GET hook
- * 
- * Usage: useApi<Supplier[]>('/api/suppliers?search=wood')
- * 
- * Returns { data, loading, error, refetch }
- * 
- * Handles AbortController for race-condition prevention.
- * Parses unified { ok, data/error } responses.
  */
 export function useApi<T>(path: string | null) {
   const [state, setState] = useState<ApiState<T>>({
@@ -40,18 +51,17 @@ export function useApi<T>(path: string | null) {
       const json = await res.json().catch(() => ({}))
 
       if (!res.ok) {
-        const msg = json?.error?.message || json?.error || `HTTP ${res.status}`
+        const msg = toErrorMessage(json?.error || json, `HTTP ${res.status}`)
         throw new Error(msg)
       }
 
       if (!controller.signal.aborted) {
-        // Support both { ok: true, data } and raw data responses
         setState({ data: json.data !== undefined ? json.data : json, loading: false, error: null })
       }
       return json.data !== undefined ? json.data : json
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return null
-      const message = err instanceof Error ? err.message : 'حدث خطأ'
+      const message = toErrorMessage(err, 'حدث خطأ')
       if (!controller.signal.aborted) {
         setState((prev) => ({ ...prev, loading: false, error: message }))
       }
@@ -73,14 +83,6 @@ export function useApi<T>(path: string | null) {
 
 /**
  * useApiMutation() — POST/PUT/PATCH/DELETE hook
- * 
- * Usage:
- *   const { mutate, loading } = useApiMutation()
- *   const { error, data } = await mutate('POST', '/api/suppliers', { name: 'Ali' })
- * 
- * Returns { mutate, loading }
- * 
- * Handles unified { ok, data/error } responses.
  */
 export function useApiMutation() {
   const [loading, setLoading] = useState(false)
@@ -104,7 +106,7 @@ export function useApiMutation() {
         const json = await res.json().catch(() => ({}))
 
         if (!res.ok) {
-          const msg = json?.error?.message || json?.error || `HTTP ${res.status}`
+          const msg = toErrorMessage(json?.error || json, `HTTP ${res.status}`)
           return { error: msg, data: null }
         }
 
@@ -113,7 +115,7 @@ export function useApiMutation() {
         if (err instanceof DOMException && err.name === 'AbortError') {
           return { error: null, data: null }
         }
-        const message = err instanceof Error ? err.message : 'حدث خطأ'
+        const message = toErrorMessage(err, 'حدث خطأ')
         return { error: message, data: null }
       } finally {
         if (!controller.signal.aborted) {
