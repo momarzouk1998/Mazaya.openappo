@@ -14,23 +14,16 @@ export interface CurrentProfile {
 
 export const ALL_MODULES = [
   { key: 'journal', label: 'لوحة التحكم', icon: '🏠', path: '/journal' },
-  { key: 'factory_wallet', label: 'يومية المصنع', icon: '👛', path: '/factory-wallet' },
-  { key: 'boards_wallet', label: 'يومية الألواح', icon: '🪵', path: '/boards-wallet' },
-  { key: 'order_additions', label: 'إضافات الأوردرات', icon: '🧩', path: '/order-additions' },
-  { key: 'budget', label: 'الميزانية', icon: '📊', path: '/budget' },
+  { key: 'wallets', label: 'اليوميات', icon: '💰', path: '/wallets' },
+  { key: 'finances', label: 'الماليات', icon: '💸', path: '/finances' },
   { key: 'orders', label: 'الأوردرات', icon: '📦', path: '/orders' },
-  { key: 'suppliers', label: 'الموردين', icon: '🏭', path: '/suppliers' },
-  { key: 'boards_inventory', label: 'مخزون الألواح', icon: '📋', path: '/boards' },
-  { key: 'accessories_inventory', label: 'مخزون الاكسسوارات', icon: '🔩', path: '/accessories' },
-  { key: 'branches', label: 'المعارض', icon: '🏪', path: '/branches' },
-  { key: 'customers', label: 'العملاء', icon: '👥', path: '/customers' },
-  { key: 'payments', label: 'مدفوعات العملاء', icon: '💳', path: '/payments' },
-  { key: 'overhead', label: 'النثريات', icon: '📄', path: '/overhead' },
+  { key: 'order_additions', label: 'إضافات الأوردرات', icon: '🧩', path: '/order-additions' },
+  { key: 'inventory_hub', label: 'المخزون', icon: '📋', path: '/inventory-hub' },
+  { key: 'customers_branches', label: 'العملاء والمعارض', icon: '👥', path: '/customers-branches' },
+  { key: 'partners', label: 'الموردين والمقاولين', icon: '🏭', path: '/partners' },
   { key: 'workers', label: 'العمال', icon: '🧑‍🔧', path: '/workers' },
-  { key: 'contractors', label: 'المقاولين', icon: '🔨', path: '/contractors' },
   { key: 'reports', label: 'التقارير', icon: '📈', path: '/reports' },
-  { key: 'users', label: 'المستخدمين', icon: '⚙️', path: '/admin/users', adminOnly: true },
-  { key: 'material_types', label: 'قوائم الاختيارات', icon: '🏷️', path: '/admin/material-types' },
+  { key: 'admin_settings', label: 'الإعدادات', icon: '⚙️', path: '/admin-settings', adminOnly: true },
 ] as const;
 
 export const MODULE_KEYS = ALL_MODULES.map((m) => m.key);
@@ -45,7 +38,25 @@ export function canSeeModule(profile: CurrentProfile | null, moduleKey: string):
   if (profile.role === 'admin') return true;
   const mod = ALL_MODULES.find((m) => m.key === moduleKey);
   if (mod && (mod as any).adminOnly) return false;
-  return profile.visible_modules.includes(moduleKey);
+  if (profile.visible_modules.includes(moduleKey)) return true;
+  const hubMap: Record<string, string[]> = {
+    factory_wallet: ['wallets'],
+    boards_wallet: ['wallets'],
+    overhead: ['finances'],
+    budget: ['finances'],
+    boards_inventory: ['inventory_hub'],
+    accessories_inventory: ['inventory_hub'],
+    customers: ['customers_branches'],
+    payments: ['customers_branches'],
+    branches: ['customers_branches'],
+    suppliers: ['partners'],
+    contractors: ['partners'],
+    users: ['admin_settings'],
+    material_types: ['admin_settings'],
+  };
+  const hubs = hubMap[moduleKey];
+  if (hubs && hubs.some((h) => profile.visible_modules.includes(h))) return true;
+  return false;
 }
 
 export type PermissionAction = 'view' | 'add' | 'edit' | 'delete';

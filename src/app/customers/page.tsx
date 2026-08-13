@@ -77,10 +77,12 @@ export default function CustomersPage() {
         helpTitle="العملاء"
         helpDescription="هنا بتسجل العملاء بتوع المعارض. كل عميل مرتبط بمعرض محدد. صفحة العميل بتعرض كل أوردراته — بما فيها أوردرات الصيانة اللاحقة — في مكان واحد."
         backHref="/journal"
-        actions={<>
-          <Button variant="secondary" onClick={() => exportToExcel(filtered, "customers")}>📥 تصدير</Button>
-          {can('customers', 'add') && <Button onClick={() => router.push("/customers/new")}>+ عميل جديد</Button>}
-        </>}
+        actions={<div className="flex gap-2 items-center flex-wrap">
+          <Button variant="secondary" size="sm" onClick={() => router.push("/payments")}>💳 مدفوعات العملاء</Button>
+          <Button variant="secondary" size="sm" onClick={() => router.push("/branches")}>🏪 المعارض</Button>
+          <Button variant="secondary" size="sm" onClick={() => exportToExcel(filtered, "customers")}>📥 تصدير</Button>
+          {can('customers', 'add') && <Button size="sm" onClick={() => router.push("/customers/new")}>+ عميل جديد</Button>}
+        </div>}
       />
 
       <div className="card mb-4">
