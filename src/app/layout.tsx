@@ -34,6 +34,13 @@ export const viewport: Viewport = {
 };
 
 /**
+ * Simple in-memory cache for user data to reduce database queries
+ * Cache expires after 5 minutes
+ */
+const userCache = new Map<string, { data: CurrentProfile; expires: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+/**
  * Resolve the current user on the server. Runs once per request, on the
  * same machine that holds the DB, so there's no extra network hop and no
  * client-side race condition.
@@ -45,6 +52,14 @@ async function getInitialUser(): Promise<CurrentProfile | null> {
     if (!token) return null;
     const payload = await verifySession(token);
     if (!payload) return null;
+
+    // Check cache first
+    const cacheKey = `${payload.sub}`;
+    const cached = userCache.get(cacheKey);
+    if (cached && cached.expires > Date.now()) {
+      return cached.data;
+    }
+
     const user = await prisma.users.findFirst({
       where: { id: payload.sub, is_active: true },
       select: {
@@ -59,7 +74,8 @@ async function getInitialUser(): Promise<CurrentProfile | null> {
       },
     });
     if (!user) return null;
-    return {
+
+    const userData = {
       id: user.id,
       username: user.username,
       full_name: user.full_name,
@@ -69,6 +85,14 @@ async function getInitialUser(): Promise<CurrentProfile | null> {
       visible_modules: user.visible_modules || [],
       permissions: (user.permissions as Record<string, string[]>) || {},
     };
+
+    // Cache the result
+    userCache.set(cacheKey, {
+      data: userData,
+      expires: Date.now() + CACHE_TTL,
+    });
+
+    return userData;
   } catch {
     return null;
   }

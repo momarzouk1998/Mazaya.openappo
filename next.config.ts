@@ -9,6 +9,16 @@ const nextConfig: NextConfig = {
       static: 300,
     },
   },
+  // Optimize bundle size
+  swcMinify: true,
+  // Reduce bundle size by optimizing imports
+  modularizeImports: {
+    'recharts': {
+      transform: 'recharts/{{member}}',
+    },
+  },
+  // Compress responses
+  compress: true,
   async headers() {
     return [
       // Security headers — protect against clickjacking, MIME sniffing, etc.
@@ -27,6 +37,13 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
           { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+      // Static assets caching
+      {
+        source: "/(.*)\\.(?:js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
         ],
       },
     ];

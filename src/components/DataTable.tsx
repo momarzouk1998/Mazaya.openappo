@@ -1,5 +1,5 @@
 "use client";
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 
 export interface Column<T> {
   key: string;
@@ -14,9 +14,25 @@ interface Props<T> {
   rows: T[];
   emptyMessage?: string;
   loading?: boolean;
+  pageSize?: number;
+  enablePagination?: boolean;
 }
 
-export function DataTable<T extends { id?: number | string }>({ columns, rows, emptyMessage = "لا توجد بيانات", loading }: Props<T>) {
+export function DataTable<T extends { id?: number | string }>({ 
+  columns, 
+  rows, 
+  emptyMessage = "لا توجد بيانات", 
+  loading,
+  pageSize = 50,
+  enablePagination = true
+}: Props<T>) {
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  const totalPages = enablePagination ? Math.ceil(rows.length / pageSize) : 1;
+  const startIndex = enablePagination ? (currentPage - 1) * pageSize : 0;
+  const endIndex = enablePagination ? startIndex + pageSize : rows.length;
+  const displayedRows = enablePagination ? rows.slice(startIndex, endIndex) : rows;
+
   return (
     <div className="bg-white rounded-xl shadow-card overflow-hidden border border-gray-100">
       <div className="overflow-x-auto">
@@ -37,7 +53,7 @@ export function DataTable<T extends { id?: number | string }>({ columns, rows, e
               </td></tr>
             ) : rows.length === 0 ? (
               <tr><td colSpan={columns.length} className="text-center py-12 text-gray-400">{emptyMessage}</td></tr>
-            ) : rows.map((row, i) => (
+            ) : displayedRows.map((row, i) => (
               <tr key={row.id ?? i} className="hover:bg-gray-50 transition">
                 {columns.map(c => (
                   <td key={c.key} className={`px-4 py-3 text-gray-800 whitespace-nowrap ${c.className || ""}`}>
@@ -49,6 +65,33 @@ export function DataTable<T extends { id?: number | string }>({ columns, rows, e
           </tbody>
         </table>
       </div>
+      
+      {enablePagination && totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-200">
+          <div className="text-sm text-gray-600">
+            عرض {startIndex + 1}-{Math.min(endIndex, rows.length)} من {rows.length}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              السابق
+            </button>
+            <span className="px-3 py-1 text-sm bg-brand-orange text-white rounded">
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              التالي
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
