@@ -169,34 +169,66 @@ export default function OrderDetailPage() {
               <div className="text-xs text-gray-500">مصاريف الطريق</div>
               <div className="font-bold text-amber-700">{formatCurrency(costs.road_expenses_total)}</div>
             </div>
+            {/* مصاريف دهانات */}
+            {(() => {
+              const paintsItems = extraCosts.filter((e: any) => e.cost_type === 'مصاريف دهانات' || e.cost_type === 'دهانات');
+              const paintsTotal = paintsItems.reduce((s: number, e: any) => s + Number(e.amount ?? 0), 0);
+              return (
+                <div className={`card ${paintsTotal > 0 ? "bg-fuchsia-50 border border-fuchsia-200" : ""}`}>
+                  <div className="text-xs text-gray-500">🎨 مصاريف دهانات</div>
+                  <div className="font-bold text-fuchsia-700">{formatCurrency(paintsTotal)}</div>
+                </div>
+              );
+            })()}
+            {/* مصاريف ليد */}
+            {(() => {
+              const ledItems = extraCosts.filter((e: any) => e.cost_type === 'مصاريف ليد' || e.cost_type === 'ليد');
+              const ledTotal = ledItems.reduce((s: number, e: any) => s + Number(e.amount ?? 0), 0);
+              return (
+                <div className={`card ${ledTotal > 0 ? "bg-yellow-50 border border-yellow-200" : ""}`}>
+                  <div className="text-xs text-gray-500">💡 مصاريف ليد</div>
+                  <div className="font-bold text-yellow-700">{formatCurrency(ledTotal)}</div>
+                </div>
+              );
+            })()}
             {/* نثريات الأوردر */}
             {(() => {
               const overheadItems = extraCosts.filter((e: any) => e.cost_type === 'نثريات');
               const overheadTotal = overheadItems.reduce((s: number, e: any) => s + Number(e.amount ?? 0), 0);
               return (
-                <div className={`card ${overheadTotal > 0 ? "bg-yellow-50 border border-yellow-200" : ""}`}>
-                  <div className="text-xs text-gray-500">نثريات</div>
-                  <div className="font-bold text-yellow-700">{formatCurrency(overheadTotal)}</div>
+                <div className={`card ${overheadTotal > 0 ? "bg-purple-50 border border-purple-200" : ""}`}>
+                  <div className="text-xs text-gray-500">🧾 نثريات</div>
+                  <div className="font-bold text-purple-700">{formatCurrency(overheadTotal)}</div>
                 </div>
               );
             })()}
-            <div className={`card ${extraCosts.filter((e: any) => e.cost_type !== 'نثريات').length > 0 ? "bg-brand-orange-light border border-brand-orange/20" : ""}`}>
-              <div className="text-xs text-gray-500">تكاليف إضافية</div>
-              <div className="font-bold">{formatCurrency(extraCosts.filter((e: any) => e.cost_type !== 'نثريات').reduce((s: number, e: any) => s + Number(e.amount ?? 0), 0))}</div>
-            </div>
+            {/* تكاليف إضافية أخرى */}
+            {(() => {
+              const otherItems = extraCosts.filter((e: any) => !['نثريات', 'مصاريف دهانات', 'دهانات', 'مصاريف ليد', 'ليد'].includes(e.cost_type));
+              const otherTotal = otherItems.reduce((s: number, e: any) => s + Number(e.amount ?? 0), 0);
+              return (
+                <div className={`card ${otherTotal > 0 ? "bg-brand-orange-light border border-brand-orange/20" : ""}`}>
+                  <div className="text-xs text-gray-500">تكاليف إضافية أخرى</div>
+                  <div className="font-bold">{formatCurrency(otherTotal)}</div>
+                </div>
+              );
+            })()}
             <div className={`card ${external.length > 0 ? "bg-brand-orange-light border border-brand-orange/20" : ""}`}><div className="text-xs text-gray-500">أعمال خارجية</div><div className="font-bold">{formatCurrency(external.reduce((s: number, e: any) => s + Number(e.amount ?? 0), 0))}</div></div>
             <div className="card bg-gradient-to-l from-brand-orange to-brand-orange-dark text-white md:col-span-4"><div className="text-xs opacity-90">الإجمالي الشامل للتكاليف والأجور</div><div className="font-extrabold text-lg">{formatCurrency(costs.order_total)}</div></div>
           </div>
 
-          {/* تفاصيل التكاليف الإضافية (غير النثريات) */}
+          {/* تفاصيل التكاليف الإضافية (دهانات، ليد، وغيرها) */}
           {extraCosts.filter((e: any) => e.cost_type !== 'نثريات').length > 0 && (
-            <div className="card mb-4">
-              <h4 className="font-bold text-sm mb-2">➕ تفاصيل التكاليف الإضافية</h4>
-              <div className="space-y-1 text-sm">
+            <div className="card mb-4 border-purple-200">
+              <h4 className="font-bold text-sm mb-3 text-purple-900">🎨💡 تفاصيل مصاريف الدهانات والليد والتكاليف الإضافية</h4>
+              <div className="divide-y border rounded-lg overflow-hidden text-sm">
                 {extraCosts.filter((e: any) => e.cost_type !== 'نثريات').map((e: any) => (
-                  <div key={e.id} className="flex justify-between py-1 border-b last:border-0">
-                    <span>{e.cost_type}{e.notes ? ` — ${e.notes}` : ""}</span>
-                    <strong>{formatCurrency(Number(e.amount))}</strong>
+                  <div key={e.id} className="flex justify-between items-center px-3 py-2 hover:bg-purple-50/50">
+                    <div>
+                      <span className="font-bold text-gray-800">{e.cost_type}</span>
+                      {e.notes ? <span className="text-gray-600 mr-2">— {e.notes}</span> : ""}
+                    </div>
+                    <strong className="text-purple-800">{formatCurrency(Number(e.amount))}</strong>
                   </div>
                 ))}
               </div>
