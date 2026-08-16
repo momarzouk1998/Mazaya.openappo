@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { exportToExcel } from "@/lib/excel";
 import { formatCurrency } from "@/lib/format";
 import DateInput from "@/components/ui/DateInput";
+import { downloadElementAsPdf } from "@/lib/pdf-export";
 
 function safeFormatDate(v: any): string {
   if (!v || v === "null" || v === "undefined" || v === "-") return "—";
@@ -32,6 +33,7 @@ export default function OrdersReportPage() {
   const [subTab, setSubTab] = useState<"orders" | "additions" | "external">("orders");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [pdfGenerating, setPdfGenerating] = useState(false);
 
   // Pagination state
   const [page, setPage] = useState(1);
@@ -58,118 +60,118 @@ export default function OrdersReportPage() {
         fetchSafe("/api/paints?limit=1000"),
         fetchSafe("/api/led-expenses?limit=1000"),
         fetchSafe("/api/internal-transport?limit=1000"),
-        fetchSafe("/api/external-work?limit=1000"),
+        fetchSafe("/api/orders/external-work/all?limit=1000"),
       ]);
 
       const ordList = ordRes?.data?.items ?? ordRes?.data ?? ordRes?.items ?? [];
-      const pList = pRes?.data?.items ?? pRes?.data ?? pRes?.items ?? [];
-      const lList = lRes?.data?.items ?? lRes?.data ?? lRes?.items ?? [];
-      const tList = tRes?.data?.entries ?? tRes?.data ?? tRes?.entries ?? [];
+      const paintsList = pRes?.data?.items ?? pRes?.data ?? pRes?.items ?? [];
+      const ledList = lRes?.data?.items ?? lRes?.data ?? lRes?.items ?? [];
+      const transList = tRes?.data?.entries ?? tRes?.data ?? tRes?.entries ?? [];
       const extList = extRes?.data?.items ?? extRes?.data ?? extRes?.items ?? [];
 
-      setRawOrders(Array.isArray(ordList) ? ordList : []);
+      const pTotal = (Array.isArray(paintsList) ? paintsList : []).reduce((s: number, x: any) => s + fmtNum(x.amount ?? x.cost), 0);
+      const lTotal = (Array.isArray(ledList) ? ledList : []).reduce((s: number, x: any) => s + fmtNum(x.amount ?? x.cost), 0);
+      setPaintsTotal(pTotal);
+      setLedTotal(lTotal);
 
-      const filterByDate = (list: any[]) => {
-        if (!fromDate && !toDate) return list;
-        return list.filter((x: any) => {
-          const d = String(x.date || x.expense_date || x.created_at || "").slice(0, 10);
-          return (!fromDate || d >= fromDate) && (!toDate || d <= toDate);
-        });
-      };
+      const parsedOrders = (Array.isArray(ordList) ? ordList : []).map((x: any) => {
+        const boardsCost = fmtNum(x.boards_cost);
+        const accCost = fmtNum(x.accessories_cost);
+        const installCost = fmtNum(x.installation_cost);
+        const internalTrans = fmtNum(x.internal_transport_cost);
+        const externalTrans = fmtNum(x.external_transport_cost);
+        const commission = fmtNum(x.factory_commission);
+        const workersWages = fmtNum(x.worker_logs_total);
+        const roadExp = fmtNum(x.road_expenses_total);
+        const extraCosts = fmtNum(x.extra_costs_total);
+        const overheadTot = fmtNum(x.overhead_total);
+        const externalWorkTot = fmtNum(x.external_work_total);
 
-      const filteredP = filterByDate(Array.isArray(pList) ? pList : []);
-      const filteredL = filterByDate(Array.isArray(lList) ? lList : []);
-      const filteredT = filterByDate(Array.isArray(tList) ? tList : []);
-      const filteredExt = filterByDate(Array.isArray(extList) ? extList : []);
+        const factoryCost =
+          boardsCost +
+          accCost +
+          installCost +
+          internalTrans +
+          externalTrans +
+          commission +
+          workersWages +
+          roadExp +
+          extraCosts +
+          overheadTot;
 
-      setPaintsTotal(filteredP.reduce((s: number, r: any) => s + fmtNum(r.amount), 0));
-      setLedTotal(filteredL.reduce((s: number, r: any) => s + fmtNum(r.amount), 0));
-
-      // Map Orders with rich itemization
-      const mappedOrders = (Array.isArray(ordList) ? ordList : []).map((x: any) => {
-        const grand = fmtNum(x.order_total ?? x.total ?? 0);
-        const ext = fmtNum(x.external_work_total ?? 0);
-        const bCost = fmtNum(x.boards_cost ?? 0);
-        const aCost = fmtNum(x.accessories_cost ?? 0);
-        const matTotal = bCost + aCost;
-        const factory = Math.max(0, grand - ext);
-        const wLogs = fmtNum(x.worker_logs_total ?? 0);
-        const roadExp = fmtNum(x.road_expenses_total ?? 0);
-        const instCost = fmtNum(x.installation_cost ?? 0);
-        const inTrans = fmtNum(x.internal_transport_cost ?? 0);
-        const exTrans = fmtNum(x.external_transport_cost ?? 0);
-        const commission = fmtNum(x.factory_commission ?? 0);
-        const overhead = fmtNum(x.overhead_costs_total ?? x.overhead_total ?? 0);
-        const extraCosts = fmtNum(x.extra_costs_total ?? 0);
+        const grandTotal = fmtNum(x.order_total) > 0 ? fmtNum(x.order_total) : factoryCost + externalWorkTot;
 
         return {
-          "اسم الأوردر": x.order_name ?? "",
-          العميل: x.customer_name ?? "-",
-          المعرض: x.branch_name ?? "-",
-          الحالة: x.status ?? "",
+          _id: x.id,
+          _status: x.status ?? "مفتوح",
+          _raw: x,
+          "اسم الأوردر": x.order_name ?? "-",
+          العميل: x.customer?.name ?? x.customer_name ?? "-",
+          المعرض: x.branch?.name ?? x.branch_name ?? "-",
+          الحالة: x.status ?? "مفتوح",
           "تاريخ البدء": safeFormatDate(x.start_date || x.created_at),
           "تاريخ الانتهاء": safeFormatDate(x.end_date),
-          "إجمالي المواد": matTotal,
-          "تكلفة الألواح": bCost,
-          "تكلفة الاكسسوارات": aCost,
-          "أجور العمال": wLogs,
+          "إجمالي المواد": boardsCost + accCost,
+          "تكلفة الألواح": boardsCost,
+          "تكلفة الإكسسوارات": accCost,
+          "أجور العمال": workersWages,
           "مصاريف الطريق": roadExp,
-          "نقل داخلي": inTrans,
-          "نقل خارجي": exTrans,
-          تركيبات: instCost,
-          عمولة: commission,
-          نثريات: overhead,
+          "نقل داخلي": internalTrans,
+          "نقل خارجي": externalTrans,
+          تركيبات: installCost,
+          "عمولة المصنع": commission,
+          نثريات: overheadTot,
           "تكاليف إضافية": extraCosts,
-          "الأعمال الخارجية (المقاولين)": ext,
-          "تكلفة المصنع (بدون مقاولين)": factory,
-          "الإجمالي الشامل للأوردر": grand,
+          "أعمال خارجية": externalWorkTot,
+          "صافي تكلفة المصنع": factoryCost,
+          "الإجمالي الشامل": grandTotal,
         };
       });
 
-      // Map Additions
-      const mappedAdditions = [
-        ...filteredP.map((x: any) => ({
-          التاريخ: safeFormatDate(x.date || x.created_at),
-          القسم: "🎨 دهانات ومرمات",
-          الأوردر: x.order_name || "—",
-          البيان: x.description || "دهانات وتينر",
-          "طريقة الدفع": x.payment_method || "نقدي",
-          المبلغ: fmtNum(x.amount),
-          الملاحظات: x.notes || "-",
-        })),
-        ...filteredL.map((x: any) => ({
-          التاريخ: safeFormatDate(x.date || x.created_at),
-          القسم: "💡 ليد وكهرباء",
-          الأوردر: x.order_name || "—",
-          البيان: x.description || "بضاعة ومصنعية ليد",
-          "طريقة الدفع": x.payment_method || "نقدي",
-          المبلغ: fmtNum(x.amount),
-          الملاحظات: x.notes || "-",
-        })),
-        ...filteredT.map((x: any) => ({
-          التاريخ: safeFormatDate(x.date || x.created_at),
-          القسم: "🚚 نقل ومصاريف طريق",
-          الأوردر: x.order_name || "—",
-          البيان: x.description || "نقل / مصاريف طريق",
-          "طريقة الدفع": x.payment_method || "نقدي",
-          المبلغ: fmtNum(x.amount),
-          الملاحظات: x.notes || "-",
-        })),
-      ];
+      setRawOrders(Array.isArray(ordList) ? ordList : []);
+      setOrders(parsedOrders);
 
-      // Map External Work
-      const mappedExt = filteredExt.map((x: any) => ({
-        التاريخ: safeFormatDate(x.created_at),
-        "المقاول / الورشة": x.contractor_name || "—",
-        الأوردر: x.order_name || "—",
-        "نوع العمل الخارجي": x.work_type || "أخرى",
-        المبلغ: fmtNum(x.amount),
-        الملاحظات: x.notes || "-",
+      // Additions tab dataset
+      const paintsFormatted = (Array.isArray(paintsList) ? paintsList : []).map((x: any) => ({
+        النوع: "🎨 دهانات وتينر",
+        التاريخ: safeFormatDate(x.date || x.created_at),
+        الأوردر: x.order_name || x.order?.order_name || "-",
+        البيان: x.description || x.item_name || "-",
+        المبلغ: fmtNum(x.amount ?? x.cost),
+        ملاحظات: x.notes || "-",
       }));
 
-      setOrders(mappedOrders);
-      setAdditions(mappedAdditions);
-      setExternalWork(mappedExt);
+      const ledFormatted = (Array.isArray(ledList) ? ledList : []).map((x: any) => ({
+        النوع: "💡 ليد وكهرباء",
+        التاريخ: safeFormatDate(x.date || x.created_at),
+        الأوردر: x.order_name || x.order?.order_name || "-",
+        البيان: x.description || x.item_name || "-",
+        المبلغ: fmtNum(x.amount ?? x.cost),
+        ملاحظات: x.notes || "-",
+      }));
+
+      const transFormatted = (Array.isArray(transList) ? transList : []).map((x: any) => ({
+        النوع: "🚚 نقل داخلي",
+        التاريخ: safeFormatDate(x.date || x.created_at),
+        الأوردر: x.order_name || x.order?.order_name || "-",
+        البيان: x.description || "-",
+        المبلغ: fmtNum(x.amount),
+        ملاحظات: x.notes || "-",
+      }));
+
+      setAdditions([...paintsFormatted, ...ledFormatted, ...transFormatted]);
+
+      // External work tab dataset
+      const extFormatted = (Array.isArray(extList) ? extList : []).map((x: any) => ({
+        التاريخ: safeFormatDate(x.date || x.created_at),
+        الأوردر: x.order_name || x.order?.order_name || "-",
+        "المقاول / الورشة": x.contractor?.name || x.contractor_name || "-",
+        "نوع العمل": x.work_type || "-",
+        التكلفة: fmtNum(x.amount ?? x.cost),
+        ملاحظات: x.notes || "-",
+      }));
+
+      setExternalWork(extFormatted);
     } catch (e) {
       console.error("Orders report load error:", e);
     } finally {
@@ -203,110 +205,21 @@ export default function OrdersReportPage() {
     }
   }
 
-  // Comprehensive Detailed KPIs Breakdown
-  const stats = useMemo(() => {
-    let openCount = 0;
-    let openTotal = 0;
-    let completedCount = 0;
-    let completedTotal = 0;
-    let deliveredCount = 0;
-    let deliveredTotal = 0;
-
-    let boardsTotal = 0;
-    let accessoriesTotal = 0;
-    let externalTotal = 0;
-    let workerLogsTotal = 0;
-    let roadExpensesTotal = 0;
-    let internalTransportTotal = 0;
-    let externalTransportTotal = 0;
-    let installationTotal = 0;
-    let commissionTotal = 0;
-    let overheadTotal = 0;
-    let extraCostsTotal = 0;
-    let grandTotal = 0;
-
-    rawOrders.forEach((o) => {
-      const total = fmtNum(o.order_total ?? o.total ?? 0);
-      const st = String(o.status ?? "");
-      grandTotal += total;
-
-      if (st === "مكتمل" || st === "تم التسليم") {
-        completedCount++;
-        completedTotal += total;
-        if (st === "تم التسليم") {
-          deliveredCount++;
-          deliveredTotal += total;
-        }
-      } else {
-        openCount++;
-        openTotal += total;
-      }
-
-      boardsTotal += fmtNum(o.boards_cost);
-      accessoriesTotal += fmtNum(o.accessories_cost);
-      externalTotal += fmtNum(o.external_work_total);
-      workerLogsTotal += fmtNum(o.worker_logs_total);
-      roadExpensesTotal += fmtNum(o.road_expenses_total);
-      internalTransportTotal += fmtNum(o.internal_transport_cost);
-      externalTransportTotal += fmtNum(o.external_transport_cost);
-      installationTotal += fmtNum(o.installation_cost);
-      commissionTotal += fmtNum(o.factory_commission);
-      overheadTotal += fmtNum(o.overhead_costs_total ?? o.overhead_total ?? 0);
-      extraCostsTotal += fmtNum(o.extra_costs_total);
-    });
-
-    const materialsTotal = boardsTotal + accessoriesTotal;
-    const manualCostsTotal =
-      workerLogsTotal +
-      roadExpensesTotal +
-      internalTransportTotal +
-      externalTransportTotal +
-      installationTotal +
-      commissionTotal +
-      overheadTotal +
-      extraCostsTotal;
-
-    return {
-      openCount,
-      openTotal,
-      completedCount,
-      completedTotal,
-      deliveredCount,
-      deliveredTotal,
-      totalCount: rawOrders.length,
-      grandTotal,
-      materialsTotal,
-      boardsTotal,
-      accessoriesTotal,
-      externalTotal,
-      manualCostsTotal,
-      workerLogsTotal,
-      roadExpensesTotal,
-      internalTransportTotal,
-      externalTransportTotal,
-      installationTotal,
-      commissionTotal,
-      overheadTotal,
-      extraCostsTotal,
-      factoryTotal: Math.max(0, grandTotal - externalTotal),
-    };
-  }, [rawOrders]);
-
   // Active dataset
   const activeDataset = useMemo(() => {
-    let list: any[] = [];
-    if (subTab === "orders") list = orders;
-    else if (subTab === "additions") list = additions;
-    else if (subTab === "external") list = externalWork;
+    let list = subTab === "orders" ? orders : subTab === "additions" ? additions : externalWork;
 
     if (search.trim()) {
       const q = search.toLowerCase().trim();
       list = list.filter((r) =>
-        Object.values(r).some((v) => String(v ?? "").toLowerCase().includes(q))
+        Object.entries(r).some(([k, v]) => {
+          if (k.startsWith("_")) return false;
+          return String(v ?? "").toLowerCase().includes(q);
+        })
       );
     }
     return list;
-  }, [subTab, orders, additions, externalWork, search]);
+  }, [orders, additions, externalWork, subTab, search]);
 
   const totalPages = Math.max(1, Math.ceil(activeDataset.length / pageSize));
   const paginatedRows = useMemo(() => {
@@ -314,25 +227,108 @@ export default function OrdersReportPage() {
     return activeDataset.slice(start, start + pageSize);
   }, [activeDataset, page, pageSize]);
 
+  // Executive Dashboard KPIs
+  const stats = useMemo(() => {
+    let openCount = 0;
+    let completedCount = 0;
+    let deliveredCount = 0;
+    let openTotal = 0;
+    let completedTotal = 0;
+    let deliveredTotal = 0;
+
+    let materialsTotal = 0;
+    let boardsTotal = 0;
+    let accessoriesTotal = 0;
+    let workersTotal = 0;
+    let roadTotal = 0;
+    let internalTransTotal = 0;
+    let externalTransTotal = 0;
+    let installationTotal = 0;
+    let commissionTotal = 0;
+    let overheadTotal = 0;
+    let extraCostsTotal = 0;
+    let externalTotal = 0;
+    let factoryTotal = 0;
+    let grandTotal = 0;
+
+    orders.forEach((o) => {
+      const st = o["الحالة"];
+      const g = fmtNum(o["الإجمالي الشامل"]);
+
+      if (st === "مكتمل") {
+        completedCount++;
+        completedTotal += g;
+      } else if (st === "تم التسليم") {
+        deliveredCount++;
+        deliveredTotal += g;
+      } else {
+        openCount++;
+        openTotal += g;
+      }
+
+      materialsTotal += fmtNum(o["إجمالي المواد"]);
+      boardsTotal += fmtNum(o["تكلفة الألواح"]);
+      accessoriesTotal += fmtNum(o["تكلفة الإكسسوارات"]);
+      workersTotal += fmtNum(o["أجور العمال"]);
+      roadTotal += fmtNum(o["مصاريف الطريق"]);
+      internalTransTotal += fmtNum(o["نقل داخلي"]);
+      externalTransTotal += fmtNum(o["نقل خارجي"]);
+      installationTotal += fmtNum(o["تركيبات"]);
+      commissionTotal += fmtNum(o["عمولة المصنع"]);
+      overheadTotal += fmtNum(o["نثريات"]);
+      extraCostsTotal += fmtNum(o["تكاليف إضافية"]);
+      externalTotal += fmtNum(o["أعمال خارجية"]);
+      factoryTotal += fmtNum(o["صافي تكلفة المصنع"]);
+      grandTotal += g;
+    });
+
+    return {
+      totalCount: orders.length,
+      openCount,
+      completedCount,
+      deliveredCount,
+      openTotal,
+      completedTotal,
+      deliveredTotal,
+      materialsTotal,
+      boardsTotal,
+      accessoriesTotal,
+      workersTotal,
+      roadTotal,
+      internalTransTotal,
+      externalTransTotal,
+      installationTotal,
+      commissionTotal,
+      overheadTotal,
+      extraCostsTotal,
+      externalTotal,
+      factoryTotal,
+      grandTotal,
+    };
+  }, [orders]);
+
   const columns = useMemo(() => {
     if (!activeDataset.length) return [];
-    return Object.keys(activeDataset[0]);
+    return Object.keys(activeDataset[0]).filter((k) => !k.startsWith("_"));
   }, [activeDataset]);
 
   const moneyKeys = useMemo(() => {
     return columns.filter(
       (k) =>
-        k.includes("المبلغ") ||
         k.includes("تكلفة") ||
-        k.includes("الإجمالي") ||
+        k.includes("إجمالي") ||
+        k.includes("المبلغ") ||
+        k.includes("التكلفة") ||
         k.includes("أجور") ||
         k.includes("مصاريف") ||
         k.includes("نقل") ||
         k.includes("تركيبات") ||
         k.includes("عمولة") ||
         k.includes("نثريات") ||
-        k.includes("المواد") ||
-        k.includes("الأعمال الخارجية")
+        k.includes("إضافية") ||
+        k.includes("أعمال خارجية") ||
+        k.includes("صافي") ||
+        k.includes("الشامل")
     );
   }, [columns]);
 
@@ -346,31 +342,76 @@ export default function OrdersReportPage() {
   }, [activeDataset, moneyKeys]);
 
   function handleExport() {
-    const titles = {
-      orders: "كشف_الأوردرات_والتكاليف_التفصيلي",
-      additions: "إضافات_الأوردرات_دهانات_وليد_ونقل",
-      external: "الأعمال_الخارجية_للمقاولين",
-    };
-    exportToExcel(activeDataset, `${titles[subTab]}_${new Date().toISOString().slice(0, 10)}`);
+    const clean = activeDataset.map((row) => {
+      const o: any = {};
+      columns.forEach((c) => (o[c] = row[c]));
+      return o;
+    });
+    exportToExcel(clean, `تقرير_الأوردرات_والتكاليف_${new Date().toISOString().slice(0, 10)}`);
+  }
+
+  async function handleDownloadPdf() {
+    if (pdfGenerating) return;
+    setPdfGenerating(true);
+    try {
+      await downloadElementAsPdf({
+        elementId: "printable-orders-report",
+        fileName: `تقرير_الأوردرات_والتكاليف_${new Date().toISOString().slice(0, 10)}`,
+        orientation: "landscape",
+      });
+    } catch (e) {
+      console.error("PDF download error:", e);
+      alert("تعذر توليد ملف PDF، يرجى المحاولة مرة أخرى.");
+    } finally {
+      setPdfGenerating(false);
+    }
   }
 
   if (!profile) return null;
 
   return (
     <DashboardLayout profile={profile}>
-      {/* رأس الصفحة المدمج والأنيق */}
-      <div className="flex items-center justify-between gap-2 mb-2.5">
+      {/* رأس الصفحة مع أزرار التحميل المباشر وزر الرجوع بجانب بعض */}
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
         <h1 className="text-base font-bold text-gray-900 flex items-center gap-2">
           <span>📋</span>
           <span>تقرير الأوردرات والتكاليف الشاملة</span>
         </h1>
-        <Link
-          href="/reports"
-          className="btn-secondary h-7 px-2.5 text-xs font-bold flex items-center gap-1 whitespace-nowrap"
-        >
-          <span>←</span>
-          <span>رجوع للتقارير</span>
-        </Link>
+
+        <div className="flex items-center gap-1.5">
+          {/* زر تحميل Excel */}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleExport}
+            className="flex items-center gap-1 font-bold h-7 text-xs px-2.5 bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
+          >
+            <span>📥</span>
+            <span>تحميل Excel</span>
+          </Button>
+
+          {/* زر تحميل PDF مباشر */}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleDownloadPdf}
+            disabled={pdfGenerating}
+            className="flex items-center gap-1 font-bold h-7 text-xs px-2.5 bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100 disabled:opacity-50"
+            title="تحميل التقرير كملف PDF مباشر بتنسيق عرضي عالي الجودة"
+          >
+            <span>{pdfGenerating ? "⏳" : "📄"}</span>
+            <span>{pdfGenerating ? "جاري التجهيز..." : "تحميل PDF"}</span>
+          </Button>
+
+          {/* زر الرجوع */}
+          <Link
+            href="/reports"
+            className="btn-secondary h-7 px-2.5 text-xs font-bold flex items-center gap-1 whitespace-nowrap"
+          >
+            <span>←</span>
+            <span>رجوع للتقارير</span>
+          </Link>
+        </div>
       </div>
 
       {/* ======================================================== */}
@@ -474,30 +515,39 @@ export default function OrdersReportPage() {
             </div>
           </div>
 
-          {/* العمود 3: التكاليف والمصاريف التشغيلية اليدوية */}
+          {/* العمود 3: التكاليف والمصاريف اليدوية */}
           <div className="bg-rose-50/50 rounded-lg border border-rose-200 p-2.5 flex flex-col justify-between">
             <div className="text-xs font-bold text-rose-900 mb-1.5 flex items-center justify-between">
               <span>💸 التكاليف والمصاريف اليدوية</span>
               <span className="bg-rose-200/60 text-rose-900 px-1.5 py-0.2 rounded text-[11px]">
-                {formatCurrency(stats.manualCostsTotal)}
+                {formatCurrency(
+                  stats.workersTotal +
+                    stats.roadTotal +
+                    stats.internalTransTotal +
+                    stats.externalTransTotal +
+                    stats.installationTotal +
+                    stats.commissionTotal +
+                    stats.overheadTotal +
+                    stats.extraCostsTotal
+                )}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-1 text-[11px]">
               <div className="bg-white p-1 rounded border border-rose-100 flex justify-between items-center">
                 <span className="text-gray-600 font-medium">🧑‍🔧 عمال:</span>
-                <strong className="font-mono text-gray-900 text-xs">{formatCurrency(stats.workerLogsTotal)}</strong>
+                <strong className="font-mono text-gray-900 text-xs">{formatCurrency(stats.workersTotal)}</strong>
               </div>
               <div className="bg-white p-1 rounded border border-rose-100 flex justify-between items-center">
                 <span className="text-gray-600 font-medium">🛣️ طريق:</span>
-                <strong className="font-mono text-gray-900 text-xs">{formatCurrency(stats.roadExpensesTotal)}</strong>
+                <strong className="font-mono text-gray-900 text-xs">{formatCurrency(stats.roadTotal)}</strong>
               </div>
               <div className="bg-white p-1 rounded border border-rose-100 flex justify-between items-center">
                 <span className="text-gray-600 font-medium">📦 نقل داخلي:</span>
-                <strong className="font-mono text-gray-900 text-xs">{formatCurrency(stats.internalTransportTotal)}</strong>
+                <strong className="font-mono text-gray-900 text-xs">{formatCurrency(stats.internalTransTotal)}</strong>
               </div>
               <div className="bg-white p-1 rounded border border-rose-100 flex justify-between items-center">
                 <span className="text-gray-600 font-medium">🚛 نقل خارجي:</span>
-                <strong className="font-mono text-gray-900 text-xs">{formatCurrency(stats.externalTransportTotal)}</strong>
+                <strong className="font-mono text-gray-900 text-xs">{formatCurrency(stats.externalTransTotal)}</strong>
               </div>
               <div className="bg-white p-1 rounded border border-rose-100 flex justify-between items-center">
                 <span className="text-gray-600 font-medium">🔧 تركيبات:</span>
@@ -551,7 +601,7 @@ export default function OrdersReportPage() {
         </div>
       </div>
 
-      {/* شريط التحكم الموحد المدمج: التابات + التاريخ + الفلاتر + البحث + التصدير */}
+      {/* شريط التحكم الموحد المدمج: التابات + التاريخ + الفلاتر + البحث */}
       <div className="bg-white p-2 rounded-xl border border-gray-200 shadow-xs mb-2.5 flex flex-wrap items-center justify-between gap-2">
         {/* التابات الفرعية */}
         <div className="flex items-center gap-1 overflow-x-auto">
@@ -581,7 +631,7 @@ export default function OrdersReportPage() {
           </button>
         </div>
 
-        {/* فلاتر التاريخ والبحث والأزرار */}
+        {/* فلاتر التاريخ والبحث */}
         <div className="flex flex-wrap items-center gap-1.5 mr-auto">
           {/* أزرار الفترات السريعة */}
           <div className="flex items-center bg-gray-50 p-0.5 rounded-lg border text-xs">
@@ -641,24 +691,6 @@ export default function OrdersReportPage() {
               </button>
             )}
           </div>
-
-          {/* زر التصدير Excel */}
-          <Button variant="secondary" size="sm" onClick={handleExport} className="flex items-center gap-1 font-bold h-7 text-xs px-2.5">
-            <span>📥</span>
-            <span>Excel</span>
-          </Button>
-
-          {/* زر تحميل وطباعة PDF بالعرض */}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => window.print()}
-            className="flex items-center gap-1 font-bold h-7 text-xs px-2.5 bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100"
-            title="تحميل التقرير كملف PDF بتنسيق عرضي (Landscape)"
-          >
-            <span>🖨️</span>
-            <span>PDF (عرضي)</span>
-          </Button>
         </div>
       </div>
 
@@ -692,31 +724,28 @@ export default function OrdersReportPage() {
                       const v = row[k];
                       const isMoney = moneyKeys.includes(k);
                       const isStatus = k === "الحالة";
-                      const isGrand = k === "الإجمالي الشامل للأوردر";
-                      const isFactory = k === "تكلفة المصنع (بدون مقاولين)";
+                      const isGrand = k === "الإجمالي الشامل" || k === "صافي تكلفة المصنع";
                       return (
                         <td
                           key={k}
                           className={`px-2 py-1.5 whitespace-nowrap text-center ${
                             isGrand
-                              ? "font-extrabold text-brand-orange-dark font-mono bg-orange-50/20"
-                              : isFactory
-                                ? "font-bold text-blue-900 font-mono"
-                                : isMoney
-                                  ? "font-semibold text-gray-900 font-mono"
-                                  : "text-gray-700"
+                              ? "font-bold text-brand-orange-dark font-mono"
+                              : isMoney
+                                ? "font-semibold text-gray-900 font-mono"
+                                : "text-gray-700"
                           }`}
                         >
                           {isMoney ? (
-                            formatCurrency(fmtNum(v))
+                            v > 0 ? formatCurrency(fmtNum(v)) : "0"
                           ) : isStatus ? (
                             <span
                               className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-semibold ${
-                                v === "مكتمل" || v === "تم التسليم"
-                                  ? "bg-green-100 text-green-800"
-                                  : v === "قيد التنفيذ"
-                                    ? "bg-blue-100 text-blue-800"
-                                    : "bg-gray-100 text-gray-800"
+                                v === "مكتمل"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : v === "تم التسليم"
+                                    ? "bg-purple-100 text-purple-800"
+                                    : "bg-blue-100 text-blue-800"
                               }`}
                             >
                               {v}
@@ -756,7 +785,7 @@ export default function OrdersReportPage() {
             </table>
           </div>
 
-          {/* شريط ترقيم الصفحات Pagination */}
+          {/* ترقيم الصفحات Pagination */}
           <div className="flex flex-wrap items-center justify-between gap-3 p-2 bg-gray-50/80 border-t text-xs text-gray-600">
             <div className="flex items-center gap-2">
               <span>
@@ -819,52 +848,188 @@ export default function OrdersReportPage() {
         </div>
       )}
 
-      {/* تنسيقات الطباعة العرضية (Landscape PDF Print) */}
-      <style jsx global>{`
-        @media print {
-          @page {
-            size: landscape;
-            margin: 6mm 8mm;
-          }
-          header, aside, .btn-secondary, button, input, select, .no-print {
-            display: none !important;
-          }
-          body {
-            background: #ffffff !important;
-            color: #000000 !important;
-            font-size: 10px !important;
-            padding: 0 !important;
-            margin: 0 !important;
-          }
-          main {
-            padding: 0 !important;
-            margin: 0 !important;
-            overflow: visible !important;
-          }
-          .card {
-            box-shadow: none !important;
-            border: 1px solid #e5e7eb !important;
-            break-inside: avoid;
-            margin-bottom: 8px !important;
-            padding: 6px !important;
-          }
-          table {
-            font-size: 8.5px !important;
-            width: 100% !important;
-            border-collapse: collapse !important;
-          }
-          th, td {
-            padding: 2.5px 3px !important;
-            border: 1px solid #e5e7eb !important;
-          }
-          thead {
-            display: table-header-group !important;
-          }
-          tr {
-            break-inside: avoid;
-          }
-        }
-      `}</style>
+      {/* ======================================================== */}
+      {/* حاوية الـ PDF المستقلة - عالية الدقة ومكتملة البيانات (Off-screen Container) */}
+      {/* ======================================================== */}
+      <div
+        id="printable-orders-report"
+        style={{
+          position: "fixed",
+          left: "-9999px",
+          top: "0",
+          width: "1350px",
+          backgroundColor: "#ffffff",
+          padding: "24px",
+          color: "#111827",
+          fontFamily: "Tajawal, sans-serif",
+          zIndex: -100,
+        }}
+      >
+        {/* ترويسة التقرير */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #ea580c", paddingBottom: "12px", marginBottom: "16px" }}>
+          <div>
+            <h1 style={{ fontSize: "20px", fontWeight: "900", color: "#111827", margin: 0 }}>شركة مزايا للتصنيع والأثاث</h1>
+            <h2 style={{ fontSize: "14px", fontWeight: "700", color: "#ea580c", marginTop: "4px", margin: 0 }}>
+              تقرير الأوردرات والتكاليف الشاملة {subTab === "additions" ? "(إضافات الأوردرات)" : subTab === "external" ? "(أعمال المقاولين)" : ""}
+            </h2>
+          </div>
+          <div style={{ textAlign: "left", fontSize: "11px", color: "#4b5563" }}>
+            <div>الفترة: {fromDate || "البداية"} إلى {toDate || "الآن"}</div>
+            <div>تاريخ الاستخراج: {new Date().toLocaleDateString("ar-EG")}</div>
+            <div>إجمالي السجلات: {activeDataset.length} سجل</div>
+          </div>
+        </div>
+
+        {/* مصفوفة الإحصائيات الأفقية في الـ PDF */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px", marginBottom: "16px" }}>
+          {/* كارد 1 */}
+          <div style={{ border: "1px solid #bfdbfe", backgroundColor: "#eff6ff", borderRadius: "8px", padding: "10px" }}>
+            <div style={{ fontSize: "12px", fontWeight: "800", color: "#1e40af", marginBottom: "6px" }}>📦 حالات الأوردرات</div>
+            <div style={{ fontSize: "11px", display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+              <span>مفتوحة ({stats.openCount}):</span>
+              <strong style={{ fontFamily: "monospace" }}>{formatCurrency(stats.openTotal)}</strong>
+            </div>
+            <div style={{ fontSize: "11px", display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+              <span>مكتملة ({stats.completedCount}):</span>
+              <strong style={{ fontFamily: "monospace" }}>{formatCurrency(stats.completedTotal)}</strong>
+            </div>
+            <div style={{ fontSize: "11px", display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+              <span>تم التسليم ({stats.deliveredCount}):</span>
+              <strong style={{ fontFamily: "monospace" }}>{formatCurrency(stats.deliveredTotal)}</strong>
+            </div>
+            <div style={{ borderTop: "1px solid #bfdbfe", paddingTop: "4px", marginTop: "4px", display: "flex", justifyContent: "space-between", fontWeight: "800", color: "#1e3a8a", fontSize: "12px" }}>
+              <span>الإجمالي:</span>
+              <span style={{ fontFamily: "monospace" }}>{formatCurrency(stats.grandTotal)}</span>
+            </div>
+          </div>
+
+          {/* كارد 2 */}
+          <div style={{ border: "1px solid #fde68a", backgroundColor: "#fffbeb", borderRadius: "8px", padding: "10px" }}>
+            <div style={{ fontSize: "12px", fontWeight: "800", color: "#92400e", marginBottom: "6px" }}>🪵 المواد الخام</div>
+            <div style={{ fontSize: "11px", display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+              <span>ألواح خشب:</span>
+              <strong style={{ fontFamily: "monospace" }}>{formatCurrency(stats.boardsTotal)}</strong>
+            </div>
+            <div style={{ fontSize: "11px", display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+              <span>إكسسوارات:</span>
+              <strong style={{ fontFamily: "monospace" }}>{formatCurrency(stats.accessoriesTotal)}</strong>
+            </div>
+            <div style={{ fontSize: "11px", display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+              <span>دهانات وليد:</span>
+              <strong style={{ fontFamily: "monospace" }}>{formatCurrency(paintsTotal + ledTotal)}</strong>
+            </div>
+            <div style={{ borderTop: "1px solid #fde68a", paddingTop: "4px", marginTop: "4px", display: "flex", justifyContent: "space-between", fontWeight: "800", color: "#78350f", fontSize: "12px" }}>
+              <span>إجمالي المواد:</span>
+              <span style={{ fontFamily: "monospace" }}>{formatCurrency(stats.materialsTotal + paintsTotal + ledTotal)}</span>
+            </div>
+          </div>
+
+          {/* كارد 3 */}
+          <div style={{ border: "1px solid #fbcfe8", backgroundColor: "#fdf2f8", borderRadius: "8px", padding: "10px" }}>
+            <div style={{ fontSize: "12px", fontWeight: "800", color: "#9d174d", marginBottom: "6px" }}>💸 المصاريف والتشغيل</div>
+            <div style={{ fontSize: "11px", display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+              <span>أجور عمال:</span>
+              <strong style={{ fontFamily: "monospace" }}>{formatCurrency(stats.workersTotal)}</strong>
+            </div>
+            <div style={{ fontSize: "11px", display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+              <span>نقل داخلي وطريق:</span>
+              <strong style={{ fontFamily: "monospace" }}>{formatCurrency(stats.internalTransTotal + stats.roadTotal)}</strong>
+            </div>
+            <div style={{ fontSize: "11px", display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+              <span>تركيبات وعمولات:</span>
+              <strong style={{ fontFamily: "monospace" }}>{formatCurrency(stats.installationTotal + stats.commissionTotal)}</strong>
+            </div>
+            <div style={{ borderTop: "1px solid #fbcfe8", paddingTop: "4px", marginTop: "4px", display: "flex", justifyContent: "space-between", fontWeight: "800", color: "#831843", fontSize: "12px" }}>
+              <span>إضافية ونثريات:</span>
+              <span style={{ fontFamily: "monospace" }}>{formatCurrency(stats.extraCostsTotal + stats.overheadTotal)}</span>
+            </div>
+          </div>
+
+          {/* كارد 4 */}
+          <div style={{ border: "1px solid #fed7aa", backgroundColor: "#fff7ed", borderRadius: "8px", padding: "10px" }}>
+            <div style={{ fontSize: "12px", fontWeight: "800", color: "#c2410c", marginBottom: "6px" }}>🏭 صافي تكلفة المصنع</div>
+            <div style={{ fontSize: "11px", display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+              <span>أعمال مقاولين:</span>
+              <strong style={{ fontFamily: "monospace" }}>{formatCurrency(stats.externalTotal)}</strong>
+            </div>
+            <div style={{ fontSize: "11px", display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+              <span>صافي المصنع:</span>
+              <strong style={{ fontFamily: "monospace" }}>{formatCurrency(stats.factoryTotal)}</strong>
+            </div>
+            <div style={{ borderTop: "1px solid #fed7aa", paddingTop: "4px", marginTop: "4px", display: "flex", justifyContent: "space-between", fontWeight: "900", color: "#9a3412", fontSize: "13px" }}>
+              <span>الإجمالي الشامل:</span>
+              <span style={{ fontFamily: "monospace", color: "#c2410c" }}>{formatCurrency(stats.grandTotal)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* الجدول الكامل لجميع السجلات بدون Pagination */}
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", textAlign: "center" }}>
+          <thead>
+            <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #d1d5db" }}>
+              <th style={{ padding: "6px 4px", border: "1px solid #e5e7eb", width: "24px" }}>#</th>
+              {columns.map((k) => (
+                <th key={k} style={{ padding: "6px 4px", border: "1px solid #e5e7eb", fontWeight: "800", whiteSpace: "nowrap" }}>
+                  {k}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {activeDataset.map((row, i) => (
+              <tr key={i} style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#f9fafb" }}>
+                <td style={{ padding: "5px 3px", border: "1px solid #e5e7eb", color: "#6b7280", fontFamily: "monospace" }}>
+                  {i + 1}
+                </td>
+                {columns.map((k) => {
+                  const v = row[k];
+                  const isMoney = moneyKeys.includes(k);
+                  const isStatus = k === "الحالة";
+                  const isGrand = k === "الإجمالي الشامل" || k === "صافي تكلفة المصنع";
+                  return (
+                    <td
+                      key={k}
+                      style={{
+                        padding: "5px 3px",
+                        border: "1px solid #e5e7eb",
+                        whiteSpace: "nowrap",
+                        fontWeight: isGrand ? "800" : isMoney ? "700" : "500",
+                        color: isGrand ? "#ea580c" : isMoney ? "#111827" : "#374151",
+                        fontFamily: isMoney ? "monospace" : "inherit",
+                      }}
+                    >
+                      {isMoney ? (v > 0 ? formatCurrency(fmtNum(v)) : "0") : isStatus ? String(v) : (v ?? "—")}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr style={{ backgroundColor: "#fef3c7", borderTop: "2px solid #d97706", fontWeight: "900", fontSize: "10.5px" }}>
+              <td style={{ padding: "6px 4px", border: "1px solid #fde68a" }}>Σ</td>
+              {columns.map((k) => {
+                const isMoney = moneyKeys.includes(k);
+                if (isMoney) {
+                  return (
+                    <td key={k} style={{ padding: "6px 4px", border: "1px solid #fde68a", fontFamily: "monospace", color: "#b45309", whiteSpace: "nowrap" }}>
+                      {formatCurrency(columnSums[k] || 0)}
+                    </td>
+                  );
+                }
+                if (k === columns[0]) {
+                  return (
+                    <td key={k} style={{ padding: "6px 4px", border: "1px solid #fde68a", whiteSpace: "nowrap" }}>
+                      الإجمالي ({activeDataset.length} سجل)
+                    </td>
+                  );
+                }
+                return <td key={k} style={{ padding: "6px 4px", border: "1px solid #fde68a" }}></td>;
+              })}
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </DashboardLayout>
   );
 }
