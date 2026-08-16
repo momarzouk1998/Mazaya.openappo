@@ -210,7 +210,7 @@ export default function CashflowReportPage() {
 
   return (
     <DashboardLayout profile={profile}>
-      {/* رأس الصفحة المدمج والأنيق بدون سطر فرعي */}
+      {/* رأس الصفحة المدمج والأنيق */}
       <div className="flex items-center justify-between gap-2 mb-2.5">
         <h1 className="text-base font-bold text-gray-900 flex items-center gap-2">
           <span>💸</span>
@@ -225,50 +225,104 @@ export default function CashflowReportPage() {
         </Link>
       </div>
 
-      {/* كروت المؤشرات التفصيلية تحت العنوان مباشرة */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-2.5">
-        {/* يومية المصنع */}
-        <div className="bg-white rounded-xl p-2.5 border border-emerald-200 shadow-xs">
-          <div className="flex items-center justify-between text-emerald-700 text-xs font-bold mb-1">
-            <span>👛 يومية المصنع</span>
-            <span className="bg-emerald-50 px-2 py-0.5 rounded text-[11px]">{stats.factoryCount} حركة</span>
-          </div>
-          <div className="text-sm font-extrabold text-emerald-950 font-mono">
-            صافي: {formatCurrency(stats.factoryNet)}
-          </div>
-          <div className="text-[10px] text-emerald-800 mt-0.5 flex justify-between border-t border-emerald-100 pt-0.5">
-            <span>وارد: <strong>{formatCurrency(stats.factoryIncome)}</strong></span>
-            <span>مصروف: <strong>{formatCurrency(stats.factoryExpense)}</strong></span>
-          </div>
+      {/* ======================================================== */}
+      {/* جدول ملون ومفصل للإحصائيات بخط واضح وأرقام كبيرة وواضحة */}
+      {/* ======================================================== */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-xs p-3 mb-3">
+        <div className="text-xs font-bold text-gray-800 mb-2 flex items-center justify-between border-b pb-1.5">
+          <span className="flex items-center gap-1.5">
+            <span>📊</span>
+            <span>لوحة تحليل حركة الخزينة وتدفقات النقدية واليوميات</span>
+          </span>
+          <span className="text-[11px] font-semibold text-gray-500">
+            إجمالي الحركات المسجلة: <strong className="text-brand-orange-dark font-mono text-xs">{stats.totalCount}</strong> حركة
+          </span>
         </div>
 
-        {/* يومية الألواح */}
-        <div className="bg-white rounded-xl p-2.5 border border-amber-200 shadow-xs">
-          <div className="flex items-center justify-between text-amber-700 text-xs font-bold mb-1">
-            <span>🪵 يومية الألواح</span>
-            <span className="bg-amber-50 px-2 py-0.5 rounded text-[11px]">{stats.boardsCount} حركة</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5">
+          {/* العمود 1: يومية المصنع */}
+          <div className="bg-emerald-50/50 rounded-lg border border-emerald-200 p-2.5 flex flex-col justify-between">
+            <div className="text-xs font-bold text-emerald-900 mb-1.5 flex items-center justify-between">
+              <span>👛 يومية المصنع التشغيلية</span>
+              <span className="bg-emerald-200/60 text-emerald-900 px-1.5 py-0.2 rounded text-[11px]">
+                {stats.factoryCount} حركة
+              </span>
+            </div>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-emerald-100">
+                <span className="text-emerald-700 font-semibold">وارد مقبوض:</span>
+                <span className="font-extrabold font-mono text-gray-900">{formatCurrency(stats.factoryIncome)}</span>
+              </div>
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-emerald-100">
+                <span className="text-rose-700 font-semibold">مصروف صادر:</span>
+                <span className="font-extrabold font-mono text-rose-800">{formatCurrency(stats.factoryExpense)}</span>
+              </div>
+              <div className="flex items-center justify-between bg-emerald-600 text-white p-1.5 rounded font-bold shadow-xs">
+                <span>صافي يومية المصنع:</span>
+                <span className="font-extrabold font-mono text-sm">{formatCurrency(stats.factoryNet)}</span>
+              </div>
+            </div>
           </div>
-          <div className="text-sm font-extrabold text-amber-950 font-mono">
-            صافي: {formatCurrency(stats.boardsNet)}
-          </div>
-          <div className="text-[10px] text-amber-800 mt-0.5 flex justify-between border-t border-amber-100 pt-0.5">
-            <span>تمريري: <strong>{formatCurrency(stats.boardsIncome)}</strong></span>
-            <span>مشتريات: <strong>{formatCurrency(stats.boardsExpense)}</strong></span>
-          </div>
-        </div>
 
-        {/* صافي الخزينة العام */}
-        <div className="bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white rounded-xl p-2.5 shadow-xs">
-          <div className="flex items-center justify-between text-white/90 text-xs font-bold mb-1">
-            <span>💵 صافي الخزينة العام</span>
-            <span className="bg-white/20 px-2 py-0.5 rounded text-[11px]">{stats.totalCount} حركة كلية</span>
+          {/* العمود 2: يومية الألواح */}
+          <div className="bg-amber-50/50 rounded-lg border border-amber-200 p-2.5 flex flex-col justify-between">
+            <div className="text-xs font-bold text-amber-900 mb-1.5 flex items-center justify-between">
+              <span>🪵 يومية الألواح والمشتريات</span>
+              <span className="bg-amber-200/60 text-amber-900 px-1.5 py-0.2 rounded text-[11px]">
+                {stats.boardsCount} حركة
+              </span>
+            </div>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-amber-100">
+                <span className="text-amber-800 font-semibold">تحويل تمريري وارد:</span>
+                <span className="font-extrabold font-mono text-gray-900">{formatCurrency(stats.boardsIncome)}</span>
+              </div>
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-amber-100">
+                <span className="text-rose-700 font-semibold">مشتريات ألواح مصروفة:</span>
+                <span className="font-extrabold font-mono text-rose-800">{formatCurrency(stats.boardsExpense)}</span>
+              </div>
+              <div className="flex items-center justify-between bg-amber-600 text-white p-1.5 rounded font-bold shadow-xs">
+                <span>صافي يومية الألواح:</span>
+                <span className="font-extrabold font-mono text-sm">{formatCurrency(stats.boardsNet)}</span>
+              </div>
+            </div>
           </div>
-          <div className="text-sm font-extrabold font-mono text-white">
-            {formatCurrency(stats.grandNet)}
+
+          {/* العمود 3: طرق الدفع والوسائل */}
+          <div className="bg-blue-50/50 rounded-lg border border-blue-200 p-2.5 flex flex-col justify-between">
+            <div className="text-xs font-bold text-blue-900 mb-1.5 flex items-center justify-between">
+              <span>💳 تحليل قنوات النقدية</span>
+            </div>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-blue-100">
+                <span className="text-gray-700 font-semibold">💵 نقدي بالخزينة:</span>
+                <span className="font-extrabold font-mono text-gray-900">{formatCurrency(stats.cashTotal)}</span>
+              </div>
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-blue-100">
+                <span className="text-blue-700 font-semibold">🏦 بنكي وإلكتروني:</span>
+                <span className="font-extrabold font-mono text-blue-900">{formatCurrency(stats.bankTotal)}</span>
+              </div>
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-blue-100">
+                <span className="text-gray-500 font-medium">عدد كل الحركات:</span>
+                <span className="font-bold font-mono text-gray-700">{stats.totalCount} حركة</span>
+              </div>
+            </div>
           </div>
-          <div className="text-[10px] text-white/80 mt-0.5 flex justify-between border-t border-white/20 pt-0.5">
-            <span>نقدي: <strong>{formatCurrency(stats.cashTotal)}</strong></span>
-            <span>بنكي/إلكتروني: <strong>{formatCurrency(stats.bankTotal)}</strong></span>
+
+          {/* العمود 4: صافي الخزينة العام */}
+          <div className="bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white rounded-lg p-3 flex flex-col justify-between shadow-xs">
+            <div>
+              <div className="text-xs font-bold text-white/90 mb-1">💵 صافي الخزينة العام المجمع</div>
+              <div className="text-xl font-extrabold font-mono text-white tracking-wide">
+                {formatCurrency(stats.grandNet)}
+              </div>
+              <div className="text-[11px] text-white/80 mt-1 border-t border-white/20 pt-1">
+                الرصيد الصافي المتاح بمجموع يومية المصنع ويومية الألواح
+              </div>
+            </div>
+            <div className="mt-2 bg-white/10 rounded p-1.5 text-center text-xs font-bold text-white">
+              {stats.factoryCount} حركة مصنع + {stats.boardsCount} حركة ألواح
+            </div>
           </div>
         </div>
       </div>

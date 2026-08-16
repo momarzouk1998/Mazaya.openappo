@@ -156,6 +156,10 @@ export default function InventoryReportPage() {
     const accRemQty = aItems.reduce((s, r) => s + fmtNum(r["المتبقي"]), 0);
     const accZeroCount = aItems.filter((r) => fmtNum(r["المتبقي"]) <= 0).length;
 
+    const totalInQty = boardsInQty + accInQty;
+    const totalUsedQty = boardsUsedQty + accUsedQty;
+    const totalRemQty = boardsRemQty + accRemQty;
+
     return {
       boardsCount: bItems.length,
       boardsVal,
@@ -171,10 +175,12 @@ export default function InventoryReportPage() {
       accRemQty,
       accZeroCount,
 
+      totalInQty,
+      totalUsedQty,
+      totalRemQty,
+      totalZeroCount: boardsZeroCount + accZeroCount,
       totalVal: boardsVal + accVal,
       totalCount: items.length,
-      totalRemQty: boardsRemQty + accRemQty,
-      totalZeroCount: boardsZeroCount + accZeroCount,
     };
   }, [items]);
 
@@ -232,7 +238,7 @@ export default function InventoryReportPage() {
 
   return (
     <DashboardLayout profile={profile}>
-      {/* رأس الصفحة المدمج والأنيق بدون سطر فرعي */}
+      {/* رأس الصفحة المدمج والأنيق */}
       <div className="flex items-center justify-between gap-2 mb-2.5">
         <h1 className="text-base font-bold text-gray-900 flex items-center gap-2">
           <span>📦</span>
@@ -247,52 +253,116 @@ export default function InventoryReportPage() {
         </Link>
       </div>
 
-      {/* كروت المؤشرات التفصيلية تحت العنوان مباشرة */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-2.5">
-        {/* مخزون الألواح */}
-        <div className="bg-white rounded-xl p-2.5 border border-amber-200 shadow-xs">
-          <div className="flex items-center justify-between text-amber-700 text-xs font-bold mb-1">
-            <span>🪵 مخزون الألواح</span>
-            <span className="bg-amber-50 px-2 py-0.5 rounded text-[11px]">{stats.boardsCount} صنف</span>
-          </div>
-          <div className="text-sm font-extrabold text-amber-950 font-mono">
-            {formatCurrency(stats.boardsVal)}
-          </div>
-          <div className="text-[10px] text-amber-800 mt-0.5 flex justify-between border-t border-amber-100 pt-0.5">
-            <span>متبقي: <strong>{stats.boardsRemQty}</strong> لوح</span>
-            <span>مستخدم: <strong>{stats.boardsUsedQty}</strong></span>
-            <span>داخل: <strong>{stats.boardsInQty}</strong></span>
-          </div>
+      {/* ======================================================== */}
+      {/* جدول ملون ومفصل للإحصائيات بخط واضح وأرقام كبيرة وواضحة */}
+      {/* ======================================================== */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-xs p-3 mb-3">
+        <div className="text-xs font-bold text-gray-800 mb-2 flex items-center justify-between border-b pb-1.5">
+          <span className="flex items-center gap-1.5">
+            <span>📊</span>
+            <span>لوحة تحليل الجرد ومؤشرات الأرصدة والقيم المالية</span>
+          </span>
+          <span className="text-[11px] font-semibold text-gray-500">
+            إجمالي الأصناف: <strong className="text-brand-orange-dark font-mono text-xs">{stats.totalCount}</strong> صنف مسجل
+          </span>
         </div>
 
-        {/* مخزون الإكسسوارات */}
-        <div className="bg-white rounded-xl p-2.5 border border-rose-200 shadow-xs">
-          <div className="flex items-center justify-between text-rose-700 text-xs font-bold mb-1">
-            <span>🔩 مخزون الإكسسوارات</span>
-            <span className="bg-rose-50 px-2 py-0.5 rounded text-[11px]">{stats.accCount} صنف</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5">
+          {/* العمود 1: مخزون الألواح */}
+          <div className="bg-amber-50/50 rounded-lg border border-amber-200 p-2.5 flex flex-col justify-between">
+            <div className="text-xs font-bold text-amber-900 mb-1.5 flex items-center justify-between">
+              <span>🪵 مخزون الألواح</span>
+              <span className="bg-amber-200/60 text-amber-900 px-1.5 py-0.2 rounded text-[11px]">
+                {stats.boardsCount} صنف
+              </span>
+            </div>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-amber-100">
+                <span className="text-gray-600 font-semibold">إجمالي الداخل:</span>
+                <span className="font-extrabold font-mono text-gray-900">{stats.boardsInQty} لوح</span>
+              </div>
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-amber-100">
+                <span className="text-gray-600 font-semibold">إجمالي المستخدم:</span>
+                <span className="font-extrabold font-mono text-rose-700">{stats.boardsUsedQty} لوح</span>
+              </div>
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-amber-100">
+                <span className="text-emerald-800 font-bold">الرصيد المتبقي:</span>
+                <span className="font-extrabold font-mono text-emerald-800">{stats.boardsRemQty} لوح</span>
+              </div>
+              <div className="flex items-center justify-between bg-amber-600 text-white p-1.5 rounded font-bold shadow-xs">
+                <span>قيمة ألواح المخزن:</span>
+                <span className="font-extrabold font-mono text-sm">{formatCurrency(stats.boardsVal)}</span>
+              </div>
+            </div>
           </div>
-          <div className="text-sm font-extrabold text-rose-950 font-mono">
-            {formatCurrency(stats.accVal)}
-          </div>
-          <div className="text-[10px] text-rose-800 mt-0.5 flex justify-between border-t border-rose-100 pt-0.5">
-            <span>متبقي: <strong>{stats.accRemQty}</strong> قطعة</span>
-            <span>مستخدم: <strong>{stats.accUsedQty}</strong></span>
-            <span>داخل: <strong>{stats.accInQty}</strong></span>
-          </div>
-        </div>
 
-        {/* إجمالي المخزون الشامل */}
-        <div className="bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white rounded-xl p-2.5 shadow-xs">
-          <div className="flex items-center justify-between text-white/90 text-xs font-bold mb-1">
-            <span>📦 إجمالي قيمة المخزون</span>
-            <span className="bg-white/20 px-2 py-0.5 rounded text-[11px]">{stats.totalCount} صنف كلي</span>
+          {/* العمود 2: مخزون الإكسسوارات */}
+          <div className="bg-rose-50/50 rounded-lg border border-rose-200 p-2.5 flex flex-col justify-between">
+            <div className="text-xs font-bold text-rose-900 mb-1.5 flex items-center justify-between">
+              <span>🔩 مخزون الإكسسوارات</span>
+              <span className="bg-rose-200/60 text-rose-900 px-1.5 py-0.2 rounded text-[11px]">
+                {stats.accCount} صنف
+              </span>
+            </div>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-rose-100">
+                <span className="text-gray-600 font-semibold">إجمالي الداخل:</span>
+                <span className="font-extrabold font-mono text-gray-900">{stats.accInQty} قطعة</span>
+              </div>
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-rose-100">
+                <span className="text-gray-600 font-semibold">إجمالي المستخدم:</span>
+                <span className="font-extrabold font-mono text-rose-700">{stats.accUsedQty} قطعة</span>
+              </div>
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-rose-100">
+                <span className="text-emerald-800 font-bold">الرصيد المتبقي:</span>
+                <span className="font-extrabold font-mono text-emerald-800">{stats.accRemQty} قطعة</span>
+              </div>
+              <div className="flex items-center justify-between bg-rose-600 text-white p-1.5 rounded font-bold shadow-xs">
+                <span>قيمة إكسسوار المخزن:</span>
+                <span className="font-extrabold font-mono text-sm">{formatCurrency(stats.accVal)}</span>
+              </div>
+            </div>
           </div>
-          <div className="text-sm font-extrabold font-mono text-white">
-            {formatCurrency(stats.totalVal)}
+
+          {/* العمود 3: تحليل حركة المخزون العام */}
+          <div className="bg-blue-50/50 rounded-lg border border-blue-200 p-2.5 flex flex-col justify-between">
+            <div className="text-xs font-bold text-blue-900 mb-1.5 flex items-center justify-between">
+              <span>📈 حركة الجرد الشاملة</span>
+            </div>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-blue-100">
+                <span className="text-blue-700 font-semibold">إجمالي الداخل الكلي:</span>
+                <span className="font-extrabold font-mono text-gray-900">{stats.totalInQty} وحدة</span>
+              </div>
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-blue-100">
+                <span className="text-rose-700 font-semibold">إجمالي المنصرف الكلي:</span>
+                <span className="font-extrabold font-mono text-rose-800">{stats.totalUsedQty} وحدة</span>
+              </div>
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-blue-100">
+                <span className="text-emerald-700 font-semibold">إجمالي الرصيد الفعلي:</span>
+                <span className="font-extrabold font-mono text-emerald-800">{stats.totalRemQty} وحدة</span>
+              </div>
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-blue-100">
+                <span className="text-red-600 font-semibold">أصناف برصيد صفر:</span>
+                <span className="font-extrabold font-mono text-red-600">{stats.totalZeroCount} صنف نفد</span>
+              </div>
+            </div>
           </div>
-          <div className="text-[10px] text-white/80 mt-0.5 flex justify-between border-t border-white/20 pt-0.5">
-            <span>إجمالي المتبقي: <strong>{stats.totalRemQty}</strong></span>
-            <span>أصناف رصيد صفر: <strong>{stats.totalZeroCount}</strong></span>
+
+          {/* العمود 4: القيمة الإجمالية للمخزون */}
+          <div className="bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white rounded-lg p-3 flex flex-col justify-between shadow-xs">
+            <div>
+              <div className="text-xs font-bold text-white/90 mb-1">💰 إجمالي رأس مال المخزون</div>
+              <div className="text-xl font-extrabold font-mono text-white tracking-wide">
+                {formatCurrency(stats.totalVal)}
+              </div>
+              <div className="text-[11px] text-white/80 mt-1 border-t border-white/20 pt-1">
+                القيمة السوقية المحسوبة لكافة الألواح والإكسسوارات المتبقية
+              </div>
+            </div>
+            <div className="mt-2 bg-white/10 rounded p-1.5 text-center text-xs font-bold text-white">
+              {stats.totalCount} صنف ({stats.boardsCount} ألواح + {stats.accCount} إكسسوار)
+            </div>
           </div>
         </div>
       </div>
