@@ -14,6 +14,8 @@ export async function GET(request: Request) {
     const search = searchParams.get('search') || '';
     const material_type = searchParams.get('material_type') || '';
     const supplier_id = searchParams.get('supplier_id') || '';
+    const from_date = searchParams.get('from_date') || '';
+    const to_date = searchParams.get('to_date') || '';
     const offset = (page - 1) * limit;
 
     const where: any = { deleted_at: null };
@@ -25,6 +27,11 @@ export async function GET(request: Request) {
     }
     if (material_type) where.material_type = material_type;
     if (supplier_id) where.supplier_id = supplier_id;
+    if (from_date || to_date) {
+      where.date_added = {};
+      if (from_date) where.date_added.gte = new Date(from_date);
+      if (to_date) where.date_added.lte = new Date(to_date + 'T23:59:59.999Z');
+    }
 
     const [total, data] = await Promise.all([
       prisma.boards_inventory.count({ where }),
