@@ -27,8 +27,10 @@ export default function OrderDetailPage() {
   // نثريات الأوردر
   const [overheadAmount, setOverheadAmount] = useState("");
   const [overheadDesc, setOverheadDesc] = useState("");
+  const [overheadSaving, setOverheadSaving] = useState(false);
   const [detailMaterialTab, setDetailMaterialTab] = useState<"boards" | "accessories" | "all">("boards");
 
+  const materials = materialsData ?? (order?.materials ?? []);
   const boardMaterials = (materials as any[]).filter(
     (r: any) => r.item_category === "boards_inventory" || r.board_id
   );
