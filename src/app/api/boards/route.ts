@@ -44,7 +44,15 @@ export async function GET(request: Request) {
       }),
     ]);
 
-    const items = data.map(({ supplier, ...rest }) => ({ ...rest, supplier_name: supplier?.name || null }));
+    const items = data.map(({ supplier, ...rest }) => ({
+      ...rest,
+      unit_price: Number(rest.unit_price ?? 0),
+      quantity_in: Number(rest.quantity_in ?? 0),
+      quantity_used: Number(rest.quantity_used ?? 0),
+      quantity_remaining: Number(rest.quantity_remaining ?? 0),
+      total_price: Number(rest.total_price ?? 0),
+      supplier_name: supplier?.name || null,
+    }));
 
     return NextResponse.json({ ok: true, data: { items, total, page, limit } });
   } catch (e: any) {

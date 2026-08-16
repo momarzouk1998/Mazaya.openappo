@@ -96,7 +96,13 @@ export default function InventoryReportPage() {
         };
       });
 
-      setItems([...bList, ...aList]);
+      const combined = [...bList, ...aList].sort((a: any, b: any) => {
+        const da = String(a["تاريخ الإضافة"] || "");
+        const db = String(b["تاريخ الإضافة"] || "");
+        return db.localeCompare(da);
+      });
+
+      setItems(combined);
     } catch (e) {
       console.error("Inventory report error:", e);
     } finally {
