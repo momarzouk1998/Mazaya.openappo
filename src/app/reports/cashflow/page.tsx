@@ -59,12 +59,13 @@ export default function CashflowReportPage() {
           _wallet: isBoardsWallet ? "boards" : "factory",
           _isIncome: isIncome,
           _amount: amount,
+          _payMethod: x.payment_method || "نقدي",
           التاريخ: safeFormatDate(x.date),
           "المحفظة / اليومية": walletType,
           "نوع الحركة": x.entry_type ?? "",
           البيان: x.description ?? "",
           الجهة: x.party_name ?? "-",
-          "طريقة الدفع": x.payment_method ?? "-",
+          "طريقة الدفع": x.payment_method ?? "نقدي",
           الوارد: isIncome ? amount : 0,
           المصروف: !isIncome ? amount : 0,
           الأثر: isIncome ? `+${amount}` : `-${amount}`,
@@ -105,20 +106,34 @@ export default function CashflowReportPage() {
     }
   }
 
-  // KPIs
+  // KPIs Breakdown
   const stats = useMemo(() => {
     let factoryIncome = 0;
     let factoryExpense = 0;
+    let factoryCount = 0;
+
     let boardsIncome = 0;
     let boardsExpense = 0;
+    let boardsCount = 0;
+
+    let cashTotal = 0;
+    let bankTotal = 0;
 
     entries.forEach((e) => {
       if (e._wallet === "factory") {
+        factoryCount++;
         if (e._isIncome) factoryIncome += e._amount;
         else factoryExpense += e._amount;
       } else {
+        boardsCount++;
         if (e._isIncome) boardsIncome += e._amount;
         else boardsExpense += e._amount;
+      }
+
+      if (e._payMethod === "نقدي" || !e._payMethod) {
+        cashTotal += e._amount;
+      } else {
+        bankTotal += e._amount;
       }
     });
 
@@ -130,10 +145,14 @@ export default function CashflowReportPage() {
       factoryIncome,
       factoryExpense,
       factoryNet,
+      factoryCount,
       boardsIncome,
       boardsExpense,
       boardsNet,
+      boardsCount,
       grandNet,
+      cashTotal,
+      bankTotal,
       totalCount: entries.length,
     };
   }, [entries]);
@@ -192,15 +211,15 @@ export default function CashflowReportPage() {
 
   return (
     <DashboardLayout profile={profile}>
-      <div className="flex items-center justify-between gap-3 mb-4">
+      <div className="flex items-center justify-between gap-3 mb-3">
         <PageHeader
           title="تقرير التدفق النقدي واليوميات"
-          subtitle="كشف حركات الخزينة والنقدية مع الفصل التام بين يومية المصنع ويومية الألواح"
+          subtitle="تحليل الخزينة مع الفصل التام بين يومية المصنع ويومية الألواح وتفصيل الوارد والمصروف"
           backHref="/reports"
         />
         <Link
           href="/reports"
-          className="btn-secondary h-9 px-4 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap"
+          className="btn-secondary h-8 px-3 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap"
         >
           <span>←</span>
           <span>رجوع للتقارير</span>
@@ -208,8 +227,8 @@ export default function CashflowReportPage() {
       </div>
 
       {/* فلاتر التاريخ */}
-      <div className="card mb-4 bg-white border border-gray-100 shadow-sm p-3.5">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5 pb-2 border-b">
+      <div className="card mb-3.5 bg-white border border-gray-100 shadow-xs p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2 pb-2 border-b">
           <div className="text-xs font-bold text-gray-700 flex items-center gap-2">
             <span>📅 نطاق حركة النقدية بالتاريخ</span>
             {(fromDate || toDate) && (
@@ -248,56 +267,71 @@ export default function CashflowReportPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">من تاريخ</label>
+            <label className="block text-[11px] font-semibold text-gray-600 mb-1">من تاريخ</label>
             <DateInput value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">إلى تاريخ</label>
+            <label className="block text-[11px] font-semibold text-gray-600 mb-1">إلى تاريخ</label>
             <DateInput value={toDate} onChange={(e) => setToDate(e.target.value)} />
           </div>
           <div className="flex items-end">
-            <Button onClick={loadData} loading={loading} className="w-full h-9 text-xs font-bold">
+            <Button onClick={loadData} loading={loading} className="w-full h-8 text-xs font-bold">
               {loading ? "⏳ جاري التحديث..." : "🔄 تحديث البيانات"}
             </Button>
           </div>
         </div>
       </div>
 
-      {/* كروت المؤشرات */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4">
-        <div className="card bg-gradient-to-br from-emerald-50 to-teal-50 border-r-4 border-emerald-600 p-3 shadow-xs">
-          <div className="text-[11px] text-gray-600 font-semibold mb-0.5">👛 صافي يومية المصنع</div>
-          <div className="text-xl font-extrabold text-emerald-900 font-mono">
-            {formatCurrency(stats.factoryNet)}
+      {/* كروت المؤشرات التفصيلية */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-3.5">
+        {/* يومية المصنع */}
+        <div className="bg-white rounded-xl p-3 border border-emerald-200 shadow-xs">
+          <div className="flex items-center justify-between text-emerald-700 text-xs font-bold mb-1">
+            <span>👛 يومية المصنع</span>
+            <span className="bg-emerald-50 px-2 py-0.5 rounded text-[11px]">{stats.factoryCount} حركة</span>
           </div>
-          <div className="text-[10px] text-emerald-700 mt-0.5">
-            وارد: {formatCurrency(stats.factoryIncome)} − مصروف: {formatCurrency(stats.factoryExpense)}
+          <div className="text-base font-extrabold text-emerald-950 font-mono">
+            صافي: {formatCurrency(stats.factoryNet)}
           </div>
-        </div>
-
-        <div className="card bg-gradient-to-br from-amber-50 to-orange-50 border-r-4 border-amber-600 p-3 shadow-xs">
-          <div className="text-[11px] text-gray-600 font-semibold mb-0.5">🪵 صافي يومية الألواح</div>
-          <div className="text-xl font-extrabold text-amber-900 font-mono">
-            {formatCurrency(stats.boardsNet)}
-          </div>
-          <div className="text-[10px] text-amber-700 mt-0.5">
-            تمريري: {formatCurrency(stats.boardsIncome)} − مشتريات: {formatCurrency(stats.boardsExpense)}
+          <div className="text-[11px] text-emerald-800 mt-1 flex justify-between border-t border-emerald-100 pt-1">
+            <span>وارد: <strong>{formatCurrency(stats.factoryIncome)}</strong></span>
+            <span>مصروف: <strong>{formatCurrency(stats.factoryExpense)}</strong></span>
           </div>
         </div>
 
-        <div className="card bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white p-3 shadow-xs">
-          <div className="text-[11px] text-white/90 font-semibold mb-0.5">💵 صافي التدفق النقدي الشامل</div>
-          <div className="text-xl font-extrabold font-mono">
+        {/* يومية الألواح */}
+        <div className="bg-white rounded-xl p-3 border border-amber-200 shadow-xs">
+          <div className="flex items-center justify-between text-amber-700 text-xs font-bold mb-1">
+            <span>🪵 يومية الألواح</span>
+            <span className="bg-amber-50 px-2 py-0.5 rounded text-[11px]">{stats.boardsCount} حركة</span>
+          </div>
+          <div className="text-base font-extrabold text-amber-950 font-mono">
+            صافي: {formatCurrency(stats.boardsNet)}
+          </div>
+          <div className="text-[11px] text-amber-800 mt-1 flex justify-between border-t border-amber-100 pt-1">
+            <span>تمريري وارد: <strong>{formatCurrency(stats.boardsIncome)}</strong></span>
+            <span>مشتريات: <strong>{formatCurrency(stats.boardsExpense)}</strong></span>
+          </div>
+        </div>
+
+        {/* صافي التدفق الشامل */}
+        <div className="bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white rounded-xl p-3 shadow-xs">
+          <div className="flex items-center justify-between text-white/90 text-xs font-bold mb-1">
+            <span>💵 صافي الخزينة العام</span>
+            <span className="bg-white/20 px-2 py-0.5 rounded text-[11px]">{stats.totalCount} حركة كلية</span>
+          </div>
+          <div className="text-base font-extrabold font-mono text-white">
             {formatCurrency(stats.grandNet)}
           </div>
-          <div className="text-[10px] text-white/80 mt-0.5">
-            إجمالي الحركات: <strong>{entries.length}</strong> حركة
+          <div className="text-[11px] text-white/80 mt-1 flex justify-between border-t border-white/20 pt-1">
+            <span>نقدي: <strong>{formatCurrency(stats.cashTotal)}</strong></span>
+            <span>بنكي/إلكتروني: <strong>{formatCurrency(stats.bankTotal)}</strong></span>
           </div>
         </div>
       </div>
 
       {/* التابات الفرعية + البحث والتصدير */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3 bg-white p-2.5 rounded-xl border border-gray-200 shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 bg-white p-2.5 rounded-xl border border-gray-200 shadow-xs">
         <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
           <button
             onClick={() => { setSubTab("all"); setPage(1); }}
@@ -313,7 +347,7 @@ export default function CashflowReportPage() {
               subTab === "factory" ? "bg-brand-orange text-white shadow-xs" : "bg-gray-50 border text-gray-700 hover:bg-gray-100"
             }`}
           >
-            👛 يومية المصنع ({entries.filter((r) => r._wallet === "factory").length})
+            👛 يومية المصنع ({stats.factoryCount})
           </button>
           <button
             onClick={() => { setSubTab("boards"); setPage(1); }}
@@ -321,7 +355,7 @@ export default function CashflowReportPage() {
               subTab === "boards" ? "bg-brand-orange text-white shadow-xs" : "bg-gray-50 border text-gray-700 hover:bg-gray-100"
             }`}
           >
-            🪵 يومية الألواح ({entries.filter((r) => r._wallet === "boards").length})
+            🪵 يومية الألواح ({stats.boardsCount})
           </button>
         </div>
 
@@ -438,7 +472,7 @@ export default function CashflowReportPage() {
           </div>
 
           {/* ترقيم الصفحات Pagination */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-gray-50/80 border-t text-xs text-gray-600">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-gray-50/80 border-t text-xs text-gray-600">
             <div className="flex items-center gap-2">
               <span>
                 عرض {(page - 1) * pageSize + 1} إلى {Math.min(page * pageSize, activeDataset.length)} من {activeDataset.length} حركة

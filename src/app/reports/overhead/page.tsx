@@ -91,10 +91,41 @@ export default function OverheadReportPage() {
     }
   }
 
-  // KPIs
+  // KPIs Breakdown by Category
   const stats = useMemo(() => {
-    const totalAmount = items.reduce((s, r) => s + fmtNum(r["المبلغ"]), 0);
-    return { totalAmount, count: items.length };
+    let elecTotal = 0;
+    let shipTotal = 0;
+    let maintTotal = 0;
+    let buffetTotal = 0;
+    let generalTotal = 0;
+    let totalAmount = 0;
+
+    items.forEach((r) => {
+      const amt = fmtNum(r["المبلغ"]);
+      totalAmount += amt;
+      const cat = String(r["التصنيف"] ?? "");
+      if (cat.includes("كهرباء") || cat.includes("مرافق") || cat.includes("فواتير")) {
+        elecTotal += amt;
+      } else if (cat.includes("شحن") || cat.includes("نقل")) {
+        shipTotal += amt;
+      } else if (cat.includes("صيانة")) {
+        maintTotal += amt;
+      } else if (cat.includes("بوفيه") || cat.includes("ضيافة") || cat.includes("مأكولات")) {
+        buffetTotal += amt;
+      } else {
+        generalTotal += amt;
+      }
+    });
+
+    return {
+      elecTotal,
+      shipTotal,
+      maintTotal,
+      buffetTotal,
+      generalTotal,
+      totalAmount,
+      count: items.length,
+    };
   }, [items]);
 
   // Active dataset
@@ -132,15 +163,15 @@ export default function OverheadReportPage() {
 
   return (
     <DashboardLayout profile={profile}>
-      <div className="flex items-center justify-between gap-3 mb-4">
+      <div className="flex items-center justify-between gap-3 mb-3">
         <PageHeader
           title="تقرير النثريات والمصاريف التشغيلية"
-          subtitle="مصاريف تشغيل المصنع العامة فقط (كهرباء، شحن، صيانة دورية، بوفيه) مستبعد منها أجور العمال"
+          subtitle="تحليل مصاريف تشغيل المصنع العامة (كهرباء، شحن، صيانة دورية، بوفيه) مستبعد منها أجور العمال"
           backHref="/reports"
         />
         <Link
           href="/reports"
-          className="btn-secondary h-9 px-4 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap"
+          className="btn-secondary h-8 px-3 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap"
         >
           <span>←</span>
           <span>رجوع للتقارير</span>
@@ -148,8 +179,8 @@ export default function OverheadReportPage() {
       </div>
 
       {/* فلاتر التاريخ */}
-      <div className="card mb-4 bg-white border border-gray-100 shadow-sm p-3.5">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5 pb-2 border-b">
+      <div className="card mb-3.5 bg-white border border-gray-100 shadow-xs p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2 pb-2 border-b">
           <div className="text-xs font-bold text-gray-700 flex items-center gap-2">
             <span>📅 نطاق النثريات بالتاريخ</span>
             {(fromDate || toDate) && (
@@ -188,42 +219,71 @@ export default function OverheadReportPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">من تاريخ</label>
+            <label className="block text-[11px] font-semibold text-gray-600 mb-1">من تاريخ</label>
             <DateInput value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">إلى تاريخ</label>
+            <label className="block text-[11px] font-semibold text-gray-600 mb-1">إلى تاريخ</label>
             <DateInput value={toDate} onChange={(e) => setToDate(e.target.value)} />
           </div>
           <div className="flex items-end">
-            <Button onClick={loadData} loading={loading} className="w-full h-9 text-xs font-bold">
+            <Button onClick={loadData} loading={loading} className="w-full h-8 text-xs font-bold">
               {loading ? "⏳ جاري التحديث..." : "🔄 تحديث البيانات"}
             </Button>
           </div>
         </div>
       </div>
 
-      {/* كروت المؤشرات */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-4">
-        <div className="card bg-gradient-to-br from-purple-50 to-fuchsia-50 border-r-4 border-purple-600 p-3 shadow-xs">
-          <div className="text-[11px] text-gray-600 font-semibold mb-0.5">📄 إجمالي النثريات التشغيلية</div>
-          <div className="text-xl font-extrabold text-purple-900 font-mono">
-            {formatCurrency(stats.totalAmount)}
+      {/* كروت المؤشرات التفصيلية بالتصنيف */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-3.5">
+        <div className="bg-white rounded-xl p-2.5 border border-purple-200 shadow-xs">
+          <div className="text-purple-700 text-xs font-bold mb-1">⚡ كهرباء ومرافق</div>
+          <div className="text-sm font-extrabold text-purple-950 font-mono">
+            {formatCurrency(stats.elecTotal)}
           </div>
-          <div className="text-[10px] text-purple-700 mt-0.5">كهرباء، شحن، صيانة عامة، بوفيه</div>
         </div>
 
-        <div className="card bg-gray-50 border border-gray-200 p-3 shadow-xs">
-          <div className="text-[11px] text-gray-600 font-semibold mb-0.5">🧾 عدد الحركات المسجلة</div>
-          <div className="text-xl font-extrabold text-gray-900 font-mono">
-            {stats.count} حركة
+        <div className="bg-white rounded-xl p-2.5 border border-blue-200 shadow-xs">
+          <div className="text-blue-700 text-xs font-bold mb-1">🚚 شحن ونقل عام</div>
+          <div className="text-sm font-extrabold text-blue-950 font-mono">
+            {formatCurrency(stats.shipTotal)}
           </div>
-          <div className="text-[10px] text-gray-500 mt-0.5">(مستبعد منها كلياً أجور العمال والنقل)</div>
+        </div>
+
+        <div className="bg-white rounded-xl p-2.5 border border-amber-200 shadow-xs">
+          <div className="text-amber-700 text-xs font-bold mb-1">🔧 صيانة المصنع</div>
+          <div className="text-sm font-extrabold text-amber-950 font-mono">
+            {formatCurrency(stats.maintTotal)}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-2.5 border border-emerald-200 shadow-xs">
+          <div className="text-emerald-700 text-xs font-bold mb-1">☕ بوفيه وضيافة</div>
+          <div className="text-sm font-extrabold text-emerald-950 font-mono">
+            {formatCurrency(stats.buffetTotal)}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-2.5 border border-gray-200 shadow-xs">
+          <div className="text-gray-700 text-xs font-bold mb-1">📦 نثريات عامة</div>
+          <div className="text-sm font-extrabold text-gray-900 font-mono">
+            {formatCurrency(stats.generalTotal)}
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white rounded-xl p-2.5 shadow-xs">
+          <div className="flex items-center justify-between text-white/90 text-xs font-bold mb-1">
+            <span>📄 الإجمالي الشامل</span>
+            <span className="bg-white/20 px-1.5 py-0.2 rounded text-[11px]">{stats.count}</span>
+          </div>
+          <div className="text-sm font-extrabold font-mono text-white">
+            {formatCurrency(stats.totalAmount)}
+          </div>
         </div>
       </div>
 
       {/* شريط البحث والتصدير */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3 bg-white p-2.5 rounded-xl border border-gray-200 shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 bg-white p-2.5 rounded-xl border border-gray-200 shadow-xs">
         <div className="text-xs font-bold text-gray-700">
           📋 بيان حركات النثريات والمصاريف ({items.length})
         </div>
@@ -322,7 +382,7 @@ export default function OverheadReportPage() {
           </div>
 
           {/* ترقيم الصفحات Pagination */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-gray-50/80 border-t text-xs text-gray-600">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-gray-50/80 border-t text-xs text-gray-600">
             <div className="flex items-center gap-2">
               <span>
                 عرض {(page - 1) * pageSize + 1} إلى {Math.min(page * pageSize, activeDataset.length)} من {activeDataset.length} حركة

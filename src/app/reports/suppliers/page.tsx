@@ -115,12 +115,20 @@ export default function SuppliersReportPage() {
     }
   }
 
-  // KPIs
+  // KPIs Breakdown
   const stats = useMemo(() => {
     const totalPurchases = items.reduce((s, r) => s + fmtNum(r["إجمالي المشتريات"]), 0);
     const totalPayments = items.reduce((s, r) => s + fmtNum(r["إجمالي المدفوع له"]), 0);
     const totalBalance = totalPurchases - totalPayments;
-    return { totalPurchases, totalPayments, totalBalance, count: items.length };
+    const debtSuppliersCount = items.filter((r) => fmtNum(r["الرصيد المستحق (الديون)"]) > 0).length;
+
+    return {
+      totalPurchases,
+      totalPayments,
+      totalBalance,
+      debtSuppliersCount,
+      count: items.length,
+    };
   }, [items]);
 
   // Active dataset
@@ -164,7 +172,7 @@ export default function SuppliersReportPage() {
 
   return (
     <DashboardLayout profile={profile}>
-      <div className="flex items-center justify-between gap-3 mb-4">
+      <div className="flex items-center justify-between gap-3 mb-3">
         <PageHeader
           title="تقرير الموردين وحسابات المشتريات"
           subtitle="كشف شامل لحسابات الموردين، إجمالي مشتريات الألواح والإكسسوارات، المدفوع، والديون المستحقة"
@@ -172,7 +180,7 @@ export default function SuppliersReportPage() {
         />
         <Link
           href="/reports"
-          className="btn-secondary h-9 px-4 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap"
+          className="btn-secondary h-8 px-3 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap"
         >
           <span>←</span>
           <span>رجوع للتقارير</span>
@@ -180,8 +188,8 @@ export default function SuppliersReportPage() {
       </div>
 
       {/* فلاتر التاريخ */}
-      <div className="card mb-4 bg-white border border-gray-100 shadow-sm p-3.5">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5 pb-2 border-b">
+      <div className="card mb-3.5 bg-white border border-gray-100 shadow-xs p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2 pb-2 border-b">
           <div className="text-xs font-bold text-gray-700 flex items-center gap-2">
             <span>📅 نطاق حركة المشتريات والمدفوعات بالتاريخ</span>
             {(fromDate || toDate) && (
@@ -220,50 +228,68 @@ export default function SuppliersReportPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">من تاريخ</label>
+            <label className="block text-[11px] font-semibold text-gray-600 mb-1">من تاريخ</label>
             <DateInput value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">إلى تاريخ</label>
+            <label className="block text-[11px] font-semibold text-gray-600 mb-1">إلى تاريخ</label>
             <DateInput value={toDate} onChange={(e) => setToDate(e.target.value)} />
           </div>
           <div className="flex items-end">
-            <Button onClick={loadData} loading={loading} className="w-full h-9 text-xs font-bold">
+            <Button onClick={loadData} loading={loading} className="w-full h-8 text-xs font-bold">
               {loading ? "⏳ جاري التحديث..." : "🔄 تحديث البيانات"}
             </Button>
           </div>
         </div>
       </div>
 
-      {/* كروت المؤشرات */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4">
-        <div className="card bg-gradient-to-br from-red-50 to-rose-50 border-r-4 border-red-500 p-3 shadow-xs">
-          <div className="text-[11px] text-gray-600 font-semibold mb-0.5">🏭 إجمالي المشتريات</div>
-          <div className="text-xl font-extrabold text-red-900 font-mono">
+      {/* كروت المؤشرات التفصيلية */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-3.5">
+        {/* إجمالي المشتريات */}
+        <div className="bg-white rounded-xl p-3 border border-red-200 shadow-xs">
+          <div className="flex items-center justify-between text-red-700 text-xs font-bold mb-1">
+            <span>🏭 إجمالي المشتريات</span>
+            <span className="bg-red-50 px-2 py-0.5 rounded text-[11px]">{stats.count} مورد</span>
+          </div>
+          <div className="text-base font-extrabold text-red-950 font-mono">
             {formatCurrency(stats.totalPurchases)}
           </div>
-          <div className="text-[10px] text-red-700 mt-0.5">ألواح وإكسسوارات</div>
+          <div className="text-[11px] text-red-700 mt-1 border-t border-red-100 pt-1">
+            ألواح وإكسسوارات ومواد خام
+          </div>
         </div>
 
-        <div className="card bg-gradient-to-br from-green-50 to-emerald-50 border-r-4 border-green-500 p-3 shadow-xs">
-          <div className="text-[11px] text-gray-600 font-semibold mb-0.5">💳 إجمالي المدفوع للموردين</div>
-          <div className="text-xl font-extrabold text-green-900 font-mono">
+        {/* إجمالي المدفوع */}
+        <div className="bg-white rounded-xl p-3 border border-green-200 shadow-xs">
+          <div className="flex items-center justify-between text-green-700 text-xs font-bold mb-1">
+            <span>💳 إجمالي المدفوع للموردين</span>
+            <span className="bg-green-50 px-2 py-0.5 rounded text-[11px]">سدادات ودفعات</span>
+          </div>
+          <div className="text-base font-extrabold text-green-950 font-mono">
             {formatCurrency(stats.totalPayments)}
           </div>
-          <div className="text-[10px] text-green-700 mt-0.5">سدادات مسجلة</div>
+          <div className="text-[11px] text-green-700 mt-1 border-t border-green-100 pt-1">
+            دفعات نقدية وبنكية مسجلة
+          </div>
         </div>
 
-        <div className="card bg-gradient-to-br from-orange-50 to-amber-50 border-r-4 border-orange-500 p-3 shadow-xs">
-          <div className="text-[11px] text-gray-600 font-semibold mb-0.5">⏳ إجمالي الديون المستحقة</div>
-          <div className="text-xl font-extrabold text-orange-900 font-mono">
+        {/* إجمالي الديون المستحقة */}
+        <div className="bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white rounded-xl p-3 shadow-xs">
+          <div className="flex items-center justify-between text-white/90 text-xs font-bold mb-1">
+            <span>⏳ إجمالي الديون المستحقة</span>
+            <span className="bg-white/20 px-2 py-0.5 rounded text-[11px]">{stats.debtSuppliersCount} مورد له ديون</span>
+          </div>
+          <div className="text-base font-extrabold font-mono text-white">
             {formatCurrency(stats.totalBalance)}
           </div>
-          <div className="text-[10px] text-orange-700 mt-0.5">المتبقي لصالح الموردين</div>
+          <div className="text-[11px] text-white/80 mt-1 border-t border-white/20 pt-1">
+            المتبقي لصالح الموردين
+          </div>
         </div>
       </div>
 
       {/* شريط البحث والتصدير */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3 bg-white p-2.5 rounded-xl border border-gray-200 shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 bg-white p-2.5 rounded-xl border border-gray-200 shadow-xs">
         <div className="text-xs font-bold text-gray-700">
           🏭 كشف حساب الموردين ({items.length})
         </div>
@@ -368,7 +394,7 @@ export default function SuppliersReportPage() {
           </div>
 
           {/* ترقيم الصفحات Pagination */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-gray-50/80 border-t text-xs text-gray-600">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-gray-50/80 border-t text-xs text-gray-600">
             <div className="flex items-center gap-2">
               <span>
                 عرض {(page - 1) * pageSize + 1} إلى {Math.min(page * pageSize, activeDataset.length)} من {activeDataset.length} مورد

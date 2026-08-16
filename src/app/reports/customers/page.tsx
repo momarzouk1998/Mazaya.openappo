@@ -88,12 +88,22 @@ export default function CustomersReportPage() {
     setPage(1);
   }, []);
 
-  // KPIs
+  // KPIs Breakdown
   const stats = useMemo(() => {
     const totalOrdersVal = items.reduce((s, r) => s + fmtNum(r["إجمالي قيمة الأوردرات"]), 0);
     const totalCollected = items.reduce((s, r) => s + fmtNum(r["إجمالي المدفوعات المسجلة"]), 0);
     const totalRemaining = totalOrdersVal - totalCollected;
-    return { totalOrdersVal, totalCollected, totalRemaining, count: items.length };
+    const debtCustomersCount = items.filter((r) => fmtNum(r["المتبقي على العميل"]) > 0).length;
+    const collectionRate = totalOrdersVal > 0 ? ((totalCollected / totalOrdersVal) * 100).toFixed(1) : "0";
+
+    return {
+      totalOrdersVal,
+      totalCollected,
+      totalRemaining,
+      debtCustomersCount,
+      collectionRate,
+      count: items.length,
+    };
   }, [items]);
 
   // Active dataset
@@ -137,7 +147,7 @@ export default function CustomersReportPage() {
 
   return (
     <DashboardLayout profile={profile}>
-      <div className="flex items-center justify-between gap-3 mb-4">
+      <div className="flex items-center justify-between gap-3 mb-3">
         <PageHeader
           title="تقرير العملاء والتحصيلات"
           subtitle="كشف حساب العملاء والمعارض، إجمالي الأوردرات، التحصيلات المسددة، والمتبقي"
@@ -145,42 +155,60 @@ export default function CustomersReportPage() {
         />
         <Link
           href="/reports"
-          className="btn-secondary h-9 px-4 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap"
+          className="btn-secondary h-8 px-3 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap"
         >
           <span>←</span>
           <span>رجوع للتقارير</span>
         </Link>
       </div>
 
-      {/* كروت المؤشرات */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4">
-        <div className="card bg-gradient-to-br from-indigo-50 to-blue-50 border-r-4 border-indigo-600 p-3 shadow-xs">
-          <div className="text-[11px] text-gray-600 font-semibold mb-0.5">📦 إجمالي قيمة أوردرات العملاء</div>
-          <div className="text-xl font-extrabold text-indigo-900 font-mono">
+      {/* كروت المؤشرات التفصيلية */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-3.5">
+        {/* إجمالي الأوردرات */}
+        <div className="bg-white rounded-xl p-3 border border-indigo-200 shadow-xs">
+          <div className="flex items-center justify-between text-indigo-700 text-xs font-bold mb-1">
+            <span>📦 إجمالي قيمة أوردرات العملاء</span>
+            <span className="bg-indigo-50 px-2 py-0.5 rounded text-[11px]">{stats.count} عميل</span>
+          </div>
+          <div className="text-base font-extrabold text-indigo-950 font-mono">
             {formatCurrency(stats.totalOrdersVal)}
           </div>
-          <div className="text-[10px] text-indigo-700 mt-0.5">كافة الفروع والمعارض</div>
+          <div className="text-[11px] text-indigo-700 mt-1 border-t border-indigo-100 pt-1">
+            عبر كافة الفروع والمعارض
+          </div>
         </div>
 
-        <div className="card bg-gradient-to-br from-green-50 to-emerald-50 border-r-4 border-green-500 p-3 shadow-xs">
-          <div className="text-[11px] text-gray-600 font-semibold mb-0.5">💳 إجمالي التحصيلات المسجلة</div>
-          <div className="text-xl font-extrabold text-green-900 font-mono">
+        {/* إجمالي التحصيلات */}
+        <div className="bg-white rounded-xl p-3 border border-green-200 shadow-xs">
+          <div className="flex items-center justify-between text-green-700 text-xs font-bold mb-1">
+            <span>💳 إجمالي التحصيلات المسددة</span>
+            <span className="bg-green-50 px-2 py-0.5 rounded text-[11px]">نسبة التحصيل: {stats.collectionRate}%</span>
+          </div>
+          <div className="text-base font-extrabold text-green-950 font-mono">
             {formatCurrency(stats.totalCollected)}
           </div>
-          <div className="text-[10px] text-green-700 mt-0.5">دفعات محصلة من العملاء</div>
+          <div className="text-[11px] text-green-700 mt-1 border-t border-green-100 pt-1">
+            دفعات محصلة من العملاء
+          </div>
         </div>
 
-        <div className="card bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white p-3 shadow-xs">
-          <div className="text-[11px] text-white/90 font-semibold mb-0.5">⏳ إجمالي المتبقي على العملاء</div>
-          <div className="text-xl font-extrabold font-mono">
+        {/* إجمالي المتبقي */}
+        <div className="bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white rounded-xl p-3 shadow-xs">
+          <div className="flex items-center justify-between text-white/90 text-xs font-bold mb-1">
+            <span>⏳ إجمالي المتبقي على العملاء</span>
+            <span className="bg-white/20 px-2 py-0.5 rounded text-[11px]">{stats.debtCustomersCount} عميل عليه مستحقات</span>
+          </div>
+          <div className="text-base font-extrabold font-mono text-white">
             {formatCurrency(stats.totalRemaining)}
           </div>
-          <div className="text-[10px] text-white/80 mt-0.5">مستحقات المصنع لدى العملاء</div>
+          <div className="text-[11px] text-white/80 mt-1 border-t border-white/20 pt-1">
+            مستحقات المصنع لدى العملاء
+          </div>
         </div>
       </div>
 
       {/* شريط البحث والتصدير */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3 bg-white p-2.5 rounded-xl border border-gray-200 shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 bg-white p-2.5 rounded-xl border border-gray-200 shadow-xs">
         <div className="text-xs font-bold text-gray-700">
           👥 كشف حساب العملاء ({items.length})
         </div>
@@ -285,7 +313,7 @@ export default function CustomersReportPage() {
           </div>
 
           {/* ترقيم الصفحات Pagination */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-gray-50/80 border-t text-xs text-gray-600">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-gray-50/80 border-t text-xs text-gray-600">
             <div className="flex items-center gap-2">
               <span>
                 عرض {(page - 1) * pageSize + 1} إلى {Math.min(page * pageSize, activeDataset.length)} من {activeDataset.length} عميل

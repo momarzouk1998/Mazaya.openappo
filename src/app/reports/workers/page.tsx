@@ -61,18 +61,22 @@ export default function WorkersReportPage() {
 
       const workerSummaryMap: Record<
         string,
-        { count: number; total: number; travelDays: number; lastDate: string }
+        { count: number; normalDays: number; travelDays: number; total: number; lastDate: string }
       > = {};
 
       (Array.isArray(logs) ? logs : []).forEach((l: any) => {
         const rate = fmtNum(l.daily_rate);
         const wid = String(l.worker_id || l.worker?.id);
         if (!workerSummaryMap[wid]) {
-          workerSummaryMap[wid] = { count: 0, total: 0, travelDays: 0, lastDate: "" };
+          workerSummaryMap[wid] = { count: 0, normalDays: 0, travelDays: 0, total: 0, lastDate: "" };
         }
         workerSummaryMap[wid].count += 1;
         workerSummaryMap[wid].total += rate;
-        if (l.is_travel) workerSummaryMap[wid].travelDays += 1;
+        if (l.is_travel) {
+          workerSummaryMap[wid].travelDays += 1;
+        } else {
+          workerSummaryMap[wid].normalDays += 1;
+        }
         const d = String(l.work_date).slice(0, 10);
         if (d > workerSummaryMap[wid].lastDate) {
           workerSummaryMap[wid].lastDate = d;
@@ -80,14 +84,21 @@ export default function WorkersReportPage() {
       });
 
       const sRows = (Array.isArray(workers) ? workers : []).map((wk: any) => {
-        const s = workerSummaryMap[String(wk.id)] || { count: 0, total: 0, travelDays: 0, lastDate: "-" };
+        const s = workerSummaryMap[String(wk.id)] || {
+          count: 0,
+          normalDays: 0,
+          travelDays: 0,
+          total: 0,
+          lastDate: "-",
+        };
         return {
           "اسم العامل": wk.name ?? "",
           المهنة: wk.job_title || wk.role || "عامل",
           الهاتف: wk.phone ?? "-",
           "اليومية الأساسية": fmtNum(wk.daily_rate),
-          "عدد أيام العمل": s.count,
-          "أيام السفر": s.travelDays,
+          "إجمالي الأيام": s.count,
+          "أيام عادية": s.normalDays,
+          "أيام سفر": s.travelDays,
           "إجمالي الأجور المستحقة": s.total,
           "آخر يومية مسجلة": s.lastDate ? safeFormatDate(s.lastDate) : "-",
         };
@@ -137,11 +148,21 @@ export default function WorkersReportPage() {
     }
   }
 
-  // KPIs
+  // KPIs Breakdown
   const stats = useMemo(() => {
     const totalWages = summaryData.reduce((s, r) => s + fmtNum(r["إجمالي الأجور المستحقة"]), 0);
-    const totalTravel = summaryData.reduce((s, r) => s + fmtNum(r["أيام السفر"]), 0);
-    return { totalWages, totalTravel, workersCount: summaryData.length, logsCount: logsData.length };
+    const totalNormal = summaryData.reduce((s, r) => s + fmtNum(r["أيام عادية"]), 0);
+    const totalTravel = summaryData.reduce((s, r) => s + fmtNum(r["أيام سفر"]), 0);
+    const activeWorkers = summaryData.filter((r) => fmtNum(r["إجمالي الأيام"]) > 0).length;
+
+    return {
+      totalWages,
+      totalNormal,
+      totalTravel,
+      activeWorkers,
+      workersCount: summaryData.length,
+      logsCount: logsData.length,
+    };
   }, [summaryData, logsData]);
 
   // Active dataset
@@ -191,15 +212,15 @@ export default function WorkersReportPage() {
 
   return (
     <DashboardLayout profile={profile}>
-      <div className="flex items-center justify-between gap-3 mb-4">
+      <div className="flex items-center justify-between gap-3 mb-3">
         <PageHeader
           title="تقرير أجور ويوميات العمال"
-          subtitle="كشف حساب الأجور ومستحقات العمال وسجل اليوميات والسفريات المحسوبة على الأوردرات"
+          subtitle="تحليل مستحقات العمال وسجل اليوميات والسفريات المحسوبة على الأوردرات"
           backHref="/reports"
         />
         <Link
           href="/reports"
-          className="btn-secondary h-9 px-4 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap"
+          className="btn-secondary h-8 px-3 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap"
         >
           <span>←</span>
           <span>رجوع للتقارير</span>
@@ -207,8 +228,8 @@ export default function WorkersReportPage() {
       </div>
 
       {/* فلاتر التاريخ */}
-      <div className="card mb-4 bg-white border border-gray-100 shadow-sm p-3.5">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5 pb-2 border-b">
+      <div className="card mb-3.5 bg-white border border-gray-100 shadow-xs p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2 pb-2 border-b">
           <div className="text-xs font-bold text-gray-700 flex items-center gap-2">
             <span>📅 نطاق اليوميات المسجلة بالتاريخ</span>
             {(fromDate || toDate) && (
@@ -247,52 +268,69 @@ export default function WorkersReportPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">من تاريخ</label>
+            <label className="block text-[11px] font-semibold text-gray-600 mb-1">من تاريخ</label>
             <DateInput value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">إلى تاريخ</label>
+            <label className="block text-[11px] font-semibold text-gray-600 mb-1">إلى تاريخ</label>
             <DateInput value={toDate} onChange={(e) => setToDate(e.target.value)} />
           </div>
           <div className="flex items-end">
-            <Button onClick={loadData} loading={loading} className="w-full h-9 text-xs font-bold">
+            <Button onClick={loadData} loading={loading} className="w-full h-8 text-xs font-bold">
               {loading ? "⏳ جاري التحديث..." : "🔄 تحديث البيانات"}
             </Button>
           </div>
         </div>
       </div>
 
-      {/* كروت المؤشرات */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4">
-        <div className="card bg-gradient-to-br from-orange-50 to-amber-50 border-r-4 border-orange-500 p-3 shadow-xs">
-          <div className="text-[11px] text-gray-600 font-semibold mb-0.5">🧑‍🔧 إجمالي الأجور المستحقة</div>
-          <div className="text-xl font-extrabold text-orange-900 font-mono">
+      {/* كروت المؤشرات التفصيلية */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-3.5">
+        {/* إجمالي الأجور */}
+        <div className="bg-white rounded-xl p-3 border border-orange-200 shadow-xs">
+          <div className="flex items-center justify-between text-orange-700 text-xs font-bold mb-1">
+            <span>🧑‍🔧 إجمالي الأجور المستحقة</span>
+            <span className="bg-orange-50 px-2 py-0.5 rounded text-[11px]">{stats.logsCount} يومية</span>
+          </div>
+          <div className="text-base font-extrabold text-orange-950 font-mono">
             {formatCurrency(stats.totalWages)}
           </div>
-          <div className="text-[10px] text-orange-700 mt-0.5">
-            سجلات اليوميات: {stats.logsCount} يومية
+          <div className="text-[11px] text-orange-800 mt-1 flex justify-between border-t border-orange-100 pt-1">
+            <span>أيام عادية: <strong>{stats.totalNormal}</strong></span>
+            <span>أيام سفر: <strong>{stats.totalTravel}</strong></span>
           </div>
         </div>
 
-        <div className="card bg-gradient-to-br from-amber-50 to-yellow-50 border-r-4 border-amber-500 p-3 shadow-xs">
-          <div className="text-[11px] text-gray-600 font-semibold mb-0.5">✈️ إجمالي أيام السفر</div>
-          <div className="text-xl font-extrabold text-amber-900 font-mono">
-            {stats.totalTravel} يوم
+        {/* أيام السفر */}
+        <div className="bg-white rounded-xl p-3 border border-amber-200 shadow-xs">
+          <div className="flex items-center justify-between text-amber-700 text-xs font-bold mb-1">
+            <span>✈️ بدلات وأيام السفر</span>
+            <span className="bg-amber-50 px-2 py-0.5 rounded text-[11px]">{stats.totalTravel} يوم سفر</span>
           </div>
-          <div className="text-[10px] text-amber-700 mt-0.5">بدلات سفر مسجلة</div>
+          <div className="text-base font-extrabold text-amber-950 font-mono">
+            {stats.totalTravel > 0 ? `${stats.totalTravel} أيام سفر مسجلة` : "لا توجد سفريات"}
+          </div>
+          <div className="text-[11px] text-amber-700 mt-1 border-t border-amber-100 pt-1">
+            أيام العمل مع احتساب بدل سفرية
+          </div>
         </div>
 
-        <div className="card bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white p-3 shadow-xs">
-          <div className="text-[11px] text-white/90 font-semibold mb-0.5">👥 عدد العمال المسجلين</div>
-          <div className="text-xl font-extrabold font-mono">
-            {stats.workersCount} عامل
+        {/* عدد العمال والنشاط */}
+        <div className="bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white rounded-xl p-3 shadow-xs">
+          <div className="flex items-center justify-between text-white/90 text-xs font-bold mb-1">
+            <span>👥 العمال والنشاط</span>
+            <span className="bg-white/20 px-2 py-0.5 rounded text-[11px]">{stats.workersCount} عامل كلي</span>
           </div>
-          <div className="text-[10px] text-white/80 mt-0.5">كشف الحساب واليوميات</div>
+          <div className="text-base font-extrabold font-mono text-white">
+            {stats.activeWorkers} عامل نشط بالفترة
+          </div>
+          <div className="text-[11px] text-white/80 mt-1 border-t border-white/20 pt-1">
+            كشف شامل لحسابات ويوميات العمال
+          </div>
         </div>
       </div>
 
       {/* التابات الفرعية + البحث والتصدير */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3 bg-white p-2.5 rounded-xl border border-gray-200 shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 bg-white p-2.5 rounded-xl border border-gray-200 shadow-xs">
         <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
           <button
             onClick={() => { setSubTab("summary"); setPage(1); }}
@@ -316,7 +354,7 @@ export default function WorkersReportPage() {
           <div className="relative flex-1 sm:w-52">
             <input
               type="text"
-              placeholder="🔍 بحث في العمال أو اليوميات..."
+              placeholder="🔍 بحث في العمال..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               className="w-full text-xs px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-brand-orange focus:bg-white transition"
@@ -412,7 +450,7 @@ export default function WorkersReportPage() {
           </div>
 
           {/* ترقيم الصفحات Pagination */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-gray-50/80 border-t text-xs text-gray-600">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-gray-50/80 border-t text-xs text-gray-600">
             <div className="flex items-center gap-2">
               <span>
                 عرض {(page - 1) * pageSize + 1} إلى {Math.min(page * pageSize, activeDataset.length)} من {activeDataset.length} سجل

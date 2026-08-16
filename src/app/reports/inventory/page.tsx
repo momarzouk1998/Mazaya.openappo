@@ -59,6 +59,8 @@ export default function InventoryReportPage() {
       const bList = (Array.isArray(boards) ? boards : []).map((x: any) => {
         const rem = fmtNum(x.quantity_remaining ?? 0);
         const price = fmtNum(x.unit_price);
+        const qtyIn = fmtNum(x.quantity_in);
+        const qtyUsed = fmtNum(x.quantity_used ?? 0);
         return {
           الفئة: "لوح",
           _cat: "boards",
@@ -68,8 +70,8 @@ export default function InventoryReportPage() {
           الخامة: x.material_type ?? "-",
           المورد: x.supplier_name ?? "-",
           "سعر الوحدة": price,
-          الداخل: fmtNum(x.quantity_in),
-          المستخدم: fmtNum(x.quantity_used ?? 0),
+          الداخل: qtyIn,
+          المستخدم: qtyUsed,
           المتبقي: rem,
           "قيمة المتبقي": rem * price,
           ملاحظات: x.notes ?? "-",
@@ -79,6 +81,8 @@ export default function InventoryReportPage() {
       const aList = (Array.isArray(accessories) ? accessories : []).map((x: any) => {
         const rem = fmtNum(x.quantity_remaining ?? 0);
         const price = fmtNum(x.unit_price);
+        const qtyIn = fmtNum(x.quantity_in);
+        const qtyUsed = fmtNum(x.quantity_used ?? 0);
         return {
           الفئة: "اكسسوار",
           _cat: "accessories",
@@ -88,8 +92,8 @@ export default function InventoryReportPage() {
           الخامة: x.material_type || x.type || "-",
           المورد: x.supplier_name ?? "-",
           "سعر الوحدة": price,
-          الداخل: fmtNum(x.quantity_in),
-          المستخدم: fmtNum(x.quantity_used ?? 0),
+          الداخل: qtyIn,
+          المستخدم: qtyUsed,
           المتبقي: rem,
           "قيمة المتبقي": rem * price,
           ملاحظات: x.notes ?? "-",
@@ -136,24 +140,42 @@ export default function InventoryReportPage() {
     }
   }
 
-  // KPIs
+  // KPIs Breakdown
   const stats = useMemo(() => {
     const bItems = items.filter((r) => r._cat === "boards");
     const aItems = items.filter((r) => r._cat === "accessories");
 
     const boardsVal = bItems.reduce((s, r) => s + fmtNum(r["قيمة المتبقي"]), 0);
-    const boardsQty = bItems.reduce((s, r) => s + fmtNum(r["المتبقي"]), 0);
+    const boardsInQty = bItems.reduce((s, r) => s + fmtNum(r["الداخل"]), 0);
+    const boardsUsedQty = bItems.reduce((s, r) => s + fmtNum(r["المستخدم"]), 0);
+    const boardsRemQty = bItems.reduce((s, r) => s + fmtNum(r["المتبقي"]), 0);
+    const boardsZeroCount = bItems.filter((r) => fmtNum(r["المتبقي"]) <= 0).length;
 
     const accVal = aItems.reduce((s, r) => s + fmtNum(r["قيمة المتبقي"]), 0);
-    const accQty = aItems.reduce((s, r) => s + fmtNum(r["المتبقي"]), 0);
+    const accInQty = aItems.reduce((s, r) => s + fmtNum(r["الداخل"]), 0);
+    const accUsedQty = aItems.reduce((s, r) => s + fmtNum(r["المستخدم"]), 0);
+    const accRemQty = aItems.reduce((s, r) => s + fmtNum(r["المتبقي"]), 0);
+    const accZeroCount = aItems.filter((r) => fmtNum(r["المتبقي"]) <= 0).length;
 
     return {
+      boardsCount: bItems.length,
       boardsVal,
-      boardsQty,
+      boardsInQty,
+      boardsUsedQty,
+      boardsRemQty,
+      boardsZeroCount,
+
+      accCount: aItems.length,
       accVal,
-      accQty,
+      accInQty,
+      accUsedQty,
+      accRemQty,
+      accZeroCount,
+
       totalVal: boardsVal + accVal,
-      totalQty: boardsQty + accQty,
+      totalCount: items.length,
+      totalRemQty: boardsRemQty + accRemQty,
+      totalZeroCount: boardsZeroCount + accZeroCount,
     };
   }, [items]);
 
@@ -211,15 +233,15 @@ export default function InventoryReportPage() {
 
   return (
     <DashboardLayout profile={profile}>
-      <div className="flex items-center justify-between gap-3 mb-4">
+      <div className="flex items-center justify-between gap-3 mb-3">
         <PageHeader
           title="تقرير المخزون والجرد الدوري"
-          subtitle="جرد تفصيلي لمخزون الألواح والإكسسوارات واحتساب القيمة المالية للمتبقي والراكد"
+          subtitle="تحليل كميات وقيم مخزون الألواح والإكسسوارات، الداخل والمستخدم والمتبقي والراكد"
           backHref="/reports"
         />
         <Link
           href="/reports"
-          className="btn-secondary h-9 px-4 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap"
+          className="btn-secondary h-8 px-3 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap"
         >
           <span>←</span>
           <span>رجوع للتقارير</span>
@@ -227,8 +249,8 @@ export default function InventoryReportPage() {
       </div>
 
       {/* فلاتر التاريخ */}
-      <div className="card mb-4 bg-white border border-gray-100 shadow-sm p-3.5">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5 pb-2 border-b">
+      <div className="card mb-3.5 bg-white border border-gray-100 shadow-xs p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2 pb-2 border-b">
           <div className="text-xs font-bold text-gray-700 flex items-center gap-2">
             <span>📅 نطاق حركة وجرد المخزون بالتاريخ</span>
             {(fromDate || toDate) && (
@@ -267,56 +289,73 @@ export default function InventoryReportPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">من تاريخ</label>
+            <label className="block text-[11px] font-semibold text-gray-600 mb-1">من تاريخ</label>
             <DateInput value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">إلى تاريخ</label>
+            <label className="block text-[11px] font-semibold text-gray-600 mb-1">إلى تاريخ</label>
             <DateInput value={toDate} onChange={(e) => setToDate(e.target.value)} />
           </div>
           <div className="flex items-end">
-            <Button onClick={loadData} loading={loading} className="w-full h-9 text-xs font-bold">
+            <Button onClick={loadData} loading={loading} className="w-full h-8 text-xs font-bold">
               {loading ? "⏳ جاري التحديث..." : "🔄 تحديث بيانات الجرد"}
             </Button>
           </div>
         </div>
       </div>
 
-      {/* كروت المؤشرات */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4">
-        <div className="card bg-gradient-to-br from-amber-50 to-orange-50 border-r-4 border-amber-500 p-3 shadow-xs">
-          <div className="text-[11px] text-gray-600 font-semibold mb-0.5">🪵 قيمة مخزون الألواح</div>
-          <div className="text-xl font-extrabold text-amber-900 font-mono">
+      {/* كروت المؤشرات التفصيلية */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-3.5">
+        {/* مخزون الألواح */}
+        <div className="bg-white rounded-xl p-3 border border-amber-200 shadow-xs">
+          <div className="flex items-center justify-between text-amber-700 text-xs font-bold mb-1">
+            <span>🪵 مخزون الألواح</span>
+            <span className="bg-amber-50 px-2 py-0.5 rounded text-[11px]">{stats.boardsCount} صنف</span>
+          </div>
+          <div className="text-base font-extrabold text-amber-950 font-mono">
             {formatCurrency(stats.boardsVal)}
           </div>
-          <div className="text-[10px] text-amber-700 mt-0.5">
-            الكمية المتبقية: <strong>{stats.boardsQty}</strong> لوح
+          <div className="text-[11px] text-amber-800 mt-1 flex justify-between border-t border-amber-100 pt-1">
+            <span>متبقي: <strong>{stats.boardsRemQty}</strong> لوح</span>
+            <span>مستخدم: <strong>{stats.boardsUsedQty}</strong></span>
+            <span>داخل: <strong>{stats.boardsInQty}</strong></span>
           </div>
         </div>
 
-        <div className="card bg-gradient-to-br from-rose-50 to-pink-50 border-r-4 border-rose-500 p-3 shadow-xs">
-          <div className="text-[11px] text-gray-600 font-semibold mb-0.5">🔩 قيمة مخزون الإكسسوارات</div>
-          <div className="text-xl font-extrabold text-rose-900 font-mono">
+        {/* مخزون الإكسسوارات */}
+        <div className="bg-white rounded-xl p-3 border border-rose-200 shadow-xs">
+          <div className="flex items-center justify-between text-rose-700 text-xs font-bold mb-1">
+            <span>🔩 مخزون الإكسسوارات</span>
+            <span className="bg-rose-50 px-2 py-0.5 rounded text-[11px]">{stats.accCount} صنف</span>
+          </div>
+          <div className="text-base font-extrabold text-rose-950 font-mono">
             {formatCurrency(stats.accVal)}
           </div>
-          <div className="text-[10px] text-rose-700 mt-0.5">
-            الكمية المتبقية: <strong>{stats.accQty}</strong> قطعة
+          <div className="text-[11px] text-rose-800 mt-1 flex justify-between border-t border-rose-100 pt-1">
+            <span>متبقي: <strong>{stats.accRemQty}</strong> قطعة</span>
+            <span>مستخدم: <strong>{stats.accUsedQty}</strong></span>
+            <span>داخل: <strong>{stats.accInQty}</strong></span>
           </div>
         </div>
 
-        <div className="card bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white p-3 shadow-xs">
-          <div className="text-[11px] text-white/90 font-semibold mb-0.5">📦 إجمالي قيمة المخزون</div>
-          <div className="text-xl font-extrabold font-mono">
+        {/* إجمالي المخزون الشامل */}
+        <div className="bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white rounded-xl p-3 shadow-xs">
+          <div className="flex items-center justify-between text-white/90 text-xs font-bold mb-1">
+            <span>📦 إجمالي قيمة المخزون</span>
+            <span className="bg-white/20 px-2 py-0.5 rounded text-[11px]">{stats.totalCount} صنف كلي</span>
+          </div>
+          <div className="text-base font-extrabold font-mono text-white">
             {formatCurrency(stats.totalVal)}
           </div>
-          <div className="text-[10px] text-white/80 mt-0.5">
-            إجمالي الأصناف: <strong>{items.length}</strong> صنف
+          <div className="text-[11px] text-white/80 mt-1 flex justify-between border-t border-white/20 pt-1">
+            <span>إجمالي المتبقي: <strong>{stats.totalRemQty}</strong></span>
+            <span>أصناف رصيد صفر: <strong>{stats.totalZeroCount}</strong></span>
           </div>
         </div>
       </div>
 
       {/* التابات الفرعية + البحث والتصدير */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3 bg-white p-2.5 rounded-xl border border-gray-200 shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 bg-white p-2.5 rounded-xl border border-gray-200 shadow-xs">
         <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
           <button
             onClick={() => { setSubTab("all"); setPage(1); }}
@@ -332,7 +371,7 @@ export default function InventoryReportPage() {
               subTab === "boards" ? "bg-brand-orange text-white shadow-xs" : "bg-gray-50 border text-gray-700 hover:bg-gray-100"
             }`}
           >
-            🪵 الألواح ({items.filter((r) => r._cat === "boards").length})
+            🪵 الألواح ({stats.boardsCount})
           </button>
           <button
             onClick={() => { setSubTab("accessories"); setPage(1); }}
@@ -340,7 +379,7 @@ export default function InventoryReportPage() {
               subTab === "accessories" ? "bg-brand-orange text-white shadow-xs" : "bg-gray-50 border text-gray-700 hover:bg-gray-100"
             }`}
           >
-            🔩 الإكسسوارات ({items.filter((r) => r._cat === "accessories").length})
+            🔩 الإكسسوارات ({stats.accCount})
           </button>
         </div>
 
@@ -399,11 +438,18 @@ export default function InventoryReportPage() {
                       const v = row[k];
                       const isMoney = moneyKeys.includes(k);
                       const isCategory = k === "الفئة";
+                      const isRemaining = k === "المتبقي";
                       return (
                         <td
                           key={k}
                           className={`px-2.5 py-2 whitespace-nowrap ${
-                            isMoney ? "font-bold text-brand-orange-dark font-mono text-left" : "text-gray-700"
+                            isMoney
+                              ? "font-bold text-brand-orange-dark font-mono text-left"
+                              : isRemaining
+                                ? fmtNum(v) <= 0
+                                  ? "font-bold text-red-500 font-mono"
+                                  : "font-bold text-emerald-700 font-mono"
+                                : "text-gray-700"
                           }`}
                         >
                           {isMoney ? (
@@ -452,7 +498,7 @@ export default function InventoryReportPage() {
           </div>
 
           {/* ترقيم الصفحات Pagination */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-gray-50/80 border-t text-xs text-gray-600">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-gray-50/80 border-t text-xs text-gray-600">
             <div className="flex items-center gap-2">
               <span>
                 عرض {(page - 1) * pageSize + 1} إلى {Math.min(page * pageSize, activeDataset.length)} من {activeDataset.length} صنف

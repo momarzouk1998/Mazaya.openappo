@@ -38,7 +38,8 @@ export default function OrdersReportPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
-  // Data sets
+  // Raw fetched lists
+  const [rawOrders, setRawOrders] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [additions, setAdditions] = useState<any[]>([]);
   const [externalWork, setExternalWork] = useState<any[]>([]);
@@ -65,6 +66,8 @@ export default function OrdersReportPage() {
       const tList = tRes?.data?.entries ?? tRes?.data ?? tRes?.entries ?? [];
       const extList = extRes?.data?.items ?? extRes?.data ?? extRes?.items ?? [];
 
+      setRawOrders(Array.isArray(ordList) ? ordList : []);
+
       const filterByDate = (list: any[]) => {
         if (!fromDate && !toDate) return list;
         return list.filter((x: any) => {
@@ -78,25 +81,41 @@ export default function OrdersReportPage() {
       const filteredT = filterByDate(Array.isArray(tList) ? tList : []);
       const filteredExt = filterByDate(Array.isArray(extList) ? extList : []);
 
-      // Map Orders
+      // Map Orders with rich itemization
       const mappedOrders = (Array.isArray(ordList) ? ordList : []).map((x: any) => {
         const grand = fmtNum(x.order_total ?? x.total ?? 0);
         const ext = fmtNum(x.external_work_total ?? 0);
+        const bCost = fmtNum(x.boards_cost ?? 0);
+        const aCost = fmtNum(x.accessories_cost ?? 0);
+        const matTotal = bCost + aCost;
         const factory = Math.max(0, grand - ext);
+        const wLogs = fmtNum(x.worker_logs_total ?? 0);
+        const roadExp = fmtNum(x.road_expenses_total ?? 0);
+        const instCost = fmtNum(x.installation_cost ?? 0);
+        const inTrans = fmtNum(x.internal_transport_cost ?? 0);
+        const exTrans = fmtNum(x.external_transport_cost ?? 0);
+        const commission = fmtNum(x.factory_commission ?? 0);
+        const extraCosts = fmtNum(x.extra_costs_total ?? 0);
+
         return {
           "اسم الأوردر": x.order_name ?? "",
           العميل: x.customer_name ?? "-",
           المعرض: x.branch_name ?? "-",
           الحالة: x.status ?? "",
-          النوع: x.order_type ?? "",
-          "تاريخ البدء": safeFormatDate(x.start_date),
+          "تاريخ البدء": safeFormatDate(x.start_date || x.created_at),
           "تاريخ الانتهاء": safeFormatDate(x.end_date),
-          "تكلفة الألواح": fmtNum(x.boards_cost ?? 0),
-          "تكلفة الاكسسوارات": fmtNum(x.accessories_cost ?? 0),
-          "أجور العمال": fmtNum(x.worker_logs_total ?? 0),
-          "مصاريف الطريق": fmtNum(x.road_expenses_total ?? 0),
-          "تكلفة المصنع (بدون مقاولين)": factory,
+          "إجمالي المواد": matTotal,
+          "تكلفة الألواح": bCost,
+          "تكلفة الاكسسوارات": aCost,
+          "أجور العمال": wLogs,
+          "مصاريف الطريق": roadExp,
+          "نقل داخلي": inTrans,
+          "نقل خارجي": exTrans,
+          تركيبات: instCost,
+          عمولة: commission,
+          "تكاليف إضافية": extraCosts,
           "الأعمال الخارجية (المقاولين)": ext,
+          "تكلفة المصنع (بدون مقاولين)": factory,
           "الإجمالي الشامل للأوردر": grand,
         };
       });
@@ -105,7 +124,7 @@ export default function OrdersReportPage() {
       const mappedAdditions = [
         ...filteredP.map((x: any) => ({
           التاريخ: safeFormatDate(x.date || x.created_at),
-          القسم: "🎨 مصاريف دهانات ومرمات",
+          القسم: "🎨 دهانات ومرمات",
           الأوردر: x.order_name || "—",
           البيان: x.description || "دهانات وتينر",
           "طريقة الدفع": x.payment_method || "نقدي",
@@ -114,7 +133,7 @@ export default function OrdersReportPage() {
         })),
         ...filteredL.map((x: any) => ({
           التاريخ: safeFormatDate(x.date || x.created_at),
-          القسم: "💡 مصاريف ليد وكهرباء",
+          القسم: "💡 ليد وكهرباء",
           الأوردر: x.order_name || "—",
           البيان: x.description || "بضاعة ومصنعية ليد",
           "طريقة الدفع": x.payment_method || "نقدي",
@@ -123,7 +142,7 @@ export default function OrdersReportPage() {
         })),
         ...filteredT.map((x: any) => ({
           التاريخ: safeFormatDate(x.date || x.created_at),
-          القسم: "🚚 نقل داخلي ومصاريف طريق",
+          القسم: "🚚 نقل ومصاريف طريق",
           الأوردر: x.order_name || "—",
           البيان: x.description || "نقل / مصاريف طريق",
           "طريقة الدفع": x.payment_method || "نقدي",
@@ -178,14 +197,84 @@ export default function OrdersReportPage() {
     }
   }
 
-  // KPIs
+  // KPIs Breakdown
   const stats = useMemo(() => {
-    const factorySum = orders.reduce((s, r) => s + fmtNum(r["تكلفة المصنع (بدون مقاولين)"]), 0);
-    const externalSum = orders.reduce((s, r) => s + fmtNum(r["الأعمال الخارجية (المقاولين)"]), 0);
-    const grandSum = orders.reduce((s, r) => s + fmtNum(r["الإجمالي الشامل للأوردر"]), 0);
-    const additionsSum = additions.reduce((s, r) => s + fmtNum(r["المبلغ"]), 0);
-    return { factorySum, externalSum, grandSum, additionsSum, count: orders.length };
-  }, [orders, additions]);
+    let openCount = 0;
+    let openTotal = 0;
+    let completedCount = 0;
+    let completedTotal = 0;
+    let deliveredCount = 0;
+    let boardsTotal = 0;
+    let accessoriesTotal = 0;
+    let externalTotal = 0;
+    let workerLogsTotal = 0;
+    let roadExpensesTotal = 0;
+    let internalTransportTotal = 0;
+    let externalTransportTotal = 0;
+    let installationTotal = 0;
+    let commissionTotal = 0;
+    let extraCostsTotal = 0;
+    let grandTotal = 0;
+
+    rawOrders.forEach((o) => {
+      const total = fmtNum(o.order_total ?? o.total ?? 0);
+      const st = String(o.status ?? "");
+      grandTotal += total;
+
+      if (st === "مكتمل" || st === "تم التسليم") {
+        completedCount++;
+        completedTotal += total;
+        if (st === "تم التسليم") deliveredCount++;
+      } else {
+        openCount++;
+        openTotal += total;
+      }
+
+      boardsTotal += fmtNum(o.boards_cost);
+      accessoriesTotal += fmtNum(o.accessories_cost);
+      externalTotal += fmtNum(o.external_work_total);
+      workerLogsTotal += fmtNum(o.worker_logs_total);
+      roadExpensesTotal += fmtNum(o.road_expenses_total);
+      internalTransportTotal += fmtNum(o.internal_transport_cost);
+      externalTransportTotal += fmtNum(o.external_transport_cost);
+      installationTotal += fmtNum(o.installation_cost);
+      commissionTotal += fmtNum(o.factory_commission);
+      extraCostsTotal += fmtNum(o.extra_costs_total);
+    });
+
+    const materialsTotal = boardsTotal + accessoriesTotal;
+    const manualCostsTotal =
+      workerLogsTotal +
+      roadExpensesTotal +
+      internalTransportTotal +
+      externalTransportTotal +
+      installationTotal +
+      commissionTotal +
+      extraCostsTotal;
+
+    return {
+      openCount,
+      openTotal,
+      completedCount,
+      completedTotal,
+      deliveredCount,
+      totalCount: rawOrders.length,
+      grandTotal,
+      materialsTotal,
+      boardsTotal,
+      accessoriesTotal,
+      externalTotal,
+      manualCostsTotal,
+      workerLogsTotal,
+      roadExpensesTotal,
+      internalTransportTotal,
+      externalTransportTotal,
+      installationTotal,
+      commissionTotal,
+      extraCostsTotal,
+      factoryTotal: Math.max(0, grandTotal - externalTotal),
+    };
+  }, [rawOrders]);
 
   // Active dataset
   const activeDataset = useMemo(() => {
@@ -222,6 +311,10 @@ export default function OrdersReportPage() {
         k.includes("الإجمالي") ||
         k.includes("أجور") ||
         k.includes("مصاريف") ||
+        k.includes("نقل") ||
+        k.includes("تركيبات") ||
+        k.includes("عمولة") ||
+        k.includes("المواد") ||
         k.includes("الأعمال الخارجية")
     );
   }, [columns]);
@@ -237,7 +330,7 @@ export default function OrdersReportPage() {
 
   function handleExport() {
     const titles = {
-      orders: "كشف_الأوردرات_والتكاليف",
+      orders: "كشف_الأوردرات_والتكاليف_التفصيلي",
       additions: "إضافات_الأوردرات_دهانات_وليد_ونقل",
       external: "الأعمال_الخارجية_للمقاولين",
     };
@@ -248,24 +341,24 @@ export default function OrdersReportPage() {
 
   return (
     <DashboardLayout profile={profile}>
-      <div className="flex items-center justify-between gap-3 mb-4">
+      <div className="flex items-center justify-between gap-3 mb-3">
         <PageHeader
           title="تقرير الأوردرات والتكاليف الشاملة"
-          subtitle="تحليل تكاليف المصنع مفصولة عن الأعمال الخارجية مع إضافات الدهانات والليد والنقل"
+          subtitle="تحليل متكامل وتفصيلي لحالات الأوردرات، تكاليف المواد، أجور العمال، النقل، والأعمال الخارجية"
           backHref="/reports"
         />
         <Link
           href="/reports"
-          className="btn-secondary h-9 px-4 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap"
+          className="btn-secondary h-8 px-3 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap"
         >
           <span>←</span>
           <span>رجوع للتقارير</span>
         </Link>
       </div>
 
-      {/* شريط الفلاتر */}
-      <div className="card mb-4 bg-white border border-gray-100 shadow-sm p-3.5">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5 pb-2 border-b">
+      {/* شريط الفلاتر السريعة */}
+      <div className="card mb-3.5 bg-white border border-gray-100 shadow-xs p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2 pb-2 border-b">
           <div className="text-xs font-bold text-gray-700 flex items-center gap-2">
             <span>📅 نطاق التقرير بالتاريخ</span>
             {(fromDate || toDate) && (
@@ -304,58 +397,95 @@ export default function OrdersReportPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">من تاريخ</label>
+            <label className="block text-[11px] font-semibold text-gray-600 mb-1">من تاريخ</label>
             <DateInput value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">إلى تاريخ</label>
+            <label className="block text-[11px] font-semibold text-gray-600 mb-1">إلى تاريخ</label>
             <DateInput value={toDate} onChange={(e) => setToDate(e.target.value)} />
           </div>
           <div className="flex items-end">
-            <Button onClick={loadData} loading={loading} className="w-full h-9 text-xs font-bold">
+            <Button onClick={loadData} loading={loading} className="w-full h-8 text-xs font-bold">
               {loading ? "⏳ جاري التحديث..." : "🔄 تحديث البيانات"}
             </Button>
           </div>
         </div>
       </div>
 
-      {/* كروت المؤشرات */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-4">
-        <div className="card bg-gradient-to-br from-blue-50 to-indigo-50 border-r-4 border-indigo-600 p-3 shadow-xs">
-          <div className="text-[11px] text-gray-600 font-semibold mb-0.5">📦 تكلفة المصنع</div>
-          <div className="text-xl font-extrabold text-indigo-900 font-mono">
-            {formatCurrency(stats.factorySum)}
+      {/* لوحة المؤشرات التفصيلية المجمعة (KPIs Breakdown) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-3.5">
+        {/* أوردرات مفتوحة */}
+        <div className="bg-white rounded-xl p-2.5 border border-blue-100 shadow-xs">
+          <div className="flex items-center justify-between text-blue-600 text-xs font-bold mb-1">
+            <span>📂 أوردرات مفتوحة</span>
+            <span className="bg-blue-50 px-1.5 py-0.2 rounded text-[11px]">{stats.openCount}</span>
           </div>
-          <div className="text-[10px] text-indigo-700 mt-0.5">بدون مقاولين</div>
+          <div className="text-sm font-extrabold text-blue-950 font-mono">
+            {formatCurrency(stats.openTotal)}
+          </div>
+          <div className="text-[10px] text-blue-600 mt-0.5">قيد التنفيذ والتشغيل</div>
         </div>
 
-        <div className="card bg-gradient-to-br from-amber-50 to-yellow-50 border-r-4 border-amber-500 p-3 shadow-xs">
-          <div className="text-[11px] text-gray-600 font-semibold mb-0.5">🔨 الأعمال الخارجية</div>
-          <div className="text-xl font-extrabold text-amber-900 font-mono">
-            {formatCurrency(stats.externalSum)}
+        {/* أوردرات مكتملة */}
+        <div className="bg-white rounded-xl p-2.5 border border-emerald-100 shadow-xs">
+          <div className="flex items-center justify-between text-emerald-600 text-xs font-bold mb-1">
+            <span>✅ مكتملة</span>
+            <span className="bg-emerald-50 px-1.5 py-0.2 rounded text-[11px]">{stats.completedCount}</span>
           </div>
-          <div className="text-[10px] text-amber-700 mt-0.5">المقاولين والورش</div>
+          <div className="text-sm font-extrabold text-emerald-950 font-mono">
+            {formatCurrency(stats.completedTotal)}
+          </div>
+          <div className="text-[10px] text-emerald-600 mt-0.5">منها {stats.deliveredCount} مسلّم 🚚</div>
         </div>
 
-        <div className="card bg-gradient-to-br from-purple-50 to-fuchsia-50 border-r-4 border-purple-500 p-3 shadow-xs">
-          <div className="text-[11px] text-gray-600 font-semibold mb-0.5">🎨 إضافات الأوردرات</div>
-          <div className="text-xl font-extrabold text-purple-900 font-mono">
-            {formatCurrency(stats.additionsSum)}
+        {/* إجمالي كل الأوردرات */}
+        <div className="bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white rounded-xl p-2.5 shadow-xs">
+          <div className="flex items-center justify-between text-white/90 text-xs font-bold mb-1">
+            <span>📦 إجمالي الأوردرات</span>
+            <span className="bg-white/20 px-1.5 py-0.2 rounded text-[11px]">{stats.totalCount}</span>
           </div>
-          <div className="text-[10px] text-purple-700 mt-0.5">دهانات + ليد + نقل</div>
+          <div className="text-sm font-extrabold font-mono text-white">
+            {formatCurrency(stats.grandTotal)}
+          </div>
+          <div className="text-[10px] text-white/80 mt-0.5">تكلفة المصنع: {formatCurrency(stats.factoryTotal)}</div>
         </div>
 
-        <div className="card bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white p-3 shadow-xs">
-          <div className="text-[11px] text-white/90 font-semibold mb-0.5">💰 الإجمالي الشامل</div>
-          <div className="text-xl font-extrabold font-mono">
-            {formatCurrency(stats.grandSum)}
+        {/* تفصيل المواد */}
+        <div className="bg-white rounded-xl p-2.5 border border-amber-200 shadow-xs">
+          <div className="text-amber-700 text-xs font-bold mb-1">🪵 المواد الخام</div>
+          <div className="text-sm font-extrabold text-amber-950 font-mono">
+            {formatCurrency(stats.materialsTotal)}
           </div>
-          <div className="text-[10px] text-white/80 mt-0.5">عدد الأوردرات: {stats.count}</div>
+          <div className="text-[10px] text-amber-700 mt-0.5 flex flex-col leading-tight">
+            <span>ألواح: {formatCurrency(stats.boardsTotal)}</span>
+            <span>إكسسوار: {formatCurrency(stats.accessoriesTotal)}</span>
+          </div>
+        </div>
+
+        {/* أعمال خارجية للمقاولين */}
+        <div className="bg-white rounded-xl p-2.5 border border-purple-200 shadow-xs">
+          <div className="text-purple-700 text-xs font-bold mb-1">🔨 أعمال خارجية</div>
+          <div className="text-sm font-extrabold text-purple-950 font-mono">
+            {formatCurrency(stats.externalTotal)}
+          </div>
+          <div className="text-[10px] text-purple-600 mt-0.5">مقاولين وورش خارجية</div>
+        </div>
+
+        {/* تكاليف وإضافات */}
+        <div className="bg-white rounded-xl p-2.5 border border-gray-200 shadow-xs">
+          <div className="text-gray-700 text-xs font-bold mb-1">💸 تكاليف وإضافات</div>
+          <div className="text-sm font-extrabold text-gray-900 font-mono">
+            {formatCurrency(stats.manualCostsTotal)}
+          </div>
+          <div className="text-[10px] text-gray-500 mt-0.5 flex flex-col leading-tight">
+            <span>عمال: {formatCurrency(stats.workerLogsTotal)}</span>
+            <span>نقل وطريق: {formatCurrency(stats.roadExpensesTotal + stats.internalTransportTotal)}</span>
+          </div>
         </div>
       </div>
 
       {/* التابات الفرعية + البحث والتصدير */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3 bg-white p-2.5 rounded-xl border border-gray-200 shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 bg-white p-2.5 rounded-xl border border-gray-200 shadow-xs">
         <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
           <button
             onClick={() => { setSubTab("orders"); setPage(1); }}
@@ -363,7 +493,7 @@ export default function OrdersReportPage() {
               subTab === "orders" ? "bg-brand-orange text-white shadow-xs" : "bg-gray-50 border text-gray-700 hover:bg-gray-100"
             }`}
           >
-            📋 الأوردرات والتكاليف ({orders.length})
+            📋 كشف الأوردرات والتكاليف التفصيلي ({orders.length})
           </button>
           <button
             onClick={() => { setSubTab("additions"); setPage(1); }}
@@ -371,7 +501,7 @@ export default function OrdersReportPage() {
               subTab === "additions" ? "bg-brand-orange text-white shadow-xs" : "bg-gray-50 border text-gray-700 hover:bg-gray-100"
             }`}
           >
-            🧩 إضافات الأوردرات ({additions.length})
+            🧩 إضافات الأوردرات (دهانات، ليد، نقل) ({additions.length})
           </button>
           <button
             onClick={() => { setSubTab("external"); setPage(1); }}
@@ -379,7 +509,7 @@ export default function OrdersReportPage() {
               subTab === "external" ? "bg-brand-orange text-white shadow-xs" : "bg-gray-50 border text-gray-700 hover:bg-gray-100"
             }`}
           >
-            🔨 الأعمال الخارجية ({externalWork.length})
+            🔨 الأعمال الخارجية للمقاولين ({externalWork.length})
           </button>
         </div>
 
@@ -387,7 +517,7 @@ export default function OrdersReportPage() {
           <div className="relative flex-1 sm:w-52">
             <input
               type="text"
-              placeholder="🔍 بحث..."
+              placeholder="🔍 بحث سريع..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               className="w-full text-xs px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-brand-orange focus:bg-white transition"
@@ -420,9 +550,9 @@ export default function OrdersReportPage() {
             <table className="w-full text-xs">
               <thead className="bg-gray-100/80 text-gray-800 border-b border-gray-200">
                 <tr>
-                  <th className="px-2.5 py-2.5 text-center font-bold text-gray-500 w-8">#</th>
+                  <th className="px-2 py-2.5 text-center font-bold text-gray-500 w-8">#</th>
                   {columns.map((k) => (
-                    <th key={k} className="px-2.5 py-2.5 text-right font-extrabold whitespace-nowrap text-gray-700">
+                    <th key={k} className="px-2 py-2.5 text-right font-extrabold whitespace-nowrap text-gray-700">
                       {k}
                     </th>
                   ))}
@@ -431,18 +561,26 @@ export default function OrdersReportPage() {
               <tbody className="divide-y divide-gray-100">
                 {paginatedRows.map((row, i) => (
                   <tr key={i} className="hover:bg-orange-50/30 transition">
-                    <td className="px-2.5 py-2 text-center text-gray-400 font-mono">
+                    <td className="px-2 py-2 text-center text-gray-400 font-mono">
                       {(page - 1) * pageSize + i + 1}
                     </td>
                     {columns.map((k) => {
                       const v = row[k];
                       const isMoney = moneyKeys.includes(k);
                       const isStatus = k === "الحالة";
+                      const isGrand = k === "الإجمالي الشامل للأوردر";
+                      const isFactory = k === "تكلفة المصنع (بدون مقاولين)";
                       return (
                         <td
                           key={k}
-                          className={`px-2.5 py-2 whitespace-nowrap ${
-                            isMoney ? "font-bold text-brand-orange-dark font-mono text-left" : "text-gray-700"
+                          className={`px-2 py-2 whitespace-nowrap ${
+                            isGrand
+                              ? "font-extrabold text-brand-orange-dark font-mono text-left bg-orange-50/20"
+                              : isFactory
+                                ? "font-bold text-blue-900 font-mono text-left"
+                                : isMoney
+                                  ? "font-semibold text-gray-900 font-mono text-left"
+                                  : "text-gray-700"
                           }`}
                         >
                           {isMoney ? (
@@ -470,24 +608,24 @@ export default function OrdersReportPage() {
               </tbody>
               <tfoot className="bg-gray-50 border-t-2 border-gray-300 font-extrabold text-xs text-gray-800">
                 <tr>
-                  <td className="px-2.5 py-2.5 text-center text-gray-500">Σ</td>
+                  <td className="px-2 py-2.5 text-center text-gray-500">Σ</td>
                   {columns.map((k) => {
                     const isMoney = moneyKeys.includes(k);
                     if (isMoney) {
                       return (
-                        <td key={k} className="px-2.5 py-2.5 text-left font-mono font-bold text-brand-orange-dark text-xs whitespace-nowrap">
+                        <td key={k} className="px-2 py-2.5 text-left font-mono font-bold text-brand-orange-dark text-xs whitespace-nowrap">
                           {formatCurrency(columnSums[k] || 0)}
                         </td>
                       );
                     }
                     if (k === columns[0]) {
                       return (
-                        <td key={k} className="px-2.5 py-2.5 whitespace-nowrap text-gray-800">
+                        <td key={k} className="px-2 py-2.5 whitespace-nowrap text-gray-800">
                           الإجمالي ({activeDataset.length} سجل)
                         </td>
                       );
                     }
-                    return <td key={k} className="px-2.5 py-2.5"></td>;
+                    return <td key={k} className="px-2 py-2.5"></td>;
                   })}
                 </tr>
               </tfoot>
@@ -495,7 +633,7 @@ export default function OrdersReportPage() {
           </div>
 
           {/* شريط ترقيم الصفحات Pagination */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-gray-50/80 border-t text-xs text-gray-600">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-gray-50/80 border-t text-xs text-gray-600">
             <div className="flex items-center gap-2">
               <span>
                 عرض {(page - 1) * pageSize + 1} إلى {Math.min(page * pageSize, activeDataset.length)} من {activeDataset.length} سجل
