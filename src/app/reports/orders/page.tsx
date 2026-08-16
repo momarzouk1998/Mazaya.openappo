@@ -42,6 +42,8 @@ export default function OrdersReportPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [additions, setAdditions] = useState<any[]>([]);
   const [externalWork, setExternalWork] = useState<any[]>([]);
+  const [paintsTotal, setPaintsTotal] = useState(0);
+  const [ledTotal, setLedTotal] = useState(0);
 
   async function loadData() {
     setLoading(true);
@@ -80,6 +82,9 @@ export default function OrdersReportPage() {
       const filteredT = filterByDate(Array.isArray(tList) ? tList : []);
       const filteredExt = filterByDate(Array.isArray(extList) ? extList : []);
 
+      setPaintsTotal(filteredP.reduce((s: number, r: any) => s + fmtNum(r.amount), 0));
+      setLedTotal(filteredL.reduce((s: number, r: any) => s + fmtNum(r.amount), 0));
+
       // Map Orders with rich itemization
       const mappedOrders = (Array.isArray(ordList) ? ordList : []).map((x: any) => {
         const grand = fmtNum(x.order_total ?? x.total ?? 0);
@@ -94,6 +99,7 @@ export default function OrdersReportPage() {
         const inTrans = fmtNum(x.internal_transport_cost ?? 0);
         const exTrans = fmtNum(x.external_transport_cost ?? 0);
         const commission = fmtNum(x.factory_commission ?? 0);
+        const overhead = fmtNum(x.overhead_costs_total ?? x.overhead_total ?? 0);
         const extraCosts = fmtNum(x.extra_costs_total ?? 0);
 
         return {
@@ -112,6 +118,7 @@ export default function OrdersReportPage() {
           "نقل خارجي": exTrans,
           تركيبات: instCost,
           عمولة: commission,
+          نثريات: overhead,
           "تكاليف إضافية": extraCosts,
           "الأعمال الخارجية (المقاولين)": ext,
           "تكلفة المصنع (بدون مقاولين)": factory,
@@ -196,13 +203,15 @@ export default function OrdersReportPage() {
     }
   }
 
-  // KPIs Breakdown
+  // Comprehensive Detailed KPIs Breakdown
   const stats = useMemo(() => {
     let openCount = 0;
     let openTotal = 0;
     let completedCount = 0;
     let completedTotal = 0;
     let deliveredCount = 0;
+    let deliveredTotal = 0;
+
     let boardsTotal = 0;
     let accessoriesTotal = 0;
     let externalTotal = 0;
@@ -212,6 +221,7 @@ export default function OrdersReportPage() {
     let externalTransportTotal = 0;
     let installationTotal = 0;
     let commissionTotal = 0;
+    let overheadTotal = 0;
     let extraCostsTotal = 0;
     let grandTotal = 0;
 
@@ -223,7 +233,10 @@ export default function OrdersReportPage() {
       if (st === "مكتمل" || st === "تم التسليم") {
         completedCount++;
         completedTotal += total;
-        if (st === "تم التسليم") deliveredCount++;
+        if (st === "تم التسليم") {
+          deliveredCount++;
+          deliveredTotal += total;
+        }
       } else {
         openCount++;
         openTotal += total;
@@ -238,6 +251,7 @@ export default function OrdersReportPage() {
       externalTransportTotal += fmtNum(o.external_transport_cost);
       installationTotal += fmtNum(o.installation_cost);
       commissionTotal += fmtNum(o.factory_commission);
+      overheadTotal += fmtNum(o.overhead_costs_total ?? o.overhead_total ?? 0);
       extraCostsTotal += fmtNum(o.extra_costs_total);
     });
 
@@ -249,6 +263,7 @@ export default function OrdersReportPage() {
       externalTransportTotal +
       installationTotal +
       commissionTotal +
+      overheadTotal +
       extraCostsTotal;
 
     return {
@@ -257,6 +272,7 @@ export default function OrdersReportPage() {
       completedCount,
       completedTotal,
       deliveredCount,
+      deliveredTotal,
       totalCount: rawOrders.length,
       grandTotal,
       materialsTotal,
@@ -270,6 +286,7 @@ export default function OrdersReportPage() {
       externalTransportTotal,
       installationTotal,
       commissionTotal,
+      overheadTotal,
       extraCostsTotal,
       factoryTotal: Math.max(0, grandTotal - externalTotal),
     };
@@ -313,6 +330,7 @@ export default function OrdersReportPage() {
         k.includes("نقل") ||
         k.includes("تركيبات") ||
         k.includes("عمولة") ||
+        k.includes("نثريات") ||
         k.includes("المواد") ||
         k.includes("الأعمال الخارجية")
     );
@@ -340,7 +358,7 @@ export default function OrdersReportPage() {
 
   return (
     <DashboardLayout profile={profile}>
-      {/* رأس الصفحة المدمج والأنيق بدون سطر فرعي */}
+      {/* رأس الصفحة المدمج والأنيق */}
       <div className="flex items-center justify-between gap-2 mb-2.5">
         <h1 className="text-base font-bold text-gray-900 flex items-center gap-2">
           <span>📋</span>
@@ -355,74 +373,180 @@ export default function OrdersReportPage() {
         </Link>
       </div>
 
-      {/* لوحة المؤشرات التفصيلية المجمعة تحت العنوان مباشرة */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-2.5">
-        {/* أوردرات مفتوحة */}
-        <div className="bg-white rounded-xl p-2.5 border border-blue-100 shadow-xs">
-          <div className="flex items-center justify-between text-blue-600 text-xs font-bold mb-1">
-            <span>📂 أوردرات مفتوحة</span>
-            <span className="bg-blue-50 px-1.5 py-0.2 rounded text-[11px]">{stats.openCount}</span>
-          </div>
-          <div className="text-sm font-extrabold text-blue-950 font-mono">
-            {formatCurrency(stats.openTotal)}
-          </div>
-          <div className="text-[10px] text-blue-600 mt-0.5">قيد التنفيذ والتشغيل</div>
+      {/* ======================================================== */}
+      {/* جدول ملون ومفصل للإحصائيات بخط واضح وأرقام كبيرة وواضحة */}
+      {/* ======================================================== */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-xs p-3 mb-3">
+        <div className="text-xs font-bold text-gray-800 mb-2 flex items-center justify-between border-b pb-1.5">
+          <span className="flex items-center gap-1.5">
+            <span>📊</span>
+            <span>لوحة الإحصائيات والتحليل المالي الشامل للأوردرات</span>
+          </span>
+          <span className="text-[11px] font-semibold text-gray-500">
+            إجمالي الأوردرات المسجلة: <strong className="text-brand-orange-dark font-mono text-xs">{stats.totalCount}</strong> أوردر
+          </span>
         </div>
 
-        {/* أوردرات مكتملة */}
-        <div className="bg-white rounded-xl p-2.5 border border-emerald-100 shadow-xs">
-          <div className="flex items-center justify-between text-emerald-600 text-xs font-bold mb-1">
-            <span>✅ مكتملة</span>
-            <span className="bg-emerald-50 px-1.5 py-0.2 rounded text-[11px]">{stats.completedCount}</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5">
+          {/* العمود 1: حالات الأوردرات والإجمالي */}
+          <div className="bg-blue-50/50 rounded-lg border border-blue-200 p-2.5 flex flex-col justify-between">
+            <div className="text-xs font-bold text-blue-900 mb-1.5 flex items-center justify-between">
+              <span>📦 حالات الأوردرات</span>
+              <span className="bg-blue-200/60 text-blue-900 px-1.5 py-0.2 rounded text-[11px]">
+                {stats.totalCount} أوردر
+              </span>
+            </div>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-blue-100">
+                <span className="text-blue-700 font-semibold flex items-center gap-1">
+                  <span>📂</span> أوردرات مفتوحة ({stats.openCount}):
+                </span>
+                <span className="font-extrabold font-mono text-gray-900">
+                  {formatCurrency(stats.openTotal)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-blue-100">
+                <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                  <span>✅</span> مكتملة ({stats.completedCount}):
+                </span>
+                <span className="font-extrabold font-mono text-gray-900">
+                  {formatCurrency(stats.completedTotal)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-blue-100">
+                <span className="text-purple-700 font-semibold flex items-center gap-1">
+                  <span>🚚</span> تم التسليم ({stats.deliveredCount}):
+                </span>
+                <span className="font-extrabold font-mono text-purple-900">
+                  {formatCurrency(stats.deliveredTotal)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between bg-blue-600 text-white p-1.5 rounded font-bold shadow-xs">
+                <span>الإجمالي الكلي:</span>
+                <span className="font-extrabold font-mono text-sm">
+                  {formatCurrency(stats.grandTotal)}
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="text-sm font-extrabold text-emerald-950 font-mono">
-            {formatCurrency(stats.completedTotal)}
-          </div>
-          <div className="text-[10px] text-emerald-600 mt-0.5">منها {stats.deliveredCount} مسلّم 🚚</div>
-        </div>
 
-        {/* إجمالي كل الأوردرات */}
-        <div className="bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white rounded-xl p-2.5 shadow-xs">
-          <div className="flex items-center justify-between text-white/90 text-xs font-bold mb-1">
-            <span>📦 إجمالي الأوردرات</span>
-            <span className="bg-white/20 px-1.5 py-0.2 rounded text-[11px]">{stats.totalCount}</span>
+          {/* العمود 2: المواد الخام والمشتريات */}
+          <div className="bg-amber-50/50 rounded-lg border border-amber-200 p-2.5 flex flex-col justify-between">
+            <div className="text-xs font-bold text-amber-900 mb-1.5 flex items-center justify-between">
+              <span>🪵 المواد الخام والمشتريات</span>
+              <span className="bg-amber-200/60 text-amber-900 px-1.5 py-0.2 rounded text-[11px]">
+                {formatCurrency(stats.materialsTotal + paintsTotal + ledTotal)}
+              </span>
+            </div>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-amber-100">
+                <span className="text-amber-800 font-semibold flex items-center gap-1">
+                  <span>🪵</span> ألواح خشب:
+                </span>
+                <span className="font-extrabold font-mono text-gray-900">
+                  {formatCurrency(stats.boardsTotal)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-amber-100">
+                <span className="text-amber-800 font-semibold flex items-center gap-1">
+                  <span>🔩</span> إكسسوارات ومفصلات:
+                </span>
+                <span className="font-extrabold font-mono text-gray-900">
+                  {formatCurrency(stats.accessoriesTotal)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-amber-100">
+                <span className="text-amber-800 font-semibold flex items-center gap-1">
+                  <span>🎨</span> دهانات وتينر:
+                </span>
+                <span className="font-extrabold font-mono text-gray-900">
+                  {formatCurrency(paintsTotal)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-amber-100">
+                <span className="text-amber-800 font-semibold flex items-center gap-1">
+                  <span>💡</span> ليد وكهرباء:
+                </span>
+                <span className="font-extrabold font-mono text-gray-900">
+                  {formatCurrency(ledTotal)}
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="text-sm font-extrabold font-mono text-white">
-            {formatCurrency(stats.grandTotal)}
-          </div>
-          <div className="text-[10px] text-white/80 mt-0.5">تكلفة المصنع: {formatCurrency(stats.factoryTotal)}</div>
-        </div>
 
-        {/* تفصيل المواد */}
-        <div className="bg-white rounded-xl p-2.5 border border-amber-200 shadow-xs">
-          <div className="text-amber-700 text-xs font-bold mb-1">🪵 المواد الخام</div>
-          <div className="text-sm font-extrabold text-amber-950 font-mono">
-            {formatCurrency(stats.materialsTotal)}
+          {/* العمود 3: التكاليف والمصاريف التشغيلية اليدوية */}
+          <div className="bg-rose-50/50 rounded-lg border border-rose-200 p-2.5 flex flex-col justify-between">
+            <div className="text-xs font-bold text-rose-900 mb-1.5 flex items-center justify-between">
+              <span>💸 التكاليف والمصاريف اليدوية</span>
+              <span className="bg-rose-200/60 text-rose-900 px-1.5 py-0.2 rounded text-[11px]">
+                {formatCurrency(stats.manualCostsTotal)}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-1 text-[11px]">
+              <div className="bg-white p-1 rounded border border-rose-100 flex justify-between items-center">
+                <span className="text-gray-600 font-medium">🧑‍🔧 عمال:</span>
+                <strong className="font-mono text-gray-900 text-xs">{formatCurrency(stats.workerLogsTotal)}</strong>
+              </div>
+              <div className="bg-white p-1 rounded border border-rose-100 flex justify-between items-center">
+                <span className="text-gray-600 font-medium">🛣️ طريق:</span>
+                <strong className="font-mono text-gray-900 text-xs">{formatCurrency(stats.roadExpensesTotal)}</strong>
+              </div>
+              <div className="bg-white p-1 rounded border border-rose-100 flex justify-between items-center">
+                <span className="text-gray-600 font-medium">📦 نقل داخلي:</span>
+                <strong className="font-mono text-gray-900 text-xs">{formatCurrency(stats.internalTransportTotal)}</strong>
+              </div>
+              <div className="bg-white p-1 rounded border border-rose-100 flex justify-between items-center">
+                <span className="text-gray-600 font-medium">🚛 نقل خارجي:</span>
+                <strong className="font-mono text-gray-900 text-xs">{formatCurrency(stats.externalTransportTotal)}</strong>
+              </div>
+              <div className="bg-white p-1 rounded border border-rose-100 flex justify-between items-center">
+                <span className="text-gray-600 font-medium">🔧 تركيبات:</span>
+                <strong className="font-mono text-gray-900 text-xs">{formatCurrency(stats.installationTotal)}</strong>
+              </div>
+              <div className="bg-white p-1 rounded border border-rose-100 flex justify-between items-center">
+                <span className="text-gray-600 font-medium">🏭 عمولة:</span>
+                <strong className="font-mono text-gray-900 text-xs">{formatCurrency(stats.commissionTotal)}</strong>
+              </div>
+              <div className="bg-white p-1 rounded border border-rose-100 flex justify-between items-center">
+                <span className="text-gray-600 font-medium">🧾 نثريات:</span>
+                <strong className="font-mono text-gray-900 text-xs">{formatCurrency(stats.overheadTotal)}</strong>
+              </div>
+              <div className="bg-white p-1 rounded border border-rose-100 flex justify-between items-center">
+                <span className="text-gray-600 font-medium">➕ إضافية:</span>
+                <strong className="font-mono text-gray-900 text-xs">{formatCurrency(stats.extraCostsTotal)}</strong>
+              </div>
+            </div>
           </div>
-          <div className="text-[10px] text-amber-700 mt-0.5 flex flex-col leading-tight">
-            <span>ألواح: {formatCurrency(stats.boardsTotal)}</span>
-            <span>إكسسوار: {formatCurrency(stats.accessoriesTotal)}</span>
-          </div>
-        </div>
 
-        {/* أعمال خارجية للمقاولين */}
-        <div className="bg-white rounded-xl p-2.5 border border-purple-200 shadow-xs">
-          <div className="text-purple-700 text-xs font-bold mb-1">🔨 أعمال خارجية</div>
-          <div className="text-sm font-extrabold text-purple-950 font-mono">
-            {formatCurrency(stats.externalTotal)}
-          </div>
-          <div className="text-[10px] text-purple-600 mt-0.5">مقاولين وورش خارجية</div>
-        </div>
-
-        {/* تكاليف وإضافات */}
-        <div className="bg-white rounded-xl p-2.5 border border-gray-200 shadow-xs">
-          <div className="text-gray-700 text-xs font-bold mb-1">💸 تكاليف وإضافات</div>
-          <div className="text-sm font-extrabold text-gray-900 font-mono">
-            {formatCurrency(stats.manualCostsTotal)}
-          </div>
-          <div className="text-[10px] text-gray-500 mt-0.5 flex flex-col leading-tight">
-            <span>عمال: {formatCurrency(stats.workerLogsTotal)}</span>
-            <span>نقل وطريق: {formatCurrency(stats.roadExpensesTotal + stats.internalTransportTotal)}</span>
+          {/* العمود 4: الأعمال الخارجية + صافي تكلفة المصنع */}
+          <div className="bg-purple-50/50 rounded-lg border border-purple-200 p-2.5 flex flex-col justify-between">
+            <div className="text-xs font-bold text-purple-900 mb-1.5 flex items-center justify-between">
+              <span>🔨 مقاولين وصافي المصنع</span>
+            </div>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-purple-100">
+                <span className="text-purple-800 font-semibold flex items-center gap-1">
+                  <span>🔨</span> أعمال خارجية للمقاولين:
+                </span>
+                <span className="font-extrabold font-mono text-purple-950 text-xs">
+                  {formatCurrency(stats.externalTotal)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between bg-white p-1.5 rounded border border-purple-100">
+                <span className="text-gray-700 font-semibold flex items-center gap-1">
+                  <span>🏭</span> تكلفة المصنع الصافية:
+                </span>
+                <span className="font-extrabold font-mono text-brand-orange-dark text-xs">
+                  {formatCurrency(stats.factoryTotal)}
+                </span>
+              </div>
+              <div className="bg-gradient-to-r from-brand-orange to-brand-orange-dark text-white p-2 rounded-lg text-center shadow-xs">
+                <div className="text-[11px] text-white/80 font-medium">الإجمالي الشامل المحسوب للأوردرات</div>
+                <div className="text-base font-extrabold font-mono text-white mt-0.5">
+                  {formatCurrency(stats.grandTotal)}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -437,7 +561,7 @@ export default function OrdersReportPage() {
               subTab === "orders" ? "bg-brand-orange text-white shadow-xs" : "bg-gray-50 border text-gray-700 hover:bg-gray-100"
             }`}
           >
-            📋 الأوردرات ({orders.length})
+            📋 الأوردرات والتكاليف ({orders.length})
           </button>
           <button
             onClick={() => { setSubTab("additions"); setPage(1); }}
@@ -445,7 +569,7 @@ export default function OrdersReportPage() {
               subTab === "additions" ? "bg-brand-orange text-white shadow-xs" : "bg-gray-50 border text-gray-700 hover:bg-gray-100"
             }`}
           >
-            🧩 الإضافات ({additions.length})
+            🧩 الإضافات (دهانات، ليد، نقل) ({additions.length})
           </button>
           <button
             onClick={() => { setSubTab("external"); setPage(1); }}
@@ -453,7 +577,7 @@ export default function OrdersReportPage() {
               subTab === "external" ? "bg-brand-orange text-white shadow-xs" : "bg-gray-50 border text-gray-700 hover:bg-gray-100"
             }`}
           >
-            🔨 أعمال خارجية ({externalWork.length})
+            🔨 أعمال المقاولين ({externalWork.length})
           </button>
         </div>
 
@@ -503,7 +627,7 @@ export default function OrdersReportPage() {
           <div className="relative w-36 sm:w-44">
             <input
               type="text"
-              placeholder="🔍 بحث..."
+              placeholder="🔍 بحث سريع..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               className="w-full text-xs px-2.5 py-1 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-brand-orange focus:bg-white transition"
@@ -655,7 +779,7 @@ export default function OrdersReportPage() {
               >
                 السابق
               </button>
-              <span className="px-2 py-0.5 font-bold text-gray-800 text-xs">
+              <span className="px-2.5 py-0.5 font-bold text-gray-800 text-xs">
                 صفحة {page} من {totalPages}
               </span>
               <button
