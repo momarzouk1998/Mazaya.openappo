@@ -30,15 +30,49 @@ export async function GET(request: NextRequest) {
     if (search) {
       conditions.push({ description: { contains: search, mode: 'insensitive' } });
     }
-    const EXCLUDED_CATEGORIES = ['أجور عمال', 'نقل داخلي', 'مصاريف الطريق', 'مصاريف دهانات', 'دهانات', 'مصاريف ليد', 'ليد'];
+    const EXCLUDED_CATEGORIES = [
+      'أجور عمال',
+      'يوميات عمال',
+      'نقل داخلي',
+      'نقل',
+      'مصاريف طريق',
+      'مصاريف الطريق',
+      'طريق',
+      'مصاريف دهانات',
+      'دهانات',
+      'مصاريف ليد',
+      'ليد',
+    ];
     if (exclude_wages) {
       conditions.push({ worker_id: null });
-      conditions.push({ OR: [{ category: null }, { category: { notIn: EXCLUDED_CATEGORIES } }] });
+      conditions.push({
+        OR: [
+          { category: null },
+          {
+            AND: [
+              { category: { notIn: EXCLUDED_CATEGORIES } },
+              { category: { not: { contains: 'طريق' } } },
+              { category: { not: { contains: 'دهان' } } },
+              { category: { not: { contains: 'ليد' } } },
+              { category: { not: { contains: 'نقل' } } },
+            ],
+          },
+        ],
+      });
+      conditions.push({
+        NOT: [
+          { description: { contains: '[مصاريف طريق]' } },
+          { description: { contains: '[نقل داخلي]' } },
+          { description: { contains: '[دهانات]' } },
+          { description: { contains: '[ليد]' } },
+        ],
+      });
     } else if (only_wages) {
       conditions.push({
         OR: [
           { worker_id: { not: null } },
           { category: 'أجور عمال' },
+          { category: 'يوميات عمال' },
         ],
       });
     }

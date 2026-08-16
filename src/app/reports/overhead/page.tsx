@@ -47,7 +47,31 @@ export default function OverheadReportPage() {
 
       const rawList = res?.data?.expenses ?? res?.data?.items ?? res?.data ?? res?.expenses ?? res?.items ?? [];
 
-      const mapped = (Array.isArray(rawList) ? rawList : []).map((x: any) => ({
+      const EXCLUDED_CATEGORIES = [
+        'أجور عمال',
+        'يوميات عمال',
+        'نقل داخلي',
+        'نقل',
+        'مصاريف طريق',
+        'مصاريف الطريق',
+        'طريق',
+        'مصاريف دهانات',
+        'دهانات',
+        'مصاريف ليد',
+        'ليد',
+      ];
+
+      const filteredRaw = (Array.isArray(rawList) ? rawList : []).filter((x: any) => {
+        if (x.worker_id) return false;
+        const cat = String(x.category || "").trim();
+        const desc = String(x.description || "").trim();
+        if (EXCLUDED_CATEGORIES.includes(cat)) return false;
+        if (cat.includes("طريق") || cat.includes("دهان") || cat.includes("ليد") || cat.includes("نقل")) return false;
+        if (desc.includes("[مصاريف طريق]") || desc.includes("[نقل داخلي]") || desc.includes("[دهانات]") || desc.includes("[ليد]")) return false;
+        return true;
+      });
+
+      const mapped = filteredRaw.map((x: any) => ({
         التاريخ: safeFormatDate(x.date || x.created_at),
         التصنيف: x.category ?? "نثريات عامة",
         البيان: x.description ?? "",

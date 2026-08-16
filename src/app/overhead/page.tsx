@@ -36,13 +36,30 @@ export default function OverheadPage() {
 
   const activeFiltersCount = [categoryFilter, fromDate, toDate].filter(Boolean).length
 
-  const EXCLUDED_CATEGORIES = ['أجور عمال', 'نقل داخلي', 'مصاريف الطريق', 'مصاريف دهانات', 'دهانات', 'مصاريف ليد', 'ليد']
+  const EXCLUDED_CATEGORIES = [
+    'أجور عمال',
+    'يوميات عمال',
+    'نقل داخلي',
+    'نقل',
+    'مصاريف طريق',
+    'مصاريف الطريق',
+    'طريق',
+    'مصاريف دهانات',
+    'دهانات',
+    'مصاريف ليد',
+    'ليد',
+  ]
 
   const filtered = useMemo(() => rows.filter((r) => {
-    if (r.worker_id || EXCLUDED_CATEGORIES.includes(r.category)) return false
+    if (r.worker_id) return false
+    const cat = String(r.category || "").trim()
+    const desc = String(r.description || "").trim()
+    if (EXCLUDED_CATEGORIES.includes(cat)) return false
+    if (cat.includes("طريق") || cat.includes("دهان") || cat.includes("ليد") || cat.includes("نقل")) return false
+    if (desc.includes("[مصاريف طريق]") || desc.includes("[نقل داخلي]") || desc.includes("[دهانات]") || desc.includes("[ليد]")) return false
     const rDate = String(r.date ?? "").slice(0, 10)
-    const matchSearch = !search || (r.description ?? "").toLowerCase().includes(search.toLowerCase())
-    const matchCategory = !categoryFilter || (r.category ?? "") === categoryFilter
+    const matchSearch = !search || desc.toLowerCase().includes(search.toLowerCase())
+    const matchCategory = !categoryFilter || cat === categoryFilter
     const matchDate = (!fromDate || rDate >= fromDate) && (!toDate || rDate <= toDate)
     return matchSearch && matchCategory && matchDate
   }), [rows, search, categoryFilter, fromDate, toDate])
@@ -53,7 +70,15 @@ export default function OverheadPage() {
     return Array.from(
       new Set(
         rows
-          .filter((r) => !r.worker_id && !EXCLUDED_CATEGORIES.includes(r.category))
+          .filter((r) => {
+            if (r.worker_id) return false
+            const cat = String(r.category || "").trim()
+            const desc = String(r.description || "").trim()
+            if (EXCLUDED_CATEGORIES.includes(cat)) return false
+            if (cat.includes("طريق") || cat.includes("دهان") || cat.includes("ليد") || cat.includes("نقل")) return false
+            if (desc.includes("[مصاريف طريق]") || desc.includes("[نقل داخلي]")) return false
+            return Boolean(cat)
+          })
           .map((r) => r.category)
           .filter((c) => Boolean(c))
       )
