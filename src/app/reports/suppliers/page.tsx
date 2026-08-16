@@ -40,9 +40,9 @@ export default function SuppliersReportPage() {
         ),
       ]);
 
-      const suppliers = sRes?.data?.items ?? sRes?.data ?? sRes?.items ?? sRes ?? [];
-      const purchases = pRes?.data?.entries ?? pRes?.data ?? pRes?.entries ?? pRes ?? [];
-      const payments = pyRes?.data?.entries ?? pyRes?.data ?? pyRes?.entries ?? pyRes ?? [];
+      const suppliers = (sRes as any)?.data?.items ?? (sRes as any)?.data ?? [];
+      const purchases = (pRes as any)?.data?.entries ?? (pRes as any)?.data ?? [];
+      const payments = (pyRes as any)?.data?.entries ?? (pyRes as any)?.data ?? [];
 
       const purchaseMap: Record<string, number> = {};
       const paymentMap: Record<string, number> = {};

@@ -51,8 +51,8 @@ export default function WorkersReportPage() {
         ),
       ]);
 
-      const workers = wRes?.data?.items ?? wRes?.data ?? wRes?.items ?? wRes ?? [];
-      const logs = dlRes?.data?.items ?? dlRes?.data ?? dlRes?.items ?? dlRes ?? [];
+      const workers = (wRes as any)?.data?.items ?? (wRes as any)?.data ?? [];
+      const logs = (dlRes as any)?.data?.items ?? (dlRes as any)?.data ?? [];
 
       const workerSummaryMap: Record<
         string,

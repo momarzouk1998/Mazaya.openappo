@@ -44,7 +44,7 @@ export default function OverheadReportPage() {
         "GET",
         `/api/overhead?limit=2000&exclude_wages=true${fromDate ? "&from_date=" + fromDate : ""}${toDate ? "&to_date=" + toDate : ""}`
       );
-      const rawList = res?.data?.expenses ?? res?.data?.items ?? res?.data ?? res?.expenses ?? res?.items ?? res ?? [];
+      const rawList = (res as any)?.data?.expenses ?? (res as any)?.data?.items ?? (res as any)?.data ?? [];
 
       const mapped = (Array.isArray(rawList) ? rawList : []).map((x: any) => ({
         التاريخ: safeFormatDate(x.date || x.created_at),

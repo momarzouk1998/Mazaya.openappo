@@ -31,9 +31,9 @@ export default function CustomersReportPage() {
         mutate("GET", "/api/customer-payments?limit=2000"),
       ]);
 
-      const customers = cRes?.data?.items ?? cRes?.data ?? cRes?.items ?? cRes ?? [];
-      const orders = oRes?.data?.items ?? oRes?.data ?? oRes?.items ?? oRes ?? [];
-      const payments = payRes?.data?.payments ?? payRes?.data?.items ?? payRes?.data ?? payRes?.payments ?? payRes ?? [];
+      const customers = (cRes as any)?.data?.items ?? (cRes as any)?.data ?? [];
+      const orders = (oRes as any)?.data?.items ?? (oRes as any)?.data ?? [];
+      const payments = (payRes as any)?.data?.payments ?? (payRes as any)?.data?.items ?? (payRes as any)?.data ?? [];
 
       const orderStats: Record<string, { count: number; total: number }> = {};
       (Array.isArray(orders) ? orders : []).forEach((ord: any) => {

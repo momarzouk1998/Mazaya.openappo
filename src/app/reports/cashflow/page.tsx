@@ -45,7 +45,7 @@ export default function CashflowReportPage() {
         "GET",
         `/api/journal?limit=2000${fromDate ? "&from_date=" + fromDate : ""}${toDate ? "&to_date=" + toDate : ""}`
       );
-      const rawList = res?.data?.entries ?? res?.data ?? res?.entries ?? res ?? [];
+      const rawList = (res as any)?.data?.entries ?? (res as any)?.data ?? (res as any)?.entries ?? [];
 
       const mapped = (Array.isArray(rawList) ? rawList : []).map((x: any) => {
         const isBoardsWallet = x.entry_type === "تحويل تمريري" || x.entry_type === "مشتريات";
@@ -157,11 +157,11 @@ export default function CashflowReportPage() {
     return Object.keys(activeDataset[0]).filter((k) => !k.startsWith("_"));
   }, [activeDataset]);
 
-  const moneyKeys = useMemo(() => {
+  const moneyKeys = useMemo<string[]>(() => {
     return columns.filter((k) => k === "الوارد" || k === "المصروف");
   }, [columns]);
 
-  const columnSums = useMemo(() => {
+  const columnSums = useMemo<Record<string, number>>(() => {
     const sums: Record<string, number> = {};
     if (!activeDataset.length) return sums;
     moneyKeys.forEach((k) => {

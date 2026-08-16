@@ -46,8 +46,8 @@ export default function InventoryReportPage() {
         mutate("GET", `/api/accessories?limit=1000${fromDate ? "&from_date=" + fromDate : ""}${toDate ? "&to_date=" + toDate : ""}`),
       ]);
 
-      const boards = bRes?.data?.items ?? bRes?.data ?? bRes?.items ?? bRes ?? [];
-      const accessories = aRes?.data?.items ?? aRes?.data ?? aRes?.items ?? aRes ?? [];
+      const boards = (bRes as any)?.data?.items ?? (bRes as any)?.data ?? [];
+      const accessories = (aRes as any)?.data?.items ?? (aRes as any)?.data ?? [];
 
       const bList = (Array.isArray(boards) ? boards : []).map((x: any) => {
         const rem = fmtNum(x.quantity_remaining ?? 0);

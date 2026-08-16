@@ -53,11 +53,11 @@ export default function OrdersReportPage() {
         mutate("GET", "/api/external-work?limit=1000"),
       ]);
 
-      const ordList = ordRes?.data?.items ?? ordRes?.data ?? ordRes?.items ?? ordRes ?? [];
-      const pList = pRes?.data?.items ?? pRes?.data ?? pRes?.items ?? pRes ?? [];
-      const lList = lRes?.data?.items ?? lRes?.data ?? lRes?.items ?? lRes ?? [];
-      const tList = tRes?.data?.entries ?? tRes?.data ?? tRes?.entries ?? tRes ?? [];
-      const extList = extRes?.data?.items ?? extRes?.data ?? extRes?.items ?? extRes ?? [];
+      const ordList = (ordRes as any)?.data?.items ?? (ordRes as any)?.data ?? [];
+      const pList = (pRes as any)?.data?.items ?? (pRes as any)?.data ?? [];
+      const lList = (lRes as any)?.data?.items ?? (lRes as any)?.data ?? [];
+      const tList = (tRes as any)?.data?.entries ?? (tRes as any)?.data ?? [];
+      const extList = (extRes as any)?.data?.items ?? (extRes as any)?.data ?? [];
 
       // Filter additions by date if specified
       const filterByDate = (list: any[]) => {
