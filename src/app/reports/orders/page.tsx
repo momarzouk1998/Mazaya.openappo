@@ -642,10 +642,22 @@ export default function OrdersReportPage() {
             )}
           </div>
 
-          {/* زر التصدير */}
+          {/* زر التصدير Excel */}
           <Button variant="secondary" size="sm" onClick={handleExport} className="flex items-center gap-1 font-bold h-7 text-xs px-2.5">
             <span>📥</span>
             <span>Excel</span>
+          </Button>
+
+          {/* زر تحميل وطباعة PDF بالعرض */}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => window.print()}
+            className="flex items-center gap-1 font-bold h-7 text-xs px-2.5 bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100"
+            title="تحميل التقرير كملف PDF بتنسيق عرضي (Landscape)"
+          >
+            <span>🖨️</span>
+            <span>PDF (عرضي)</span>
           </Button>
         </div>
       </div>
@@ -806,6 +818,53 @@ export default function OrdersReportPage() {
           <div className="text-xs text-gray-400 mt-0.5">جرب تغيير نطاق التاريخ أو إلغاء فلتر البحث.</div>
         </div>
       )}
+
+      {/* تنسيقات الطباعة العرضية (Landscape PDF Print) */}
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: landscape;
+            margin: 6mm 8mm;
+          }
+          header, aside, .btn-secondary, button, input, select, .no-print {
+            display: none !important;
+          }
+          body {
+            background: #ffffff !important;
+            color: #000000 !important;
+            font-size: 10px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          main {
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+          }
+          .card {
+            box-shadow: none !important;
+            border: 1px solid #e5e7eb !important;
+            break-inside: avoid;
+            margin-bottom: 8px !important;
+            padding: 6px !important;
+          }
+          table {
+            font-size: 8.5px !important;
+            width: 100% !important;
+            border-collapse: collapse !important;
+          }
+          th, td {
+            padding: 2.5px 3px !important;
+            border: 1px solid #e5e7eb !important;
+          }
+          thead {
+            display: table-header-group !important;
+          }
+          tr {
+            break-inside: avoid;
+          }
+        }
+      `}</style>
     </DashboardLayout>
   );
 }

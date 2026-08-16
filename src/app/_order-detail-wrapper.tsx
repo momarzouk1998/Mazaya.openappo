@@ -27,9 +27,16 @@ export default function OrderDetailPage() {
   // نثريات الأوردر
   const [overheadAmount, setOverheadAmount] = useState("");
   const [overheadDesc, setOverheadDesc] = useState("");
-  const [overheadSaving, setOverheadSaving] = useState(false);
+  const [detailMaterialTab, setDetailMaterialTab] = useState<"boards" | "accessories" | "all">("boards");
 
-  const materials = materialsData ?? (order?.materials ?? []);
+  const boardMaterials = (materials as any[]).filter(
+    (r: any) => r.item_category === "boards_inventory" || r.board_id
+  );
+  const accessoryMaterials = (materials as any[]).filter(
+    (r: any) => r.item_category !== "boards_inventory" && !r.board_id
+  );
+  const boardMatTotal = boardMaterials.reduce((s: number, r: any) => s + Number(r.line_total ?? (Number(r.quantity_used || 0) * Number(r.unit_price_snapshot || 0))), 0);
+  const accessoryMatTotal = accessoryMaterials.reduce((s: number, r: any) => s + Number(r.line_total ?? (Number(r.quantity_used || 0) * Number(r.unit_price_snapshot || 0))), 0);
   const costs = order ? {
     boards_cost: order.boards_cost ?? 0,
     accessories_cost: order.accessories_cost ?? 0,
@@ -134,20 +141,110 @@ export default function OrderDetailPage() {
 
       {order?.notes && <div className="card mb-4">📝 {order.notes}</div>}
 
-      {/* المواد */}
-      <h3 className="font-bold text-lg mt-6 mb-3">📦 المواد المستخدمة</h3>
-      <DataTable
-        rows={materials as any[]}
-        emptyMessage="لا توجد مواد"
-        columns={[
-          { key: "name", label: "الصنف", render: (r: any) => r.item_name || r.mazaya_boards_inventory?.item_name || r.mazaya_accessories_inventory?.item_name || "-" },
-          { key: "code", label: "الكود", render: (r: any) => r.item_code || r.mazaya_boards_inventory?.code || r.mazaya_accessories_inventory?.code || "-" },
-          { key: "type", label: "النوع", render: (r: any) => r.item_category === "boards_inventory" || r.board_id ? "لوح" : "اكسسوار" },
-          { key: "quantity_used", label: "الكمية" },
-          { key: "unit_price_snapshot", label: "السعر", render: (r: any) => formatCurrency(r.unit_price_snapshot) },
-          { key: "line_total", label: "الإجمالي", render: (r: any) => <span className="font-bold">{formatCurrency(r.line_total)}</span> },
-        ]}
-      />
+      {/* المواد المستخدمة - مبوبة ومفصلة */}
+      <div className="mt-6 mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <h3 className="font-bold text-lg text-gray-900 flex items-center gap-1.5">
+              <span>📦</span>
+              <span>المواد المستخدمة بالأوردر</span>
+            </h3>
+            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setDetailMaterialTab("boards")}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                  detailMaterialTab === "boards"
+                    ? "bg-amber-600 text-white shadow-xs"
+                    : "text-amber-900 hover:bg-amber-100/50"
+                }`}
+              >
+                <span>🪵 الألواح ({boardMaterials.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDetailMaterialTab("accessories")}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                  detailMaterialTab === "accessories"
+                    ? "bg-rose-600 text-white shadow-xs"
+                    : "text-rose-900 hover:bg-rose-100/50"
+                }`}
+              >
+                <span>🔩 الإكسسوارات ({accessoryMaterials.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDetailMaterialTab("all")}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                  detailMaterialTab === "all"
+                    ? "bg-brand-orange text-white shadow-xs"
+                    : "text-gray-700 hover:bg-gray-200/50"
+                }`}
+              >
+                <span>📋 الكل ({boardMaterials.length + accessoryMaterials.length})</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs">
+            <span className="bg-amber-50 text-amber-900 border border-amber-200 px-2.5 py-1 rounded-lg font-semibold">
+              الألواح: <strong className="font-mono text-xs">{formatCurrency(boardMatTotal)}</strong>
+            </span>
+            <span className="bg-rose-50 text-rose-900 border border-rose-200 px-2.5 py-1 rounded-lg font-semibold">
+              الإكسسوارات: <strong className="font-mono text-xs">{formatCurrency(accessoryMatTotal)}</strong>
+            </span>
+            <span className="bg-brand-orange-light text-brand-orange-dark border border-brand-orange/30 px-3 py-1 rounded-lg font-bold">
+              الإجمالي: <strong className="font-mono text-xs">{formatCurrency(boardMatTotal + accessoryMatTotal)}</strong>
+            </span>
+          </div>
+        </div>
+
+        {/* عرض الألواح فقط */}
+        {(detailMaterialTab === "boards" || detailMaterialTab === "all") && (
+          <div className="mb-4">
+            {detailMaterialTab === "all" && (
+              <div className="font-bold text-xs text-amber-950 mb-1.5 flex items-center gap-1">
+                <span>🪵</span>
+                <span>ألواح الخشب ({boardMaterials.length})</span>
+              </div>
+            )}
+            <DataTable
+              rows={boardMaterials as any[]}
+              emptyMessage="لا توجد ألواح خشب مسجلة لهذا الأوردر"
+              columns={[
+                { key: "name", label: "اسم اللوح", render: (r: any) => <span className="font-bold text-amber-950">🪵 {r.item_name || r.mazaya_boards_inventory?.item_name || "-"}</span> },
+                { key: "code", label: "الكود", render: (r: any) => r.item_code || r.mazaya_boards_inventory?.code || "-" },
+                { key: "quantity_used", label: "الكمية (لوح)", render: (r: any) => <span className="font-mono font-bold">{r.quantity_used}</span> },
+                { key: "unit_price_snapshot", label: "سعر اللوح", render: (r: any) => <span className="font-mono">{formatCurrency(r.unit_price_snapshot)}</span> },
+                { key: "line_total", label: "الإجمالي", render: (r: any) => <span className="font-bold font-mono text-amber-900">{formatCurrency(r.line_total ?? (Number(r.quantity_used || 0) * Number(r.unit_price_snapshot || 0)))}</span> },
+              ]}
+            />
+          </div>
+        )}
+
+        {/* عرض الإكسسوارات فقط */}
+        {(detailMaterialTab === "accessories" || detailMaterialTab === "all") && (
+          <div className="mb-2">
+            {detailMaterialTab === "all" && (
+              <div className="font-bold text-xs text-rose-950 mb-1.5 flex items-center gap-1">
+                <span>🔩</span>
+                <span>الإكسسوارات والمفصلات ({accessoryMaterials.length})</span>
+              </div>
+            )}
+            <DataTable
+              rows={accessoryMaterials as any[]}
+              emptyMessage="لا توجد إكسسوارات مسجلة لهذا الأوردر"
+              columns={[
+                { key: "name", label: "اسم الإكسسوار", render: (r: any) => <span className="font-bold text-rose-950">🔩 {r.item_name || r.mazaya_accessories_inventory?.item_name || "-"}</span> },
+                { key: "code", label: "الكود", render: (r: any) => r.item_code || r.mazaya_accessories_inventory?.code || "-" },
+                { key: "quantity_used", label: "الكمية (قطعة)", render: (r: any) => <span className="font-mono font-bold">{r.quantity_used}</span> },
+                { key: "unit_price_snapshot", label: "سعر القطعة", render: (r: any) => <span className="font-mono">{formatCurrency(r.unit_price_snapshot)}</span> },
+                { key: "line_total", label: "الإجمالي", render: (r: any) => <span className="font-bold font-mono text-rose-900">{formatCurrency(r.line_total ?? (Number(r.quantity_used || 0) * Number(r.unit_price_snapshot || 0)))}</span> },
+              ]}
+            />
+          </div>
+        )}
+      </div>
 
       {/* التكاليف */}
       {costs && (

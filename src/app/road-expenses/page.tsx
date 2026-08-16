@@ -39,6 +39,8 @@ const EMPTY_FORM = {
   notes: "",
 };
 
+import HubTabs, { ORDER_ADDITION_TABS } from "@/components/ui/HubTabs";
+
 export default function RoadExpensesPage() {
   const { user: profile } = useUserStore();
   const { can } = useCan();
@@ -101,8 +103,11 @@ export default function RoadExpensesPage() {
         subtitle="مصاريف انتقالات، أكل، وشرب العمال في الطرق والمواقع — تخصم من خزينة المصنع وتحمل على الأوردر"
         helpTitle="مصاريف الطريق"
         helpDescription="تسجيل أي مبالغ تم صرفها كبدل طريق أو انتقالات أو إعاشة للعمال عند سفرهم أو عملهم خارج المصنع، مع إمكانية ربط الحركة بالأوردر المعني مباشرة لترحل لتكاليفه الحقيقية."
+        backHref="/order-additions"
         actions={<PWAInstallButton />}
       />
+
+      <HubTabs tabs={ORDER_ADDITION_TABS} />
 
       {/* كروت ملخصة */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">

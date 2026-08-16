@@ -53,7 +53,8 @@ export const FINANCE_TABS: HubTabItem[] = [
 ]
 
 export const ORDER_ADDITION_TABS: HubTabItem[] = [
-  { label: "النقل الداخلي ومصاريف الطريق", icon: "🚚", path: "/internal-transport" },
+  { label: "النقل الداخلي", icon: "📦", path: "/internal-transport" },
+  { label: "مصاريف الطريق", icon: "🛣️", path: "/road-expenses" },
   { label: "مصاريف الدهانات والمرمات", icon: "🎨", path: "/paints" },
   { label: "مصاريف الليد والكهرباء", icon: "💡", path: "/led-expenses" },
   { label: "الأعمال الخارجية للمقاولين", icon: "🔨", path: "/external-work" },

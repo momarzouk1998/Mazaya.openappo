@@ -67,7 +67,7 @@ export default function NewOrderForm() {
   ], [boardsRaw, accessoriesRaw])
 
   const [searchItem, setSearchItem] = useState("")
-  const [categoryFilter, setCategoryFilter] = useState<"all" | "board" | "accessory">("all")
+  const [materialSubTab, setMaterialSubTab] = useState<"boards" | "accessories" | "all">("boards")
   const [usedItems, setUsedItems] = useState<{ id: string; category: "board" | "accessory"; quantity: number; original_quantity?: number; unit_price: number; name: string }[]>([])
 
   const [costs, setCosts] = useState({
@@ -174,11 +174,22 @@ export default function NewOrderForm() {
     })
   }
 
-  const filteredItems = useMemo(() => items.filter((i) => {
-    const matchSearch = !searchItem || i.name.toLowerCase().includes(searchItem.toLowerCase()) || i.code.toLowerCase().includes(searchItem.toLowerCase())
-    const matchCat = categoryFilter === "all" || i.category === categoryFilter
-    return matchSearch && matchCat
-  }).slice(0, 30), [items, searchItem, categoryFilter])
+  const usedBoards = useMemo(() => usedItems.filter((u) => u.category === "board"), [usedItems])
+  const usedAccessories = useMemo(() => usedItems.filter((u) => u.category === "accessory"), [usedItems])
+
+  const filteredBoards = useMemo(() => items.filter((i) => {
+    if (i.category !== "board") return false
+    if (!searchItem.trim()) return true
+    const q = searchItem.toLowerCase().trim()
+    return i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q)
+  }).slice(0, 30), [items, searchItem])
+
+  const filteredAccessories = useMemo(() => items.filter((i) => {
+    if (i.category !== "accessory") return false
+    if (!searchItem.trim()) return true
+    const q = searchItem.toLowerCase().trim()
+    return i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q)
+  }).slice(0, 30), [items, searchItem])
 
   function addItem(item: Item) {
     if (usedItems.some((u) => u.id === item.id && u.category === item.category)) return
@@ -187,8 +198,8 @@ export default function NewOrderForm() {
   function updateUsedQty(index: number, qty: number) { setUsedItems((s) => s.map((u, i) => i === index ? { ...u, quantity: qty } : u)) }
   function removeUsed(index: number) { setUsedItems((s) => s.filter((_, i) => i !== index)) }
 
-  const boardsCost = usedItems.filter((u) => u.category === "board").reduce((s, u) => s + (u.quantity * u.unit_price), 0)
-  const accessoriesCost = usedItems.filter((u) => u.category === "accessory").reduce((s, u) => s + (u.quantity * u.unit_price), 0)
+  const boardsCost = usedBoards.reduce((s, u) => s + (u.quantity * u.unit_price), 0)
+  const accessoriesCost = usedAccessories.reduce((s, u) => s + (u.quantity * u.unit_price), 0)
   const extraCostsTotal = extraCosts.reduce((s, e) => s + (e.amount || 0), 0)
   const externalWorkTotal = externalWorks.reduce((s, e) => s + (e.amount || 0), 0)
   const orderTotal = boardsCost + accessoriesCost
@@ -323,64 +334,362 @@ export default function NewOrderForm() {
       )}
 
       {tab === "materials" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="card">
-            <h3 className="font-bold mb-3">🔍 بحث في المخزون</h3>
-            <div className="flex gap-2 mb-3">
-              <input type="search" value={searchItem} onChange={(e) => setSearchItem(e.target.value)} placeholder="ابحث بالاسم أو الكود..." className="flex-1 px-3 py-2 border rounded-lg" />
-              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value as any)} className="px-3 py-2 border rounded-lg bg-white">
-                <option value="all">الكل</option>
-                <option value="board">ألواح</option>
-                <option value="accessory">اكسسوارات</option>
-              </select>
+        <div className="space-y-4">
+          {/* كروت تلخيص إجمالي المواد والتبديل المباشر بين الألواح والإكسسوارات */}
+          <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+            {/* التابات الفرعية للألواح والإكسسوارات */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => { setMaterialSubTab("boards"); setSearchItem(""); }}
+                className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                  materialSubTab === "boards"
+                    ? "bg-amber-600 text-white shadow-sm scale-[1.02]"
+                    : "bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100"
+                }`}
+              >
+                <span>🪵</span>
+                <span>ألواح الخشب ({usedBoards.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setMaterialSubTab("accessories"); setSearchItem(""); }}
+                className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                  materialSubTab === "accessories"
+                    ? "bg-rose-600 text-white shadow-sm scale-[1.02]"
+                    : "bg-rose-50 text-rose-900 border border-rose-200 hover:bg-rose-100"
+                }`}
+              >
+                <span>🔩</span>
+                <span>الإكسسوارات والمفصلات ({usedAccessories.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setMaterialSubTab("all"); setSearchItem(""); }}
+                className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                  materialSubTab === "all"
+                    ? "bg-brand-orange text-white shadow-sm scale-[1.02]"
+                    : "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100"
+                }`}
+              >
+                <span>📋</span>
+                <span>عرض الكل مجمع ({usedItems.length})</span>
+              </button>
             </div>
-            <div className="max-h-96 overflow-y-auto divide-y">
-              {filteredItems.map((it) => (
-                <div key={it.category + "-" + it.id} className="flex items-center justify-between py-2 hover:bg-gray-50 px-2 rounded">
-                  <div className="min-w-0">
-                    <div className="font-medium text-sm truncate">{it.name}</div>
-                    <div className="text-xs text-gray-500">{it.code} • متوفر: <span className={it.remaining > 0 ? "text-green-600 font-semibold" : "text-red-600"}>{it.remaining}</span> • آخر سعر: <span className="text-brand-orange-dark font-semibold">{formatCurrency(it.price)}</span></div>
-                  </div>
-                  <button onClick={() => addItem(it)} disabled={it.remaining <= 0} className="text-xs px-3 py-1.5 bg-brand-orange text-white rounded-lg hover:bg-brand-orange-dark disabled:opacity-50">+ إضافة</button>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="card">
-            <h3 className="font-bold mb-3">📦 المواد المستخدمة ({usedItems.length})</h3>
-            {usedItems.length === 0 ? (
-              <div className="text-gray-400 text-center py-8">لم تضف أي مواد بعد. ابحث من القائمة وأضف.</div>
-            ) : (
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {usedItems.map((u, i) => {
-                  const item = items.find((x) => x.id === u.id)
-                  const exceeds = item && u.quantity > (item.remaining + (u.original_quantity || 0))
-                  return (
-                    <div key={i} className={"p-3 rounded-lg border " + (exceeds ? "border-red-300 bg-red-50" : "border-gray-200")}>
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <div className="min-w-0">
-                          <div className="font-medium text-sm truncate">{u.name}</div>
-                          <div className="text-xs text-gray-500">{u.category === "board" ? "لوح" : "اكسسوار"} • متوفر: <span className="text-green-600 font-semibold">{(item?.remaining ?? 0) + (u.original_quantity || 0)}</span> • آخر سعر: <span className="text-brand-orange-dark font-semibold">{formatCurrency(item?.price ?? u.unit_price)}</span></div>
-                        </div>
-                        <button onClick={() => removeUsed(i)} className="text-red-500 hover:bg-red-100 rounded px-2">✕</button>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        <div><label className="text-xs text-gray-500">الكمية</label><input type="number" min={1} value={u.quantity} onChange={(e) => updateUsedQty(i, Number(e.target.value))} className="w-full px-2 py-1.5 border rounded text-sm" /></div>
-                        <div><label className="text-xs text-gray-500">سعر الوحدة</label><input type="number" step="0.01" value={u.unit_price} onChange={(e) => setUsedItems((s) => s.map((x, j) => j === i ? { ...x, unit_price: Number(e.target.value) } : x))} className="w-full px-2 py-1.5 border rounded text-sm" /></div>
-                        <div><label className="text-xs text-gray-500">الإجمالي</label><div className="px-2 py-1.5 bg-gray-100 rounded text-sm font-bold">{formatCurrency(u.quantity * u.unit_price)}</div></div>
-                      </div>
-                      {exceeds && <div className="text-xs text-red-600 mt-1">⚠️ الكمية المطلوبة أكبر من المتاح ({(item?.remaining || 0) + (u.original_quantity || 0)})</div>}
-                    </div>
-                  )
-                })}
+
+            {/* ملخص تكلفة المواد */}
+            <div className="flex items-center gap-3 text-xs">
+              <div className="bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 text-amber-900">
+                <span>الألواح: </span>
+                <strong className="font-mono text-sm">{formatCurrency(boardsCost)}</strong>
               </div>
-            )}
-            <div className="mt-4 pt-3 border-t space-y-1 text-sm">
-              <div className="flex justify-between"><span>تكلفة الألواح:</span><strong>{formatCurrency(boardsCost)}</strong></div>
-              <div className="flex justify-between"><span>تكلفة الاكسسوارات:</span><strong>{formatCurrency(accessoriesCost)}</strong></div>
-              <div className="flex justify-between text-base font-bold pt-2 border-t mt-2"><span>إجمالي المواد:</span><span className="text-brand-orange">{formatCurrency(boardsCost + accessoriesCost)}</span></div>
+              <div className="bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200 text-rose-900">
+                <span>الإكسسوارات: </span>
+                <strong className="font-mono text-sm">{formatCurrency(accessoriesCost)}</strong>
+              </div>
+              <div className="bg-brand-orange-light px-3 py-1 rounded-lg border border-brand-orange/30 text-brand-orange-dark font-bold">
+                <span>إجمالي المواد: </span>
+                <strong className="font-mono text-sm">{formatCurrency(boardsCost + accessoriesCost)}</strong>
+              </div>
             </div>
           </div>
+
+          {/* تبويب 1: ألواح الخشب فقط */}
+          {materialSubTab === "boards" && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* اختيار ألواح من المخزن */}
+              <div className="card border-amber-200 bg-amber-50/20">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-sm text-amber-950 flex items-center gap-1.5">
+                    <span>🔍</span>
+                    <span>اختيار ألواح الخشب من المخزن</span>
+                  </h3>
+                  <span className="text-[11px] font-semibold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
+                    متاح بالمخزن: {boardsRaw.length} صنف لوح
+                  </span>
+                </div>
+                <div className="mb-3">
+                  <input
+                    type="search"
+                    value={searchItem}
+                    onChange={(e) => setSearchItem(e.target.value)}
+                    placeholder="ابحث باسم اللوح أو الكود أو الخامة..."
+                    className="w-full px-3 py-2 text-xs border border-amber-200 rounded-lg bg-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div className="max-h-96 overflow-y-auto divide-y divide-amber-100">
+                  {filteredBoards.map((it) => (
+                    <div key={it.category + "-" + it.id} className="flex items-center justify-between py-2 hover:bg-amber-50 px-2 rounded transition">
+                      <div className="min-w-0">
+                        <div className="font-bold text-xs text-amber-950 truncate">🪵 {it.name}</div>
+                        <div className="text-[11px] text-gray-500 mt-0.5">
+                          كود: <span className="font-mono">{it.code}</span> • متاح:{" "}
+                          <span className={it.remaining > 0 ? "text-emerald-700 font-bold font-mono" : "text-rose-600 font-bold"}>
+                            {it.remaining} لوح
+                          </span>{" "}
+                          • سعر الوحدة: <span className="text-amber-800 font-bold font-mono">{formatCurrency(it.price)}</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => addItem(it)}
+                        disabled={it.remaining <= 0}
+                        className="text-xs px-2.5 py-1 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-40 font-bold whitespace-nowrap"
+                      >
+                        + إضافة لوح
+                      </button>
+                    </div>
+                  ))}
+                  {filteredBoards.length === 0 && (
+                    <div className="text-center text-xs text-gray-400 py-6">لا توجد ألواح مطابقة لبحثك</div>
+                  )}
+                </div>
+              </div>
+
+              {/* الألواح المستخدمة في هذا الأوردر */}
+              <div className="card border-amber-200">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-sm text-amber-950 flex items-center gap-1.5">
+                    <span>🪵</span>
+                    <span>ألواح الخشب المضافة للأوردر ({usedBoards.length})</span>
+                  </h3>
+                  <div className="text-xs font-bold text-amber-900 font-mono">
+                    الإجمالي: {formatCurrency(boardsCost)}
+                  </div>
+                </div>
+
+                {usedBoards.length === 0 ? (
+                  <div className="text-gray-400 text-center py-10 border border-dashed rounded-lg text-xs">
+                    لم تتم إضافة أي ألواح خشب لهذا الأوردر بعد. اختر من القائمة على اليمين.
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {usedItems.map((u, i) => {
+                      if (u.category !== "board") return null
+                      const item = items.find((x) => x.id === u.id)
+                      const exceeds = item && u.quantity > (item.remaining + (u.original_quantity || 0))
+                      return (
+                        <div key={i} className={"p-2.5 rounded-lg border " + (exceeds ? "border-red-300 bg-red-50" : "border-amber-200 bg-amber-50/30")}>
+                          <div className="flex items-start justify-between gap-2 mb-1.5">
+                            <div className="min-w-0">
+                              <div className="font-bold text-xs text-amber-950 truncate">🪵 {u.name}</div>
+                              <div className="text-[11px] text-gray-500">
+                                متاح بالمخزن: <span className="text-emerald-700 font-bold font-mono">{(item?.remaining ?? 0) + (u.original_quantity || 0)}</span>
+                              </div>
+                            </div>
+                            <button type="button" onClick={() => removeUsed(i)} className="text-red-500 hover:bg-red-100 rounded px-1.5 py-0.5 text-xs font-bold" title="حذف">✕</button>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <label className="text-[10px] text-gray-600 block mb-0.5">الكمية (لوح)</label>
+                              <input type="number" min={1} value={u.quantity} onChange={(e) => updateUsedQty(i, Number(e.target.value))} className="w-full px-2 py-1 border rounded text-xs font-mono font-bold" />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-gray-600 block mb-0.5">سعر اللوح</label>
+                              <input type="number" step="0.01" value={u.unit_price} onChange={(e) => setUsedItems((s) => s.map((x, j) => j === i ? { ...x, unit_price: Number(e.target.value) } : x))} className="w-full px-2 py-1 border rounded text-xs font-mono font-bold" />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-gray-600 block mb-0.5">الإجمالي</label>
+                              <div className="px-2 py-1 bg-white border border-amber-200 rounded text-xs font-extrabold font-mono text-amber-900">{formatCurrency(u.quantity * u.unit_price)}</div>
+                            </div>
+                          </div>
+                          {exceeds && <div className="text-[10px] text-red-600 mt-1">⚠️ الكمية أكبر من المتاح ({(item?.remaining || 0) + (u.original_quantity || 0)})</div>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* تبويب 2: الإكسسوارات والمفصلات فقط */}
+          {materialSubTab === "accessories" && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* اختيار إكسسوارات من المخزن */}
+              <div className="card border-rose-200 bg-rose-50/20">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-sm text-rose-950 flex items-center gap-1.5">
+                    <span>🔍</span>
+                    <span>اختيار الإكسسوارات والمفصلات من المخزن</span>
+                  </h3>
+                  <span className="text-[11px] font-semibold text-rose-800 bg-rose-100 px-2 py-0.5 rounded">
+                    متاح بالمخزن: {accessoriesRaw.length} صنف إكسسوار
+                  </span>
+                </div>
+                <div className="mb-3">
+                  <input
+                    type="search"
+                    value={searchItem}
+                    onChange={(e) => setSearchItem(e.target.value)}
+                    placeholder="ابحث باسم الإكسسوار أو الكود أو النوع..."
+                    className="w-full px-3 py-2 text-xs border border-rose-200 rounded-lg bg-white focus:outline-none focus:border-rose-500"
+                  />
+                </div>
+                <div className="max-h-96 overflow-y-auto divide-y divide-rose-100">
+                  {filteredAccessories.map((it) => (
+                    <div key={it.category + "-" + it.id} className="flex items-center justify-between py-2 hover:bg-rose-50 px-2 rounded transition">
+                      <div className="min-w-0">
+                        <div className="font-bold text-xs text-rose-950 truncate">🔩 {it.name}</div>
+                        <div className="text-[11px] text-gray-500 mt-0.5">
+                          كود: <span className="font-mono">{it.code}</span> • متاح:{" "}
+                          <span className={it.remaining > 0 ? "text-emerald-700 font-bold font-mono" : "text-rose-600 font-bold"}>
+                            {it.remaining} قطعة
+                          </span>{" "}
+                          • سعر الوحدة: <span className="text-rose-800 font-bold font-mono">{formatCurrency(it.price)}</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => addItem(it)}
+                        disabled={it.remaining <= 0}
+                        className="text-xs px-2.5 py-1 bg-rose-600 text-white rounded-lg hover:bg-rose-700 disabled:opacity-40 font-bold whitespace-nowrap"
+                      >
+                        + إضافة إكسسوار
+                      </button>
+                    </div>
+                  ))}
+                  {filteredAccessories.length === 0 && (
+                    <div className="text-center text-xs text-gray-400 py-6">لا توجد إكسسوارات مطابقة لبحثك</div>
+                  )}
+                </div>
+              </div>
+
+              {/* الإكسسوارات المستخدمة في هذا الأوردر */}
+              <div className="card border-rose-200">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-sm text-rose-950 flex items-center gap-1.5">
+                    <span>🔩</span>
+                    <span>الإكسسوارات المضافة للأوردر ({usedAccessories.length})</span>
+                  </h3>
+                  <div className="text-xs font-bold text-rose-900 font-mono">
+                    الإجمالي: {formatCurrency(accessoriesCost)}
+                  </div>
+                </div>
+
+                {usedAccessories.length === 0 ? (
+                  <div className="text-gray-400 text-center py-10 border border-dashed rounded-lg text-xs">
+                    لم تتم إضافة أي إكسسوارات لهذا الأوردر بعد. اختر من القائمة على اليمين.
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {usedItems.map((u, i) => {
+                      if (u.category !== "accessory") return null
+                      const item = items.find((x) => x.id === u.id)
+                      const exceeds = item && u.quantity > (item.remaining + (u.original_quantity || 0))
+                      return (
+                        <div key={i} className={"p-2.5 rounded-lg border " + (exceeds ? "border-red-300 bg-red-50" : "border-rose-200 bg-rose-50/30")}>
+                          <div className="flex items-start justify-between gap-2 mb-1.5">
+                            <div className="min-w-0">
+                              <div className="font-bold text-xs text-rose-950 truncate">🔩 {u.name}</div>
+                              <div className="text-[11px] text-gray-500">
+                                متاح بالمخزن: <span className="text-emerald-700 font-bold font-mono">{(item?.remaining ?? 0) + (u.original_quantity || 0)}</span>
+                              </div>
+                            </div>
+                            <button type="button" onClick={() => removeUsed(i)} className="text-red-500 hover:bg-red-100 rounded px-1.5 py-0.5 text-xs font-bold" title="حذف">✕</button>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <label className="text-[10px] text-gray-600 block mb-0.5">الكمية (قطعة)</label>
+                              <input type="number" min={1} value={u.quantity} onChange={(e) => updateUsedQty(i, Number(e.target.value))} className="w-full px-2 py-1 border rounded text-xs font-mono font-bold" />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-gray-600 block mb-0.5">سعر القطعة</label>
+                              <input type="number" step="0.01" value={u.unit_price} onChange={(e) => setUsedItems((s) => s.map((x, j) => j === i ? { ...x, unit_price: Number(e.target.value) } : x))} className="w-full px-2 py-1 border rounded text-xs font-mono font-bold" />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-gray-600 block mb-0.5">الإجمالي</label>
+                              <div className="px-2 py-1 bg-white border border-rose-200 rounded text-xs font-extrabold font-mono text-rose-900">{formatCurrency(u.quantity * u.unit_price)}</div>
+                            </div>
+                          </div>
+                          {exceeds && <div className="text-[10px] text-red-600 mt-1">⚠️ الكمية أكبر من المتاح ({(item?.remaining || 0) + (u.original_quantity || 0)})</div>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* تبويب 3: عرض مجمع لكل المواد في جداول منفصلة وواضحة */}
+          {materialSubTab === "all" && (
+            <div className="space-y-4">
+              {/* جدول الألواح */}
+              <div className="card border-amber-200">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-bold text-sm text-amber-950">🪵 جدول ألواح الخشب ({usedBoards.length})</h3>
+                  <div className="text-xs font-bold text-amber-900 font-mono">الإجمالي: {formatCurrency(boardsCost)}</div>
+                </div>
+                {usedBoards.length === 0 ? (
+                  <div className="text-gray-400 text-center py-4 text-xs">لا توجد ألواح خشب مضافة</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead className="bg-amber-100/60 text-amber-950 font-bold">
+                        <tr>
+                          <th className="p-1.5 text-center">#</th>
+                          <th className="p-1.5 text-start">الصنف</th>
+                          <th className="p-1.5 text-center">الكمية</th>
+                          <th className="p-1.5 text-center">سعر اللوح</th>
+                          <th className="p-1.5 text-center">الإجمالي</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-amber-100">
+                        {usedBoards.map((u, i) => (
+                          <tr key={i} className="hover:bg-amber-50/50">
+                            <td className="p-1.5 text-center text-gray-400">{i + 1}</td>
+                            <td className="p-1.5 font-bold text-amber-950">{u.name}</td>
+                            <td className="p-1.5 text-center font-mono font-bold">{u.quantity}</td>
+                            <td className="p-1.5 text-center font-mono">{formatCurrency(u.unit_price)}</td>
+                            <td className="p-1.5 text-center font-mono font-bold text-amber-900">{formatCurrency(u.quantity * u.unit_price)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* جدول الإكسسوارات */}
+              <div className="card border-rose-200">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-bold text-sm text-rose-950">🔩 جدول الإكسسوارات والمفصلات ({usedAccessories.length})</h3>
+                  <div className="text-xs font-bold text-rose-900 font-mono">الإجمالي: {formatCurrency(accessoriesCost)}</div>
+                </div>
+                {usedAccessories.length === 0 ? (
+                  <div className="text-gray-400 text-center py-4 text-xs">لا توجد إكسسوارات مضافة</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead className="bg-rose-100/60 text-rose-950 font-bold">
+                        <tr>
+                          <th className="p-1.5 text-center">#</th>
+                          <th className="p-1.5 text-start">الصنف</th>
+                          <th className="p-1.5 text-center">الكمية</th>
+                          <th className="p-1.5 text-center">سعر القطعة</th>
+                          <th className="p-1.5 text-center">الإجمالي</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-rose-100">
+                        {usedAccessories.map((u, i) => (
+                          <tr key={i} className="hover:bg-rose-50/50">
+                            <td className="p-1.5 text-center text-gray-400">{i + 1}</td>
+                            <td className="p-1.5 font-bold text-rose-950">{u.name}</td>
+                            <td className="p-1.5 text-center font-mono font-bold">{u.quantity}</td>
+                            <td className="p-1.5 text-center font-mono">{formatCurrency(u.unit_price)}</td>
+                            <td className="p-1.5 text-center font-mono font-bold text-rose-900">{formatCurrency(u.quantity * u.unit_price)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
