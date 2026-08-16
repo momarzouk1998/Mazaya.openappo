@@ -2,7 +2,6 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useUserStore } from "@/store/user-store";
-import { useApiMutation } from "@/hooks/useApi";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -35,17 +34,20 @@ export default function CashflowReportPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
   const [entries, setEntries] = useState<any[]>([]);
-  const { mutate } = useApiMutation();
 
   async function loadData() {
     setLoading(true);
     try {
-      const res = await mutate(
-        "GET",
+      const res = await fetch(
         `/api/journal?limit=2000${fromDate ? "&from_date=" + fromDate : ""}${toDate ? "&to_date=" + toDate : ""}`
-      );
-      const rawList = (res as any)?.data?.entries ?? (res as any)?.data ?? (res as any)?.entries ?? [];
+      ).then((r) => r.json()).catch(() => ({ ok: false, data: [] }));
+
+      const rawList = res?.data?.entries ?? res?.data ?? res?.entries ?? [];
 
       const mapped = (Array.isArray(rawList) ? rawList : []).map((x: any) => {
         const isBoardsWallet = x.entry_type === "تحويل تمريري" || x.entry_type === "مشتريات";
@@ -79,6 +81,7 @@ export default function CashflowReportPage() {
 
   useEffect(() => {
     loadData();
+    setPage(1);
   }, [fromDate, toDate]);
 
   function applyPreset(preset: "today" | "week" | "month" | "all") {
@@ -152,6 +155,12 @@ export default function CashflowReportPage() {
     return list;
   }, [entries, subTab, search]);
 
+  const totalPages = Math.max(1, Math.ceil(activeDataset.length / pageSize));
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return activeDataset.slice(start, start + pageSize);
+  }, [activeDataset, page, pageSize]);
+
   const columns = useMemo(() => {
     if (!activeDataset.length) return [];
     return Object.keys(activeDataset[0]).filter((k) => !k.startsWith("_"));
@@ -199,8 +208,8 @@ export default function CashflowReportPage() {
       </div>
 
       {/* فلاتر التاريخ */}
-      <div className="card mb-5 bg-white border border-gray-100 shadow-sm p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-3 pb-3 border-b">
+      <div className="card mb-4 bg-white border border-gray-100 shadow-sm p-3.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5 pb-2 border-b">
           <div className="text-xs font-bold text-gray-700 flex items-center gap-2">
             <span>📅 نطاق حركة النقدية بالتاريخ</span>
             {(fromDate || toDate) && (
@@ -209,35 +218,35 @@ export default function CashflowReportPage() {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl border text-xs">
+          <div className="flex items-center gap-1 bg-gray-50 p-0.5 rounded-lg border text-xs">
             <button
               onClick={() => applyPreset("today")}
-              className="px-2.5 py-1 rounded-lg hover:bg-white transition text-gray-700 font-medium"
+              className="px-2 py-1 rounded hover:bg-white transition text-gray-700 font-medium"
             >
               اليوم
             </button>
             <button
               onClick={() => applyPreset("week")}
-              className="px-2.5 py-1 rounded-lg hover:bg-white transition text-gray-700 font-medium"
+              className="px-2 py-1 rounded hover:bg-white transition text-gray-700 font-medium"
             >
               آخر 7 أيام
             </button>
             <button
               onClick={() => applyPreset("month")}
-              className="px-2.5 py-1 rounded-lg hover:bg-white transition text-gray-700 font-medium"
+              className="px-2 py-1 rounded hover:bg-white transition text-gray-700 font-medium"
             >
               هذا الشهر
             </button>
             <button
               onClick={() => applyPreset("all")}
-              className="px-2.5 py-1 rounded-lg hover:bg-white transition text-gray-700 font-medium"
+              className="px-2 py-1 rounded hover:bg-white transition text-gray-700 font-medium"
             >
-              الكل
+              كل الحركات
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">من تاريخ</label>
             <DateInput value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
@@ -247,68 +256,68 @@ export default function CashflowReportPage() {
             <DateInput value={toDate} onChange={(e) => setToDate(e.target.value)} />
           </div>
           <div className="flex items-end">
-            <Button onClick={loadData} loading={loading} className="w-full h-10 font-bold">
+            <Button onClick={loadData} loading={loading} className="w-full h-9 text-xs font-bold">
               {loading ? "⏳ جاري التحديث..." : "🔄 تحديث البيانات"}
             </Button>
           </div>
         </div>
       </div>
 
-      {/* كروت المؤشرات النقدية */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-        <div className="card bg-gradient-to-br from-emerald-50 to-teal-50 border-r-4 border-emerald-600 p-4 shadow-sm">
-          <div className="text-xs text-gray-600 font-semibold mb-1">👛 صافي يومية المصنع</div>
-          <div className="text-2xl font-extrabold text-emerald-900 font-mono">
+      {/* كروت المؤشرات */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4">
+        <div className="card bg-gradient-to-br from-emerald-50 to-teal-50 border-r-4 border-emerald-600 p-3 shadow-xs">
+          <div className="text-[11px] text-gray-600 font-semibold mb-0.5">👛 صافي يومية المصنع</div>
+          <div className="text-xl font-extrabold text-emerald-900 font-mono">
             {formatCurrency(stats.factoryNet)}
           </div>
-          <div className="text-xs text-emerald-700 mt-1">
+          <div className="text-[10px] text-emerald-700 mt-0.5">
             وارد: {formatCurrency(stats.factoryIncome)} − مصروف: {formatCurrency(stats.factoryExpense)}
           </div>
         </div>
 
-        <div className="card bg-gradient-to-br from-amber-50 to-orange-50 border-r-4 border-amber-600 p-4 shadow-sm">
-          <div className="text-xs text-gray-600 font-semibold mb-1">🪵 صافي يومية الألواح</div>
-          <div className="text-2xl font-extrabold text-amber-900 font-mono">
+        <div className="card bg-gradient-to-br from-amber-50 to-orange-50 border-r-4 border-amber-600 p-3 shadow-xs">
+          <div className="text-[11px] text-gray-600 font-semibold mb-0.5">🪵 صافي يومية الألواح</div>
+          <div className="text-xl font-extrabold text-amber-900 font-mono">
             {formatCurrency(stats.boardsNet)}
           </div>
-          <div className="text-xs text-amber-700 mt-1">
+          <div className="text-[10px] text-amber-700 mt-0.5">
             تمريري: {formatCurrency(stats.boardsIncome)} − مشتريات: {formatCurrency(stats.boardsExpense)}
           </div>
         </div>
 
-        <div className="card bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white p-4 shadow-md">
-          <div className="text-xs text-white/90 font-semibold mb-1">💵 صافي التدفق النقدي الشامل</div>
-          <div className="text-2xl font-extrabold font-mono">
+        <div className="card bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white p-3 shadow-xs">
+          <div className="text-[11px] text-white/90 font-semibold mb-0.5">💵 صافي التدفق النقدي الشامل</div>
+          <div className="text-xl font-extrabold font-mono">
             {formatCurrency(stats.grandNet)}
           </div>
-          <div className="text-xs text-white/80 mt-1">
-            إجمالي الحركات: <strong>{entries.length}</strong> حركة مالية
+          <div className="text-[10px] text-white/80 mt-0.5">
+            إجمالي الحركات: <strong>{entries.length}</strong> حركة
           </div>
         </div>
       </div>
 
       {/* التابات الفرعية + البحث والتصدير */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 bg-white p-3 rounded-2xl border border-gray-200 shadow-xs">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3 bg-white p-2.5 rounded-xl border border-gray-200 shadow-xs">
+        <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
           <button
-            onClick={() => setSubTab("all")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            onClick={() => { setSubTab("all"); setPage(1); }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
               subTab === "all" ? "bg-brand-orange text-white shadow-xs" : "bg-gray-50 border text-gray-700 hover:bg-gray-100"
             }`}
           >
             💸 كل الحركات ({entries.length})
           </button>
           <button
-            onClick={() => setSubTab("factory")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            onClick={() => { setSubTab("factory"); setPage(1); }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
               subTab === "factory" ? "bg-brand-orange text-white shadow-xs" : "bg-gray-50 border text-gray-700 hover:bg-gray-100"
             }`}
           >
             👛 يومية المصنع ({entries.filter((r) => r._wallet === "factory").length})
           </button>
           <button
-            onClick={() => setSubTab("boards")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            onClick={() => { setSubTab("boards"); setPage(1); }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
               subTab === "boards" ? "bg-brand-orange text-white shadow-xs" : "bg-gray-50 border text-gray-700 hover:bg-gray-100"
             }`}
           >
@@ -317,54 +326,56 @@ export default function CashflowReportPage() {
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto mr-auto">
-          <div className="relative flex-1 sm:w-60">
+          <div className="relative flex-1 sm:w-52">
             <input
               type="text"
               placeholder="🔍 بحث في الحركات..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full text-xs px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand-orange focus:bg-white transition"
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              className="w-full text-xs px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-brand-orange focus:bg-white transition"
             />
             {search && (
               <button
-                onClick={() => setSearch("")}
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
+                onClick={() => { setSearch(""); setPage(1); }}
+                className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
               >
                 ✕
               </button>
             )}
           </div>
-          <Button variant="secondary" size="sm" onClick={handleExport} className="flex items-center gap-1.5 font-bold h-9">
+          <Button variant="secondary" size="sm" onClick={handleExport} className="flex items-center gap-1 font-bold h-8 text-xs">
             <span>📥</span>
-            <span>تصدير Excel</span>
+            <span>Excel</span>
           </Button>
         </div>
       </div>
 
       {/* جدول البيانات */}
       {loading ? (
-        <div className="card text-center py-16 bg-white border">
-          <div className="text-3xl mb-2">⏳</div>
-          <div className="text-sm font-bold text-gray-600">جاري تحميل بيانات التدفق النقدي...</div>
+        <div className="card text-center py-12 bg-white border">
+          <div className="text-2xl mb-2">⏳</div>
+          <div className="text-xs font-bold text-gray-600">جاري تحميل بيانات التدفق النقدي...</div>
         </div>
       ) : activeDataset.length > 0 ? (
-        <div className="card overflow-hidden p-0 border border-gray-200 shadow-sm rounded-2xl bg-white mb-6">
+        <div className="card overflow-hidden p-0 border border-gray-200 shadow-sm rounded-xl bg-white mb-4">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-xs">
               <thead className="bg-gray-100/80 text-gray-800 border-b border-gray-200">
                 <tr>
-                  <th className="px-3 py-3 text-center text-xs font-bold text-gray-500 w-10">#</th>
+                  <th className="px-2.5 py-2.5 text-center font-bold text-gray-500 w-8">#</th>
                   {columns.map((k) => (
-                    <th key={k} className="px-3 py-3 text-right font-extrabold text-xs whitespace-nowrap text-gray-700">
+                    <th key={k} className="px-2.5 py-2.5 text-right font-extrabold whitespace-nowrap text-gray-700">
                       {k}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {activeDataset.map((row, i) => (
+                {paginatedRows.map((row, i) => (
                   <tr key={i} className="hover:bg-orange-50/30 transition">
-                    <td className="px-3 py-2.5 text-center text-xs text-gray-400 font-mono">{i + 1}</td>
+                    <td className="px-2.5 py-2 text-center text-gray-400 font-mono">
+                      {(page - 1) * pageSize + i + 1}
+                    </td>
                     {columns.map((k) => {
                       const v = row[k];
                       const isMoney = moneyKeys.includes(k);
@@ -373,7 +384,7 @@ export default function CashflowReportPage() {
                       return (
                         <td
                           key={k}
-                          className={`px-3 py-2.5 whitespace-nowrap ${
+                          className={`px-2.5 py-2 whitespace-nowrap ${
                             isMoney
                               ? "font-bold font-mono text-left"
                               : isEffect
@@ -385,7 +396,7 @@ export default function CashflowReportPage() {
                             v > 0 ? formatCurrency(fmtNum(v)) : "—"
                           ) : isWallet ? (
                             <span
-                              className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${
+                              className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-semibold ${
                                 v === "يومية المصنع" ? "bg-emerald-100 text-emerald-900" : "bg-amber-100 text-amber-900"
                               }`}
                             >
@@ -402,35 +413,90 @@ export default function CashflowReportPage() {
               </tbody>
               <tfoot className="bg-gray-50 border-t-2 border-gray-300 font-extrabold text-xs text-gray-800">
                 <tr>
-                  <td className="px-3 py-3 text-center text-gray-500">Σ</td>
+                  <td className="px-2.5 py-2.5 text-center text-gray-500">Σ</td>
                   {columns.map((k) => {
                     const isMoney = moneyKeys.includes(k);
                     if (isMoney) {
                       return (
-                        <td key={k} className="px-3 py-3 text-left font-mono font-bold text-brand-orange-dark text-sm whitespace-nowrap">
+                        <td key={k} className="px-2.5 py-2.5 text-left font-mono font-bold text-brand-orange-dark text-xs whitespace-nowrap">
                           {formatCurrency(columnSums[k] || 0)}
                         </td>
                       );
                     }
                     if (k === columns[0]) {
                       return (
-                        <td key={k} className="px-3 py-3 whitespace-nowrap text-gray-800">
+                        <td key={k} className="px-2.5 py-2.5 whitespace-nowrap text-gray-800">
                           الإجمالي ({activeDataset.length} حركة)
                         </td>
                       );
                     }
-                    return <td key={k} className="px-3 py-3"></td>;
+                    return <td key={k} className="px-2.5 py-2.5"></td>;
                   })}
                 </tr>
               </tfoot>
             </table>
           </div>
+
+          {/* ترقيم الصفحات Pagination */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-gray-50/80 border-t text-xs text-gray-600">
+            <div className="flex items-center gap-2">
+              <span>
+                عرض {(page - 1) * pageSize + 1} إلى {Math.min(page * pageSize, activeDataset.length)} من {activeDataset.length} حركة
+              </span>
+              <span className="text-gray-300">|</span>
+              <span>حجم الصفحة:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                className="bg-white border rounded px-1.5 py-0.5 text-xs font-semibold"
+              >
+                <option value={15}>15</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage(1)}
+                disabled={page === 1}
+                className="px-2 py-1 bg-white border rounded disabled:opacity-40 font-bold hover:bg-gray-100"
+              >
+                «
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-2 py-1 bg-white border rounded disabled:opacity-40 font-bold hover:bg-gray-100"
+              >
+                السابق
+              </button>
+              <span className="px-2.5 py-1 font-bold text-gray-800">
+                صفحة {page} من {totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-2 py-1 bg-white border rounded disabled:opacity-40 font-bold hover:bg-gray-100"
+              >
+                التالي
+              </button>
+              <button
+                onClick={() => setPage(totalPages)}
+                disabled={page === totalPages}
+                className="px-2 py-1 bg-white border rounded disabled:opacity-40 font-bold hover:bg-gray-100"
+              >
+                »
+              </button>
+            </div>
+          </div>
         </div>
       ) : (
-        <div className="card text-center text-gray-400 py-16 bg-white border rounded-2xl">
-          <div className="text-5xl mb-3">📭</div>
-          <div className="font-extrabold text-gray-700 text-base">لا توجد حركات نقدية مطابقة للفترة المحددة</div>
-          <div className="text-xs text-gray-400 mt-1">جرب تغيير نطاق التاريخ أو إلغاء فلتر البحث.</div>
+        <div className="card text-center text-gray-400 py-12 bg-white border rounded-xl">
+          <div className="text-4xl mb-2">📭</div>
+          <div className="font-bold text-gray-700 text-sm">لا توجد حركات نقدية مطابقة للفترة المحددة</div>
+          <div className="text-xs text-gray-400 mt-0.5">جرب تغيير نطاق التاريخ أو إلغاء فلتر البحث.</div>
         </div>
       )}
     </DashboardLayout>

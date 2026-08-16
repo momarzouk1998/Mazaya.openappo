@@ -32,6 +32,8 @@ export async function GET(request: Request) {
     const status = searchParams.get('status') || '';
     const branch_id = searchParams.get('branch_id') || '';
     const customer_id = searchParams.get('customer_id') || '';
+    const from_date = searchParams.get('from_date') || '';
+    const to_date = searchParams.get('to_date') || '';
     const offset = (page - 1) * limit;
 
     // تحديد الفرع بناءً على صلاحيات المستخدم
@@ -58,6 +60,16 @@ export async function GET(request: Request) {
     if (customer_id) {
       conditions.push(`vot.customer_id = $${paramIdx++}::uuid`);
       rawParams.push(customer_id);
+    }
+    if (from_date) {
+      conditions.push(`(vot.start_date >= $${paramIdx}::timestamp OR (vot.start_date IS NULL AND vot.created_at >= $${paramIdx}::timestamp))`);
+      rawParams.push(new Date(from_date).toISOString());
+      paramIdx++;
+    }
+    if (to_date) {
+      conditions.push(`(vot.start_date <= $${paramIdx}::timestamp OR (vot.start_date IS NULL AND vot.created_at <= $${paramIdx}::timestamp))`);
+      rawParams.push(new Date(to_date + 'T23:59:59.999Z').toISOString());
+      paramIdx++;
     }
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
 
