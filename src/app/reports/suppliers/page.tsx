@@ -3,7 +3,6 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useUserStore } from "@/store/user-store";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { exportToExcel } from "@/lib/excel";
 import { formatCurrency } from "@/lib/format";
@@ -172,136 +171,122 @@ export default function SuppliersReportPage() {
 
   return (
     <DashboardLayout profile={profile}>
-      <div className="flex items-center justify-between gap-3 mb-3">
-        <PageHeader
-          title="تقرير الموردين وحسابات المشتريات"
-          subtitle="كشف شامل لحسابات الموردين، إجمالي مشتريات الألواح والإكسسوارات، المدفوع، والديون المستحقة"
-          backHref="/reports"
-        />
+      {/* رأس الصفحة المدمج والأنيق بدون سطر فرعي */}
+      <div className="flex items-center justify-between gap-2 mb-2.5">
+        <h1 className="text-base font-bold text-gray-900 flex items-center gap-2">
+          <span>🏭</span>
+          <span>تقرير الموردين وحسابات المشتريات</span>
+        </h1>
         <Link
           href="/reports"
-          className="btn-secondary h-8 px-3 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap"
+          className="btn-secondary h-7 px-2.5 text-xs font-bold flex items-center gap-1 whitespace-nowrap"
         >
           <span>←</span>
           <span>رجوع للتقارير</span>
         </Link>
       </div>
 
-      {/* فلاتر التاريخ */}
-      <div className="card mb-3.5 bg-white border border-gray-100 shadow-xs p-3">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-2 pb-2 border-b">
-          <div className="text-xs font-bold text-gray-700 flex items-center gap-2">
-            <span>📅 نطاق حركة المشتريات والمدفوعات بالتاريخ</span>
-            {(fromDate || toDate) && (
-              <span className="text-[11px] font-normal px-2 py-0.5 rounded bg-orange-100 text-orange-800">
-                من {fromDate || "البداية"} إلى {toDate || "اليوم"}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-1 bg-gray-50 p-0.5 rounded-lg border text-xs">
-            <button
-              onClick={() => applyPreset("today")}
-              className="px-2 py-1 rounded hover:bg-white transition text-gray-700 font-medium"
-            >
-              اليوم
-            </button>
-            <button
-              onClick={() => applyPreset("week")}
-              className="px-2 py-1 rounded hover:bg-white transition text-gray-700 font-medium"
-            >
-              آخر 7 أيام
-            </button>
-            <button
-              onClick={() => applyPreset("month")}
-              className="px-2 py-1 rounded hover:bg-white transition text-gray-700 font-medium"
-            >
-              هذا الشهر
-            </button>
-            <button
-              onClick={() => applyPreset("all")}
-              className="px-2 py-1 rounded hover:bg-white transition text-gray-700 font-medium"
-            >
-              كل الموردين
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-          <div>
-            <label className="block text-[11px] font-semibold text-gray-600 mb-1">من تاريخ</label>
-            <DateInput value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-          </div>
-          <div>
-            <label className="block text-[11px] font-semibold text-gray-600 mb-1">إلى تاريخ</label>
-            <DateInput value={toDate} onChange={(e) => setToDate(e.target.value)} />
-          </div>
-          <div className="flex items-end">
-            <Button onClick={loadData} loading={loading} className="w-full h-8 text-xs font-bold">
-              {loading ? "⏳ جاري التحديث..." : "🔄 تحديث البيانات"}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* كروت المؤشرات التفصيلية */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-3.5">
+      {/* كروت المؤشرات التفصيلية تحت العنوان مباشرة */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-2.5">
         {/* إجمالي المشتريات */}
-        <div className="bg-white rounded-xl p-3 border border-red-200 shadow-xs">
+        <div className="bg-white rounded-xl p-2.5 border border-red-200 shadow-xs">
           <div className="flex items-center justify-between text-red-700 text-xs font-bold mb-1">
             <span>🏭 إجمالي المشتريات</span>
             <span className="bg-red-50 px-2 py-0.5 rounded text-[11px]">{stats.count} مورد</span>
           </div>
-          <div className="text-base font-extrabold text-red-950 font-mono">
+          <div className="text-sm font-extrabold text-red-950 font-mono">
             {formatCurrency(stats.totalPurchases)}
           </div>
-          <div className="text-[11px] text-red-700 mt-1 border-t border-red-100 pt-1">
+          <div className="text-[10px] text-red-700 mt-0.5 border-t border-red-100 pt-0.5">
             ألواح وإكسسوارات ومواد خام
           </div>
         </div>
 
         {/* إجمالي المدفوع */}
-        <div className="bg-white rounded-xl p-3 border border-green-200 shadow-xs">
+        <div className="bg-white rounded-xl p-2.5 border border-green-200 shadow-xs">
           <div className="flex items-center justify-between text-green-700 text-xs font-bold mb-1">
             <span>💳 إجمالي المدفوع للموردين</span>
             <span className="bg-green-50 px-2 py-0.5 rounded text-[11px]">سدادات ودفعات</span>
           </div>
-          <div className="text-base font-extrabold text-green-950 font-mono">
+          <div className="text-sm font-extrabold text-green-950 font-mono">
             {formatCurrency(stats.totalPayments)}
           </div>
-          <div className="text-[11px] text-green-700 mt-1 border-t border-green-100 pt-1">
+          <div className="text-[10px] text-green-700 mt-0.5 border-t border-green-100 pt-0.5">
             دفعات نقدية وبنكية مسجلة
           </div>
         </div>
 
         {/* إجمالي الديون المستحقة */}
-        <div className="bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white rounded-xl p-3 shadow-xs">
+        <div className="bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white rounded-xl p-2.5 shadow-xs">
           <div className="flex items-center justify-between text-white/90 text-xs font-bold mb-1">
             <span>⏳ إجمالي الديون المستحقة</span>
             <span className="bg-white/20 px-2 py-0.5 rounded text-[11px]">{stats.debtSuppliersCount} مورد له ديون</span>
           </div>
-          <div className="text-base font-extrabold font-mono text-white">
+          <div className="text-sm font-extrabold font-mono text-white">
             {formatCurrency(stats.totalBalance)}
           </div>
-          <div className="text-[11px] text-white/80 mt-1 border-t border-white/20 pt-1">
+          <div className="text-[10px] text-white/80 mt-0.5 border-t border-white/20 pt-0.5">
             المتبقي لصالح الموردين
           </div>
         </div>
       </div>
 
-      {/* شريط البحث والتصدير */}
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 bg-white p-2.5 rounded-xl border border-gray-200 shadow-xs">
+      {/* شريط التحكم الموحد المدمج: التاريخ + الفلاتر + البحث + التصدير */}
+      <div className="bg-white p-2 rounded-xl border border-gray-200 shadow-xs mb-2.5 flex flex-wrap items-center justify-between gap-2">
         <div className="text-xs font-bold text-gray-700">
           🏭 كشف حساب الموردين ({items.length})
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto mr-auto">
-          <div className="relative flex-1 sm:w-52">
+        {/* فلاتر التاريخ والبحث والأزرار */}
+        <div className="flex flex-wrap items-center gap-1.5 mr-auto">
+          {/* أزرار الفترات السريعة */}
+          <div className="flex items-center bg-gray-50 p-0.5 rounded-lg border text-xs">
+            <button
+              onClick={() => applyPreset("today")}
+              className="px-2 py-0.5 rounded hover:bg-white transition text-gray-700 font-medium text-[11px]"
+            >
+              اليوم
+            </button>
+            <button
+              onClick={() => applyPreset("week")}
+              className="px-2 py-0.5 rounded hover:bg-white transition text-gray-700 font-medium text-[11px]"
+            >
+              7 أيام
+            </button>
+            <button
+              onClick={() => applyPreset("month")}
+              className="px-2 py-0.5 rounded hover:bg-white transition text-gray-700 font-medium text-[11px]"
+            >
+              الشهر
+            </button>
+            <button
+              onClick={() => applyPreset("all")}
+              className="px-2 py-0.5 rounded hover:bg-white transition text-gray-700 font-medium text-[11px]"
+            >
+              الكل
+            </button>
+          </div>
+
+          {/* مدخلات التاريخ المدمجة */}
+          <div className="flex items-center gap-1 text-[11px]">
+            <span className="text-gray-500 font-semibold">من:</span>
+            <div className="w-28">
+              <DateInput value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+            </div>
+            <span className="text-gray-500 font-semibold">إلى:</span>
+            <div className="w-28">
+              <DateInput value={toDate} onChange={(e) => setToDate(e.target.value)} />
+            </div>
+          </div>
+
+          {/* مربع البحث */}
+          <div className="relative w-36 sm:w-44">
             <input
               type="text"
               placeholder="🔍 بحث في الموردين..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="w-full text-xs px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-brand-orange focus:bg-white transition"
+              className="w-full text-xs px-2.5 py-1 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-brand-orange focus:bg-white transition"
             />
             {search && (
               <button
@@ -312,7 +297,9 @@ export default function SuppliersReportPage() {
               </button>
             )}
           </div>
-          <Button variant="secondary" size="sm" onClick={handleExport} className="flex items-center gap-1 font-bold h-8 text-xs">
+
+          {/* زر التصدير */}
+          <Button variant="secondary" size="sm" onClick={handleExport} className="flex items-center gap-1 font-bold h-7 text-xs px-2.5">
             <span>📥</span>
             <span>Excel</span>
           </Button>
@@ -331,9 +318,9 @@ export default function SuppliersReportPage() {
             <table className="w-full text-xs">
               <thead className="bg-gray-100/80 text-gray-800 border-b border-gray-200">
                 <tr>
-                  <th className="px-2.5 py-2.5 text-center font-bold text-gray-500 w-8">#</th>
+                  <th className="px-2 py-2 text-center font-bold text-gray-500 w-8">#</th>
                   {columns.map((k) => (
-                    <th key={k} className="px-2.5 py-2.5 text-center font-extrabold whitespace-nowrap text-gray-700">
+                    <th key={k} className="px-2 py-2 text-center font-extrabold whitespace-nowrap text-gray-700">
                       {k}
                     </th>
                   ))}
@@ -342,7 +329,7 @@ export default function SuppliersReportPage() {
               <tbody className="divide-y divide-gray-100">
                 {paginatedRows.map((row, i) => (
                   <tr key={i} className="hover:bg-orange-50/30 transition">
-                    <td className="px-2.5 py-2 text-center text-gray-400 font-mono">
+                    <td className="px-2 py-1.5 text-center text-gray-400 font-mono">
                       {(page - 1) * pageSize + i + 1}
                     </td>
                     {columns.map((k) => {
@@ -352,7 +339,7 @@ export default function SuppliersReportPage() {
                       return (
                         <td
                           key={k}
-                          className={`px-2.5 py-2 whitespace-nowrap text-center ${
+                          className={`px-2 py-1.5 whitespace-nowrap text-center ${
                             isMoney
                               ? isBalance && fmtNum(v) > 0
                                 ? "font-bold text-red-600 font-mono"
@@ -369,24 +356,24 @@ export default function SuppliersReportPage() {
               </tbody>
               <tfoot className="bg-gray-50 border-t-2 border-gray-300 font-extrabold text-xs text-gray-800">
                 <tr>
-                  <td className="px-2.5 py-2.5 text-center text-gray-500">Σ</td>
+                  <td className="px-2 py-2 text-center text-gray-500">Σ</td>
                   {columns.map((k) => {
                     const isMoney = moneyKeys.includes(k);
                     if (isMoney) {
                       return (
-                        <td key={k} className="px-2.5 py-2.5 text-center font-mono font-bold text-brand-orange-dark text-xs whitespace-nowrap">
+                        <td key={k} className="px-2 py-2 text-center font-mono font-bold text-brand-orange-dark text-xs whitespace-nowrap">
                           {formatCurrency(columnSums[k] || 0)}
                         </td>
                       );
                     }
                     if (k === columns[0]) {
                       return (
-                        <td key={k} className="px-2.5 py-2.5 text-center whitespace-nowrap text-gray-800">
+                        <td key={k} className="px-2 py-2 text-center whitespace-nowrap text-gray-800">
                           الإجمالي ({activeDataset.length} مورد)
                         </td>
                       );
                     }
-                    return <td key={k} className="px-2.5 py-2.5"></td>;
+                    return <td key={k} className="px-2 py-2"></td>;
                   })}
                 </tr>
               </tfoot>
@@ -394,7 +381,7 @@ export default function SuppliersReportPage() {
           </div>
 
           {/* ترقيم الصفحات Pagination */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-gray-50/80 border-t text-xs text-gray-600">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-2 bg-gray-50/80 border-t text-xs text-gray-600">
             <div className="flex items-center gap-2">
               <span>
                 عرض {(page - 1) * pageSize + 1} إلى {Math.min(page * pageSize, activeDataset.length)} من {activeDataset.length} مورد
@@ -417,31 +404,31 @@ export default function SuppliersReportPage() {
               <button
                 onClick={() => setPage(1)}
                 disabled={page === 1}
-                className="px-2 py-1 bg-white border rounded disabled:opacity-40 font-bold hover:bg-gray-100"
+                className="px-2 py-0.5 bg-white border rounded disabled:opacity-40 font-bold hover:bg-gray-100 text-xs"
               >
                 «
               </button>
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="px-2 py-1 bg-white border rounded disabled:opacity-40 font-bold hover:bg-gray-100"
+                className="px-2 py-0.5 bg-white border rounded disabled:opacity-40 font-bold hover:bg-gray-100 text-xs"
               >
                 السابق
               </button>
-              <span className="px-2.5 py-1 font-bold text-gray-800">
+              <span className="px-2.5 py-0.5 font-bold text-gray-800 text-xs">
                 صفحة {page} من {totalPages}
               </span>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="px-2 py-1 bg-white border rounded disabled:opacity-40 font-bold hover:bg-gray-100"
+                className="px-2 py-0.5 bg-white border rounded disabled:opacity-40 font-bold hover:bg-gray-100 text-xs"
               >
                 التالي
               </button>
               <button
                 onClick={() => setPage(totalPages)}
                 disabled={page === totalPages}
-                className="px-2 py-1 bg-white border rounded disabled:opacity-40 font-bold hover:bg-gray-100"
+                className="px-2 py-0.5 bg-white border rounded disabled:opacity-40 font-bold hover:bg-gray-100 text-xs"
               >
                 »
               </button>

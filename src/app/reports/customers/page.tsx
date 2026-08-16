@@ -3,7 +3,6 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useUserStore } from "@/store/user-store";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { exportToExcel } from "@/lib/excel";
 import { formatCurrency } from "@/lib/format";
@@ -147,80 +146,82 @@ export default function CustomersReportPage() {
 
   return (
     <DashboardLayout profile={profile}>
-      <div className="flex items-center justify-between gap-3 mb-3">
-        <PageHeader
-          title="تقرير العملاء والتحصيلات"
-          subtitle="كشف حساب العملاء والمعارض، إجمالي الأوردرات، التحصيلات المسددة، والمتبقي"
-          backHref="/reports"
-        />
+      {/* رأس الصفحة المدمج والأنيق بدون سطر فرعي */}
+      <div className="flex items-center justify-between gap-2 mb-2.5">
+        <h1 className="text-base font-bold text-gray-900 flex items-center gap-2">
+          <span>👥</span>
+          <span>تقرير العملاء والتحصيلات</span>
+        </h1>
         <Link
           href="/reports"
-          className="btn-secondary h-8 px-3 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap"
+          className="btn-secondary h-7 px-2.5 text-xs font-bold flex items-center gap-1 whitespace-nowrap"
         >
           <span>←</span>
           <span>رجوع للتقارير</span>
         </Link>
       </div>
 
-      {/* كروت المؤشرات التفصيلية */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-3.5">
+      {/* كروت المؤشرات التفصيلية تحت العنوان مباشرة */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-2.5">
         {/* إجمالي الأوردرات */}
-        <div className="bg-white rounded-xl p-3 border border-indigo-200 shadow-xs">
+        <div className="bg-white rounded-xl p-2.5 border border-indigo-200 shadow-xs">
           <div className="flex items-center justify-between text-indigo-700 text-xs font-bold mb-1">
             <span>📦 إجمالي قيمة أوردرات العملاء</span>
             <span className="bg-indigo-50 px-2 py-0.5 rounded text-[11px]">{stats.count} عميل</span>
           </div>
-          <div className="text-base font-extrabold text-indigo-950 font-mono">
+          <div className="text-sm font-extrabold text-indigo-950 font-mono">
             {formatCurrency(stats.totalOrdersVal)}
           </div>
-          <div className="text-[11px] text-indigo-700 mt-1 border-t border-indigo-100 pt-1">
+          <div className="text-[10px] text-indigo-700 mt-0.5 border-t border-indigo-100 pt-0.5">
             عبر كافة الفروع والمعارض
           </div>
         </div>
 
         {/* إجمالي التحصيلات */}
-        <div className="bg-white rounded-xl p-3 border border-green-200 shadow-xs">
+        <div className="bg-white rounded-xl p-2.5 border border-green-200 shadow-xs">
           <div className="flex items-center justify-between text-green-700 text-xs font-bold mb-1">
             <span>💳 إجمالي التحصيلات المسددة</span>
             <span className="bg-green-50 px-2 py-0.5 rounded text-[11px]">نسبة التحصيل: {stats.collectionRate}%</span>
           </div>
-          <div className="text-base font-extrabold text-green-950 font-mono">
+          <div className="text-sm font-extrabold text-green-950 font-mono">
             {formatCurrency(stats.totalCollected)}
           </div>
-          <div className="text-[11px] text-green-700 mt-1 border-t border-green-100 pt-1">
+          <div className="text-[10px] text-green-700 mt-0.5 border-t border-green-100 pt-0.5">
             دفعات محصلة من العملاء
           </div>
         </div>
 
         {/* إجمالي المتبقي */}
-        <div className="bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white rounded-xl p-3 shadow-xs">
+        <div className="bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white rounded-xl p-2.5 shadow-xs">
           <div className="flex items-center justify-between text-white/90 text-xs font-bold mb-1">
             <span>⏳ إجمالي المتبقي على العملاء</span>
-            <span className="bg-white/20 px-2 py-0.5 rounded text-[11px]">{stats.debtCustomersCount} عميل عليه مستحقات</span>
+            <span className="bg-white/20 px-2 py-0.5 rounded text-[11px]">{stats.debtCustomersCount} مدين</span>
           </div>
-          <div className="text-base font-extrabold font-mono text-white">
+          <div className="text-sm font-extrabold font-mono text-white">
             {formatCurrency(stats.totalRemaining)}
           </div>
-          <div className="text-[11px] text-white/80 mt-1 border-t border-white/20 pt-1">
+          <div className="text-[10px] text-white/80 mt-0.5 border-t border-white/20 pt-0.5">
             مستحقات المصنع لدى العملاء
           </div>
         </div>
       </div>
 
-      {/* شريط البحث والتصدير */}
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 bg-white p-2.5 rounded-xl border border-gray-200 shadow-xs">
+      {/* شريط التحكم الموحد المدمج: البحث + التصدير */}
+      <div className="bg-white p-2 rounded-xl border border-gray-200 shadow-xs mb-2.5 flex flex-wrap items-center justify-between gap-2">
         <div className="text-xs font-bold text-gray-700">
           👥 كشف حساب العملاء ({items.length})
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto mr-auto">
-          <div className="relative flex-1 sm:w-52">
+        {/* البحث والأزرار */}
+        <div className="flex items-center gap-1.5 mr-auto">
+          {/* مربع البحث */}
+          <div className="relative w-44 sm:w-60">
             <input
               type="text"
               placeholder="🔍 بحث في العملاء..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="w-full text-xs px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-brand-orange focus:bg-white transition"
+              className="w-full text-xs px-2.5 py-1 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-brand-orange focus:bg-white transition"
             />
             {search && (
               <button
@@ -231,7 +232,9 @@ export default function CustomersReportPage() {
               </button>
             )}
           </div>
-          <Button variant="secondary" size="sm" onClick={handleExport} className="flex items-center gap-1 font-bold h-8 text-xs">
+
+          {/* زر التصدير */}
+          <Button variant="secondary" size="sm" onClick={handleExport} className="flex items-center gap-1 font-bold h-7 text-xs px-2.5">
             <span>📥</span>
             <span>Excel</span>
           </Button>
@@ -250,9 +253,9 @@ export default function CustomersReportPage() {
             <table className="w-full text-xs">
               <thead className="bg-gray-100/80 text-gray-800 border-b border-gray-200">
                 <tr>
-                  <th className="px-2.5 py-2.5 text-center font-bold text-gray-500 w-8">#</th>
+                  <th className="px-2 py-2 text-center font-bold text-gray-500 w-8">#</th>
                   {columns.map((k) => (
-                    <th key={k} className="px-2.5 py-2.5 text-center font-extrabold whitespace-nowrap text-gray-700">
+                    <th key={k} className="px-2 py-2 text-center font-extrabold whitespace-nowrap text-gray-700">
                       {k}
                     </th>
                   ))}
@@ -261,7 +264,7 @@ export default function CustomersReportPage() {
               <tbody className="divide-y divide-gray-100">
                 {paginatedRows.map((row, i) => (
                   <tr key={i} className="hover:bg-orange-50/30 transition">
-                    <td className="px-2.5 py-2 text-center text-gray-400 font-mono">
+                    <td className="px-2 py-1.5 text-center text-gray-400 font-mono">
                       {(page - 1) * pageSize + i + 1}
                     </td>
                     {columns.map((k) => {
@@ -271,7 +274,7 @@ export default function CustomersReportPage() {
                       return (
                         <td
                           key={k}
-                          className={`px-2.5 py-2 whitespace-nowrap text-center ${
+                          className={`px-2 py-1.5 whitespace-nowrap text-center ${
                             isMoney
                               ? isRemaining && fmtNum(v) > 0
                                 ? "font-bold text-amber-700 font-mono"
@@ -288,24 +291,24 @@ export default function CustomersReportPage() {
               </tbody>
               <tfoot className="bg-gray-50 border-t-2 border-gray-300 font-extrabold text-xs text-gray-800">
                 <tr>
-                  <td className="px-2.5 py-2.5 text-center text-gray-500">Σ</td>
+                  <td className="px-2 py-2 text-center text-gray-500">Σ</td>
                   {columns.map((k) => {
                     const isMoney = moneyKeys.includes(k);
                     if (isMoney) {
                       return (
-                        <td key={k} className="px-2.5 py-2.5 text-center font-mono font-bold text-brand-orange-dark text-xs whitespace-nowrap">
+                        <td key={k} className="px-2 py-2 text-center font-mono font-bold text-brand-orange-dark text-xs whitespace-nowrap">
                           {formatCurrency(columnSums[k] || 0)}
                         </td>
                       );
                     }
                     if (k === columns[0]) {
                       return (
-                        <td key={k} className="px-2.5 py-2.5 text-center whitespace-nowrap text-gray-800">
+                        <td key={k} className="px-2 py-2 text-center whitespace-nowrap text-gray-800">
                           الإجمالي ({activeDataset.length} عميل)
                         </td>
                       );
                     }
-                    return <td key={k} className="px-2.5 py-2.5"></td>;
+                    return <td key={k} className="px-2 py-2"></td>;
                   })}
                 </tr>
               </tfoot>
@@ -313,7 +316,7 @@ export default function CustomersReportPage() {
           </div>
 
           {/* ترقيم الصفحات Pagination */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-gray-50/80 border-t text-xs text-gray-600">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-2 bg-gray-50/80 border-t text-xs text-gray-600">
             <div className="flex items-center gap-2">
               <span>
                 عرض {(page - 1) * pageSize + 1} إلى {Math.min(page * pageSize, activeDataset.length)} من {activeDataset.length} عميل
@@ -336,31 +339,31 @@ export default function CustomersReportPage() {
               <button
                 onClick={() => setPage(1)}
                 disabled={page === 1}
-                className="px-2 py-1 bg-white border rounded disabled:opacity-40 font-bold hover:bg-gray-100"
+                className="px-2 py-0.5 bg-white border rounded disabled:opacity-40 font-bold hover:bg-gray-100 text-xs"
               >
                 «
               </button>
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="px-2 py-1 bg-white border rounded disabled:opacity-40 font-bold hover:bg-gray-100"
+                className="px-2 py-0.5 bg-white border rounded disabled:opacity-40 font-bold hover:bg-gray-100 text-xs"
               >
                 السابق
               </button>
-              <span className="px-2.5 py-1 font-bold text-gray-800">
+              <span className="px-2.5 py-0.5 font-bold text-gray-800 text-xs">
                 صفحة {page} من {totalPages}
               </span>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="px-2 py-1 bg-white border rounded disabled:opacity-40 font-bold hover:bg-gray-100"
+                className="px-2 py-0.5 bg-white border rounded disabled:opacity-40 font-bold hover:bg-gray-100 text-xs"
               >
                 التالي
               </button>
               <button
                 onClick={() => setPage(totalPages)}
                 disabled={page === totalPages}
-                className="px-2 py-1 bg-white border rounded disabled:opacity-40 font-bold hover:bg-gray-100"
+                className="px-2 py-0.5 bg-white border rounded disabled:opacity-40 font-bold hover:bg-gray-100 text-xs"
               >
                 »
               </button>
