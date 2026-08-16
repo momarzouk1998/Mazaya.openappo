@@ -552,7 +552,7 @@ export default function OrdersReportPage() {
                 <tr>
                   <th className="px-2 py-2.5 text-center font-bold text-gray-500 w-8">#</th>
                   {columns.map((k) => (
-                    <th key={k} className="px-2 py-2.5 text-right font-extrabold whitespace-nowrap text-gray-700">
+                    <th key={k} className="px-2 py-2.5 text-center font-extrabold whitespace-nowrap text-gray-700">
                       {k}
                     </th>
                   ))}
@@ -573,13 +573,13 @@ export default function OrdersReportPage() {
                       return (
                         <td
                           key={k}
-                          className={`px-2 py-2 whitespace-nowrap ${
+                          className={`px-2 py-2 whitespace-nowrap text-center ${
                             isGrand
-                              ? "font-extrabold text-brand-orange-dark font-mono text-left bg-orange-50/20"
+                              ? "font-extrabold text-brand-orange-dark font-mono bg-orange-50/20"
                               : isFactory
-                                ? "font-bold text-blue-900 font-mono text-left"
+                                ? "font-bold text-blue-900 font-mono"
                                 : isMoney
-                                  ? "font-semibold text-gray-900 font-mono text-left"
+                                  ? "font-semibold text-gray-900 font-mono"
                                   : "text-gray-700"
                           }`}
                         >
@@ -613,7 +613,7 @@ export default function OrdersReportPage() {
                     const isMoney = moneyKeys.includes(k);
                     if (isMoney) {
                       return (
-                        <td key={k} className="px-2 py-2.5 text-left font-mono font-bold text-brand-orange-dark text-xs whitespace-nowrap">
+                        <td key={k} className="px-2 py-2.5 text-center font-mono font-bold text-brand-orange-dark text-xs whitespace-nowrap">
                           {formatCurrency(columnSums[k] || 0)}
                         </td>
                       );

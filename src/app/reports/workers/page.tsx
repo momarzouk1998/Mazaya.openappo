@@ -389,7 +389,7 @@ export default function WorkersReportPage() {
                 <tr>
                   <th className="px-2.5 py-2.5 text-center font-bold text-gray-500 w-8">#</th>
                   {columns.map((k) => (
-                    <th key={k} className="px-2.5 py-2.5 text-right font-extrabold whitespace-nowrap text-gray-700">
+                    <th key={k} className="px-2.5 py-2.5 text-center font-extrabold whitespace-nowrap text-gray-700">
                       {k}
                     </th>
                   ))}
@@ -408,9 +408,9 @@ export default function WorkersReportPage() {
                       return (
                         <td
                           key={k}
-                          className={`px-2.5 py-2 whitespace-nowrap ${
+                          className={`px-2.5 py-2 whitespace-nowrap text-center ${
                             isMoney
-                              ? "font-bold text-brand-orange-dark font-mono text-left"
+                              ? "font-bold text-brand-orange-dark font-mono"
                               : isTravel
                                 ? "font-bold text-amber-700"
                                 : "text-gray-700"
@@ -430,14 +430,14 @@ export default function WorkersReportPage() {
                     const isMoney = moneyKeys.includes(k);
                     if (isMoney) {
                       return (
-                        <td key={k} className="px-2.5 py-2.5 text-left font-mono font-bold text-brand-orange-dark text-xs whitespace-nowrap">
+                        <td key={k} className="px-2.5 py-2.5 text-center font-mono font-bold text-brand-orange-dark text-xs whitespace-nowrap">
                           {formatCurrency(columnSums[k] || 0)}
                         </td>
                       );
                     }
                     if (k === columns[0]) {
                       return (
-                        <td key={k} className="px-2.5 py-2.5 whitespace-nowrap text-gray-800">
+                        <td key={k} className="px-2.5 py-2.5 text-center whitespace-nowrap text-gray-800">
                           الإجمالي ({activeDataset.length} سجل)
                         </td>
                       );
