@@ -139,7 +139,7 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
         const newItem = createData?.data;
         const newItemId = newItem?.id;
 
-        const journalDesc = customNotes || `شراء ${form.quantity} ${finalItemName}${form.code ? ` (كود: ${form.code})` : ""} (جديد)`;
+        const journalDesc = customNotes || `شراء ${form.quantity} ${finalItemName}`;
 
         // تسجيل في اليومية
         if (Number(form.unit_price || 0) > 0 && Number(form.quantity) > 0) {
@@ -185,7 +185,7 @@ function UnifiedItemPurchaseForm({ cat, onSaved }: { cat: "board" | "accessory";
       if (!form.item_id || !form.quantity) { setErr("اختر الصنف واكتب الكمية"); return; }
       setSaving(true);
       try {
-        const itemDesc = customNotes || `شراء ${form.quantity} ${form.item_name}${form.code ? ` (كود: ${form.code})` : ""}`;
+        const itemDesc = customNotes || `شراء ${form.quantity} ${form.item_name}`;
         const res = await fetch(apiPurchase, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

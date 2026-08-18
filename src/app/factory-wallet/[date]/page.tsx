@@ -57,6 +57,16 @@ function fmtNum(v: any): number {
   return isNaN(n) ? 0 : n;
 }
 
+function cleanDescription(desc: any): string {
+  if (!desc) return "";
+  return String(desc)
+    .replace(/\s*\(كود:\s*ACC-[^)]+\)/gi, "")
+    .replace(/\s*\(كود:\s*BRD-[^)]+\)/gi, "")
+    .replace(/\s*\(كود:[^)]*\)/gi, "")
+    .replace(/\s*\(كود\s*[^)]*\)/gi, "")
+    .trim();
+}
+
 export default function DayReportPage() {
   const params = useParams<{ date?: string }>();
   const dateStr = params?.date || new Date().toISOString().slice(0, 10);
@@ -108,8 +118,9 @@ export default function DayReportPage() {
     if (search.trim()) {
       const q = search.toLowerCase().trim();
       list = list.filter((e) => {
+        const cleanDesc = cleanDescription(e.description).toLowerCase();
         return (
-          (e.description || "").toLowerCase().includes(q) ||
+          cleanDesc.includes(q) ||
           (e.party_name || "").toLowerCase().includes(q) ||
           (e.entry_type || "").toLowerCase().includes(q) ||
           String(e.amount || "").includes(q)
@@ -124,7 +135,7 @@ export default function DayReportPage() {
       "#": idx + 1,
       التاريخ: dateStr,
       "نوع الحركة": ENTRY_TYPE_LABELS[e.entry_type] || e.entry_type,
-      البيان: e.description,
+      البيان: cleanDescription(e.description),
       "الجهة / الطرف": e.party_name || "—",
       "طريقة الدفع": PAYMENT_METHOD_LABELS[e.payment_method || "نقدي"] || e.payment_method || "نقدي",
       الوارد: e.entry_type === "دفعة واردة من معرض" ? fmtNum(e.amount) : 0,
@@ -312,7 +323,7 @@ export default function DayReportPage() {
                         </span>
                       </td>
                       <td className="px-3 py-2 font-semibold text-gray-800">
-                        {e.description}
+                        {cleanDescription(e.description)}
                         {e.order_id && (
                           <Link
                             href={`/orders/${e.order_id}`}
@@ -437,7 +448,7 @@ export default function DayReportPage() {
                 <tr key={i} style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#f9fafb" }}>
                   <td style={{ padding: "5px 3px", border: "1px solid #e5e7eb", color: "#6b7280", fontFamily: "monospace" }}>{i + 1}</td>
                   <td style={{ padding: "5px 4px", border: "1px solid #e5e7eb", whiteSpace: "nowrap", fontWeight: "700" }}>{ENTRY_TYPE_LABELS[e.entry_type] || e.entry_type}</td>
-                  <td style={{ padding: "5px 6px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: "600" }}>{e.description}</td>
+                  <td style={{ padding: "5px 6px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: "600" }}>{cleanDescription(e.description)}</td>
                   <td style={{ padding: "5px 4px", border: "1px solid #e5e7eb", color: "#4b5563" }}>{e.party_name || "—"}</td>
                   <td style={{ padding: "5px 4px", border: "1px solid #e5e7eb" }}>{PAYMENT_METHOD_LABELS[e.payment_method || "نقدي"] || e.payment_method || "نقدي"}</td>
                   <td style={{ padding: "5px 4px", border: "1px solid #e5e7eb", color: "#15803d", fontWeight: "800", fontFamily: "monospace" }}>{isIncome ? formatCurrency(amt) : "—"}</td>

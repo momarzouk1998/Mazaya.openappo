@@ -25,8 +25,15 @@ interface DayData {
 
 const DAY_NAMES = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+function cleanDescription(desc: any): string {
+  if (!desc) return "";
+  return String(desc)
+    .replace(/\s*\(كود:\s*ACC-[^)]+\)/gi, "")
+    .replace(/\s*\(كود:\s*BRD-[^)]+\)/gi, "")
+    .replace(/\s*\(كود:[^)]*\)/gi, "")
+    .replace(/\s*\(كود\s*[^)]*\)/gi, "")
+    .trim();
+}
 
 // مكوّن منفصل لكل صف + تفاصيله الموسعة وزر التقرير
 function DayRow({
@@ -115,7 +122,7 @@ function DayRow({
                         {ENTRY_TYPE_LABELS[e.entry_type] || e.entry_type}
                       </span>
                     </td>
-                    <td className="p-2 font-semibold text-gray-800">{e.description}</td>
+                    <td className="p-2 font-semibold text-gray-800">{cleanDescription(e.description)}</td>
                     <td className="p-2 text-center text-gray-500">{e.party_name || "—"}</td>
                     <td className="p-2 text-center">{PAYMENT_METHOD_LABELS[e.payment_method || "نقدي"] || e.payment_method || "نقدي"}</td>
                     <td className={`p-2 text-center font-extrabold font-mono ${e.entry_type === "دفعة واردة من معرض" ? "text-green-600" : "text-red-600"}`}>
