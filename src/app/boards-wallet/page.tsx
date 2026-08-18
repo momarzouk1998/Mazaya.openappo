@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useUserStore } from "@/store/user-store";
 import { useApi } from "@/hooks/useApi";
 import HubTabs, { WALLET_TABS } from "@/components/ui/HubTabs";
@@ -50,33 +51,82 @@ const EMPTY_TODAY: DayData = {
   opening: 0, income: 0, expense: 0, closing: 0, count: 0, entries: [],
 };
 
+function cleanDescription(desc: any): string {
+  if (!desc) return "";
+  return String(desc)
+    .replace(/\s*\(كود:\s*ACC-[^)]+\)/gi, "")
+    .replace(/\s*\(كود:\s*BRD-[^)]+\)/gi, "")
+    .replace(/\s*\(كود:[^)]*\)/gi, "")
+    .replace(/\s*\(كود\s*[^)]*\)/gi, "")
+    .trim();
+}
+
 function DayRow({ day, isOpen, onToggle }: { day: DayData; isOpen: boolean; onToggle: () => void }) {
   const dName = DAY_NAMES[new Date(day.date + "T00:00:00").getDay()];
   return (
     <>
-      <tr onClick={onToggle} className="cursor-pointer hover:bg-orange-50 transition">
+      <tr className="hover:bg-orange-50/60 transition group">
         <td className="p-3 font-semibold">
-          {dName} {formatDate(day.date)}
-          <span className="block text-xs text-gray-400">{day.count} حركة ▾</span>
+          <Link
+            href={`/boards-wallet/${day.date}`}
+            className="text-brand-black hover:text-brand-orange font-bold text-sm flex items-center gap-1.5 transition"
+          >
+            <span>📅</span>
+            <span>{dName} {formatDate(day.date)}</span>
+          </Link>
         </td>
-        <td className={`p-3 ${day.opening < 0 ? "text-red-600" : "text-gray-700"}`}>{formatCurrency(day.opening)}</td>
-        <td className="p-3 text-green-600 font-bold">+{formatCurrency(day.income)}</td>
-        <td className="p-3 text-red-600 font-bold">-{formatCurrency(day.expense)}</td>
-        <td className={`p-3 font-extrabold ${day.closing < 0 ? "text-red-700" : "text-brand-orange-dark"}`}>
+        <td className={`p-3 text-center ${day.opening < 0 ? "text-red-600 font-bold" : "text-gray-700 font-medium"}`}>
+          {formatCurrency(day.opening)}
+        </td>
+        <td className="p-3 text-center text-green-700 font-extrabold font-mono">
+          +{formatCurrency(day.income)}
+        </td>
+        <td className="p-3 text-center text-red-600 font-extrabold font-mono">
+          -{formatCurrency(day.expense)}
+        </td>
+        <td className={`p-3 text-center font-extrabold font-mono ${day.closing < 0 ? "text-red-700" : "text-brand-orange-dark"}`}>
           {formatCurrency(day.closing)}
+        </td>
+        <td className="p-3 text-center">
+          <div className="flex items-center justify-center gap-1.5">
+            <Link
+              href={`/boards-wallet/${day.date}`}
+              className="px-2.5 py-1 bg-brand-orange/10 hover:bg-brand-orange text-brand-orange-dark hover:text-white rounded-lg text-xs font-bold transition flex items-center gap-1"
+              title="فتح تقرير اليوم الكامل مع الطباعة والـ PDF"
+            >
+              <span>📄</span>
+              <span>التقرير</span>
+            </Link>
+            <button
+              onClick={onToggle}
+              className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold transition"
+              title={isOpen ? "إخفاء التفاصيل السريعة" : "عرض سريع"}
+            >
+              {isOpen ? "▲" : "▼"}
+            </button>
+          </div>
         </td>
       </tr>
       {isOpen && (
-        <tr className="bg-orange-50/50">
-          <td colSpan={5} className="p-3">
+        <tr className="bg-orange-50/40">
+          <td colSpan={6} className="p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-gray-700">معاينة سريعة لحركات {dName} {formatDate(day.date)}:</span>
+              <Link
+                href={`/boards-wallet/${day.date}`}
+                className="text-xs font-bold text-brand-orange hover:underline flex items-center gap-1"
+              >
+                <span>فتح تقرير اليوم الكامل والطباعة والـ PDF ←</span>
+              </Link>
+            </div>
             <table className="w-full text-xs bg-white rounded-lg border">
-              <thead className="bg-gray-100">
+              <thead className="bg-gray-100/80">
                 <tr>
-                  <th className="p-2 text-right">النوع</th>
-                  <th className="p-2 text-right">البيان</th>
-                  <th className="p-2 text-right">المورد/الجهة</th>
-                  <th className="p-2 text-right">الطريقة</th>
-                  <th className="p-2 text-right">المبلغ</th>
+                  <th className="p-2 text-center">النوع</th>
+                  <th className="p-2 text-start">البيان</th>
+                  <th className="p-2 text-center">المورد / الجهة</th>
+                  <th className="p-2 text-center">طريقة الدفع</th>
+                  <th className="p-2 text-center">المبلغ</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -84,16 +134,22 @@ function DayRow({ day, isOpen, onToggle }: { day: DayData; isOpen: boolean; onTo
                   const isIncome = e.entry_type === "دفعة صادرة لمورد" && e.is_pass_through;
                   return (
                     <tr key={e.id}>
-                      <td className="p-2">
-                        <span className={`badge ${isIncome ? "bg-green-100 text-green-700 border-green-300" : (ENTRY_TYPE_COLORS[e.entry_type] || "")}`}>
+                      <td className="p-2 text-center">
+                        <span
+                          className={`badge ${
+                            isIncome
+                              ? "bg-green-100 text-green-700 border border-green-300"
+                              : ENTRY_TYPE_COLORS[e.entry_type] || ""
+                          }`}
+                        >
                           {isIncome ? "وارد (تمريري)" : (ENTRY_TYPE_LABELS[e.entry_type] || e.entry_type)}
                         </span>
                       </td>
-                      <td className="p-2">{e.description}</td>
-                      <td className="p-2 text-gray-500">{e.party_name || "-"}</td>
-                      <td className="p-2">{PAYMENT_METHOD_LABELS[e.payment_method] || "-"}</td>
-                      <td className={`p-2 font-bold ${isIncome ? "text-green-600" : "text-red-600"}`}>
-                        {isIncome ? "+" : "-"}{formatCurrency(e.amount)}
+                      <td className="p-2 font-semibold text-gray-800">{cleanDescription(e.description)}</td>
+                      <td className="p-2 text-center text-gray-500">{e.party_name || "—"}</td>
+                      <td className="p-2 text-center">{PAYMENT_METHOD_LABELS[e.payment_method || "نقدي"] || e.payment_method || "نقدي"}</td>
+                      <td className={`p-2 text-center font-extrabold font-mono ${isIncome ? "text-green-600" : "text-red-600"}`}>
+                        {isIncome ? `+${formatCurrency(e.amount)}` : `-${formatCurrency(e.amount)}`}
                       </td>
                     </tr>
                   );
@@ -132,8 +188,6 @@ export default function BoardsWalletPage() {
       </DashboardLayout>
     );
   }
-
-
 
   return (
     <DashboardLayout profile={profile}>
@@ -192,28 +246,31 @@ export default function BoardsWalletPage() {
       ) : days.length === 0 ? (
         <div className="card text-center text-gray-500 py-12">مفيش حركات ألواح في الفترة دي.</div>
       ) : (
-        <div className="card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="p-3 text-right">التاريخ</th>
-                <th className="p-3 text-right">بداية اليوم</th>
-                <th className="p-3 text-right text-green-700">وارد</th>
-                <th className="p-3 text-right text-red-700">مشتريات</th>
-                <th className="p-3 text-right">رصيد النهاية</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {days.map((d) => (
-                <DayRow
-                  key={d.date}
-                  day={d}
-                  isOpen={openDate === d.date}
-                  onToggle={() => setOpenDate(openDate === d.date ? null : d.date)}
-                />
-              ))}
-            </tbody>
-          </table>
+        <div className="card overflow-hidden p-0 border border-gray-200 shadow-sm rounded-xl bg-white mb-4">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="bg-gray-100/80 text-gray-800 border-b border-gray-200">
+                <tr>
+                  <th className="p-3 text-start font-bold text-gray-700">التاريخ</th>
+                  <th className="p-3 text-center font-bold text-gray-700">رصيد أول اليوم</th>
+                  <th className="p-3 text-center font-bold text-emerald-800">الوارد (+)</th>
+                  <th className="p-3 text-center font-bold text-rose-800">المشتريات (-)</th>
+                  <th className="p-3 text-center font-bold text-brand-orange-dark">رصيد الإغلاق</th>
+                  <th className="p-3 text-center font-bold text-gray-500 w-32">التقرير</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {days.map((d) => (
+                  <DayRow
+                    key={d.date}
+                    day={d}
+                    isOpen={openDate === d.date}
+                    onToggle={() => setOpenDate(openDate === d.date ? null : d.date)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </DashboardLayout>
