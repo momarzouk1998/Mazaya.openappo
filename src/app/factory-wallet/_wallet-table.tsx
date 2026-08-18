@@ -28,7 +28,7 @@ const DAY_NAMES = ["الأحد", "الإثنين", "الثلاثاء", "الأر
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-// مكوّن منفصل لكل صف + تفاصيله الموسعة وزر كشف الحساب
+// مكوّن منفصل لكل صف + تفاصيله الموسعة وزر التقرير
 function DayRow({
   day,
   isOpen,
@@ -52,7 +52,6 @@ function DayRow({
             <span>📅</span>
             <span>{dName} {formatDate(day.date)}</span>
           </Link>
-          <span className="block text-xs text-gray-400 mt-0.5">{day.count} حركة مسجلة</span>
         </td>
         <td className={`p-3 text-center ${day.opening < 0 ? "text-red-600 font-bold" : "text-gray-700 font-medium"}`}>
           {formatCurrency(day.opening)}
@@ -71,10 +70,10 @@ function DayRow({
             <Link
               href={`/factory-wallet/${day.date}`}
               className="px-2.5 py-1 bg-brand-orange/10 hover:bg-brand-orange text-brand-orange-dark hover:text-white rounded-lg text-xs font-bold transition flex items-center gap-1"
-              title="فتح كشف حساب اليوم الكامل مع الكروت والطباعة والـ PDF"
+              title="فتح تقرير اليوم الكامل مع الطباعة والـ PDF"
             >
               <span>📄</span>
-              <span>كشف حساب</span>
+              <span>التقرير</span>
             </Link>
             <button
               onClick={onToggle}
@@ -95,7 +94,7 @@ function DayRow({
                 href={`/factory-wallet/${day.date}`}
                 className="text-xs font-bold text-brand-orange hover:underline flex items-center gap-1"
               >
-                <span>فتح كشف الحساب الكامل والطباعة والـ PDF ←</span>
+                <span>فتح تقرير اليوم الكامل والطباعة والـ PDF ←</span>
               </Link>
             </div>
             <table className="w-full text-xs bg-white rounded-lg border">
