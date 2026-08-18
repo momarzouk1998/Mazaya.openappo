@@ -238,13 +238,13 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
         if (m.item_category === 'boards_inventory' && m.item_id) {
           await tx.boards_inventory.update({
             where: { id: m.item_id },
-            data: { quantity: { increment: Number(m.quantity_used) } },
-          });
+            data: { quantity_used: { decrement: Number(m.quantity_used) } },
+          }).catch(() => {});
         } else if (m.item_category === 'accessories_inventory' && m.item_id) {
           await tx.accessories_inventory.update({
             where: { id: m.item_id },
-            data: { quantity: { increment: Number(m.quantity_used) } },
-          });
+            data: { quantity_used: { decrement: Number(m.quantity_used) } },
+          }).catch(() => {});
         }
       }
 
