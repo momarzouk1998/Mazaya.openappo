@@ -82,6 +82,38 @@ export async function GET(request: Request) {
         `SELECT vot.*,
           c.name as customer_name,
           b.name as branch_name,
+          GREATEST(
+            COALESCE(vot.internal_transport_cost, 0),
+            COALESCE((
+              SELECT SUM(je.amount)::float8
+              FROM mazaya.journal_entries je
+              WHERE je.order_id = vot.order_id
+                AND je.entry_type = 'نقل داخلي'
+            ), 0)
+          ) AS live_internal_transport,
+          (
+            COALESCE((
+              SELECT SUM(je.amount)::float8
+              FROM mazaya.journal_entries je
+              WHERE je.order_id = vot.order_id
+                AND (je.entry_type = 'مصاريف طريق' OR je.entry_type = 'مصاريف الطريق')
+            ), 0) +
+            COALESCE((
+              SELECT SUM(wte.amount)::float8
+              FROM mazaya.worker_travel_expenses wte
+              WHERE wte.order_id = vot.order_id
+            ), 0)
+          ) AS live_road_expenses,
+          COALESCE((
+            SELECT SUM(wdl.daily_rate)::float8
+            FROM mazaya.worker_daily_logs wdl
+            WHERE wdl.order_id = vot.order_id
+          ), 0) AS live_worker_logs,
+          COALESCE((
+            SELECT SUM(oew.amount)::float8
+            FROM mazaya.order_external_work oew
+            WHERE oew.order_id = vot.order_id
+          ), 0) AS live_external_work,
           COALESCE((
             SELECT SUM(ec.amount)::float8
             FROM mazaya.order_extra_costs ec
@@ -100,20 +132,49 @@ export async function GET(request: Request) {
 
     const total = parseInt(countResult[0]?.total ?? '0', 10);
 
-    // Serializing decimals properly for client
-    const items = data.map((r: any) => ({
-      ...r,
-      id: r.order_id,
-      boards_cost: Number(r.boards_cost ?? 0),
-      accessories_cost: Number(r.accessories_cost ?? 0),
-      installation_cost: Number(r.installation_cost ?? 0),
-      internal_transport_cost: Number(r.internal_transport_cost ?? 0),
-      external_transport_cost: Number(r.external_transport_cost ?? 0),
-      factory_commission: Number(r.factory_commission ?? 0),
-      order_total: Number(r.order_total ?? 0),
-      extra_costs_total: Number(r.extra_costs_total ?? 0),
-      overhead_costs_total: Number(r.overhead_costs_total ?? 0),
-    }));
+    // Serializing decimals properly for client with live accurate totals
+    const items = data.map((r: any) => {
+      const internalTransport = Number(r.live_internal_transport ?? r.internal_transport_cost ?? 0);
+      const roadExpenses = Number(r.live_road_expenses ?? 0);
+      const workerLogs = Number(r.live_worker_logs ?? 0);
+      const externalWork = Number(r.live_external_work ?? 0);
+      const boardsCost = Number(r.boards_cost ?? 0);
+      const accCost = Number(r.accessories_cost ?? 0);
+      const installCost = Number(r.installation_cost ?? 0);
+      const extTransport = Number(r.external_transport_cost ?? 0);
+      const commission = Number(r.factory_commission ?? 0);
+      const extraCosts = Number(r.extra_costs_total ?? 0);
+      const overheadCosts = Number(r.overhead_costs_total ?? 0);
+
+      const totalGrand =
+        boardsCost +
+        accCost +
+        installCost +
+        internalTransport +
+        extTransport +
+        commission +
+        workerLogs +
+        roadExpenses +
+        extraCosts +
+        externalWork;
+
+      return {
+        ...r,
+        id: r.order_id,
+        boards_cost: boardsCost,
+        accessories_cost: accCost,
+        installation_cost: installCost,
+        internal_transport_cost: internalTransport,
+        external_transport_cost: extTransport,
+        factory_commission: commission,
+        worker_logs_total: workerLogs,
+        road_expenses_total: roadExpenses,
+        external_work_total: externalWork,
+        order_total: totalGrand,
+        extra_costs_total: extraCosts,
+        overhead_costs_total: overheadCosts,
+      };
+    });
 
     return NextResponse.json({
       ok: true,
