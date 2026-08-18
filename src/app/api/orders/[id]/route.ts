@@ -106,10 +106,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const internalTransportFromJournal = Number(internalTransportJournalR[0]?.total || 0);
     const internalTransportTotal = Math.max(Number(order.internal_transport_cost || 0), internalTransportFromJournal);
 
-    // Road expenses: sum of travel expenses + road expenses from journal entries
-    const roadExpensesLegacy = roadExpensesR.reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0);
+    // Road expenses: use journal_entries as single source of truth to avoid double-counting
+    // (road-expenses POST writes to BOTH journal_entries AND worker_travel_expenses for order-linked entries)
     const roadExpensesJournal = Number(roadJournalR[0]?.total || 0);
-    const roadExpensesTotal = roadExpensesLegacy + roadExpensesJournal;
+    const roadExpensesTotal = roadExpensesJournal;
 
     // Manual costs
     const installationCost = Number(order.installation_cost || 0);

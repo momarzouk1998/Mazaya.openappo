@@ -91,19 +91,12 @@ export async function GET(request: Request) {
                 AND je.entry_type = 'نقل داخلي'
             ), 0)
           ) AS live_internal_transport,
-          (
-            COALESCE((
-              SELECT SUM(je.amount)::float8
-              FROM mazaya.journal_entries je
-              WHERE je.order_id = vot.order_id
-                AND (je.entry_type = 'مصاريف طريق' OR je.entry_type = 'مصاريف الطريق')
-            ), 0) +
-            COALESCE((
-              SELECT SUM(wte.amount)::float8
-              FROM mazaya.worker_travel_expenses wte
-              WHERE wte.order_id = vot.order_id
-            ), 0)
-          ) AS live_road_expenses,
+          COALESCE((
+            SELECT SUM(je.amount)::float8
+            FROM mazaya.journal_entries je
+            WHERE je.order_id = vot.order_id
+              AND (je.entry_type = 'مصاريف طريق' OR je.entry_type = 'مصاريف الطريق')
+          ), 0) AS live_road_expenses,
           COALESCE((
             SELECT SUM(wdl.daily_rate)::float8
             FROM mazaya.worker_daily_logs wdl
