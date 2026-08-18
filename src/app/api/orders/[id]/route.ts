@@ -19,6 +19,33 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ ok: false, error: { code: 'NOT_FOUND', message: 'الأوردر غير موجود' } }, { status: 404 });
     }
 
+    // Ensure all road expenses are migrated into journal_entries as the single source of truth
+    await prisma.$executeRawUnsafe(`
+      INSERT INTO mazaya.journal_entries (id, date, entry_type, description, amount, payment_method, order_id, notes, created_by, created_at)
+      SELECT
+        wte.id,
+        wte.expense_date,
+        'مصاريف طريق',
+        CASE
+          WHEN wte.description IS NOT NULL AND wte.description != '' THEN wte.description
+          ELSE '[مصاريف طريق] مصاريف طريق مرتبطة بأوردر'
+        END,
+        wte.amount,
+        COALESCE(wte.payment_method, 'نقدي'),
+        wte.order_id,
+        wte.notes,
+        wte.created_by,
+        COALESCE(wte.created_at, NOW())
+      FROM mazaya.worker_travel_expenses wte
+      WHERE wte.order_id = $1::uuid
+        AND NOT EXISTS (
+          SELECT 1 FROM mazaya.journal_entries je
+          WHERE je.id = wte.id
+             OR (je.order_id = wte.order_id AND je.amount = wte.amount AND je.date = wte.expense_date AND je.entry_type IN ('مصاريف طريق', 'مصاريف الطريق'))
+        )
+      ON CONFLICT (id) DO NOTHING;
+    `, orderId).catch(() => {});
+
     // 2) Fetch all related cost components concurrently
     const [
       materialsR,
@@ -61,33 +88,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         LEFT JOIN mazaya.workers w ON wdl.worker_id = w.id
         WHERE wdl.order_id = $1::uuid
       `, orderId).catch(() => []),
-
-      // Ensure all road expenses are migrated into journal_entries as the single source of truth
-      prisma.$executeRawUnsafe(`
-        INSERT INTO mazaya.journal_entries (id, date, entry_type, description, amount, payment_method, order_id, notes, created_by, created_at)
-        SELECT
-          wte.id,
-          wte.expense_date,
-          'مصاريف طريق',
-          CASE
-            WHEN wte.description IS NOT NULL AND wte.description != '' THEN wte.description
-            ELSE '[مصاريف طريق] مصاريف طريق مرتبطة بأوردر'
-          END,
-          wte.amount,
-          COALESCE(wte.payment_method, 'نقدي'),
-          wte.order_id,
-          wte.notes,
-          wte.created_by,
-          COALESCE(wte.created_at, NOW())
-        FROM mazaya.worker_travel_expenses wte
-        WHERE wte.order_id = $1::uuid
-          AND NOT EXISTS (
-            SELECT 1 FROM mazaya.journal_entries je
-            WHERE je.id = wte.id
-               OR (je.order_id = wte.order_id AND je.amount = wte.amount AND je.date = wte.expense_date AND je.entry_type IN ('مصاريف طريق', 'مصاريف الطريق'))
-          )
-        ON CONFLICT (id) DO NOTHING;
-      `, orderId).catch(() => {}),
 
       // Road expenses directly from journal entries (unified single table)
       prisma.$queryRawUnsafe<any[]>(`
