@@ -153,7 +153,7 @@ export default function DayReportPage() {
       await downloadElementAsPdf({
         elementId: "printable-day-report",
         fileName: `تقرير_يومية_المصنع_${dateStr}`,
-        orientation: "landscape",
+        orientation: "portrait",
       });
     } catch (e) {
       console.error("PDF download error:", e);
@@ -177,7 +177,7 @@ export default function DayReportPage() {
 
   return (
     <DashboardLayout profile={profile}>
-      {/* رأس الصفحة مع العنوان المحدث والأزرار */}
+      {/* رأس الصفحة مع العنوان والأزرار */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div>
           <h1 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
@@ -186,7 +186,7 @@ export default function DayReportPage() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 no-print">
           <Button
             variant="secondary"
             size="sm"
@@ -261,9 +261,9 @@ export default function DayReportPage() {
       </div>
 
       {/* ======================================================== */}
-      {/* شريط البحث السريع */}
+      {/* شريط البحث السريع (يختفي في الطباعة) */}
       {/* ======================================================== */}
-      <div className="bg-white p-2 rounded-xl border border-gray-200 shadow-xs mb-2.5 flex items-center justify-between gap-2">
+      <div className="bg-white p-2 rounded-xl border border-gray-200 shadow-xs mb-2.5 flex items-center justify-between gap-2 no-print">
         <span className="text-xs font-bold text-gray-700">
           حركات اليوم المسجلة ({filteredEntries.length})
         </span>
@@ -288,10 +288,10 @@ export default function DayReportPage() {
       </div>
 
       {/* ======================================================== */}
-      {/* جدول الحركات التفصيلي بدون عمود الأثر */}
+      {/* جدول الحركات التفصيلي */}
       {/* ======================================================== */}
       {loading ? (
-        <div className="card text-center py-12 bg-white border">
+        <div className="card text-center py-12 bg-white border no-print">
           <div className="text-2xl mb-2">⏳</div>
           <div className="text-xs font-bold text-gray-600">جاري تحميل بيانات اليومية...</div>
         </div>
@@ -327,7 +327,7 @@ export default function DayReportPage() {
                         {e.order_id && (
                           <Link
                             href={`/orders/${e.order_id}`}
-                            className="mr-1 inline-block text-[10px] font-bold text-brand-orange hover:underline bg-orange-50 px-1.5 py-0.2 rounded border border-orange-200"
+                            className="mr-1 inline-block text-[10px] font-bold text-brand-orange hover:underline bg-orange-50 px-1.5 py-0.2 rounded border border-orange-200 no-print"
                           >
                             📦 أوردر مرتبط
                           </Link>
@@ -369,7 +369,7 @@ export default function DayReportPage() {
           </div>
         </div>
       ) : (
-        <div className="card text-center text-gray-400 py-12 bg-white border rounded-xl">
+        <div className="card text-center text-gray-400 py-12 bg-white border rounded-xl no-print">
           <div className="text-4xl mb-2">📭</div>
           <div className="font-bold text-gray-700 text-sm">لا توجد حركات مسجلة في هذا اليوم</div>
           <div className="text-xs text-gray-400 mt-0.5">لم تسجل أي حركة نقدية في هذا التاريخ.</div>
@@ -377,7 +377,7 @@ export default function DayReportPage() {
       )}
 
       {/* ======================================================== */}
-      {/* حاوية الطباعة وتحميل الـ PDF المستقلة عالية الجودة (Off-screen) */}
+      {/* حاوية الـ PDF المستقلة - بتنسيق طولي A4 عالي الدقة (Off-screen) */}
       {/* ======================================================== */}
       <div
         id="printable-day-report"
@@ -385,7 +385,7 @@ export default function DayReportPage() {
           position: "fixed",
           left: "-9999px",
           top: "0",
-          width: "1200px",
+          width: "800px",
           backgroundColor: "#ffffff",
           padding: "24px",
           color: "#111827",
@@ -394,50 +394,50 @@ export default function DayReportPage() {
         }}
       >
         {/* ترويسة المستند */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #ea580c", paddingBottom: "12px", marginBottom: "16px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #ea580c", paddingBottom: "10px", marginBottom: "14px" }}>
           <div>
-            <h1 style={{ fontSize: "20px", fontWeight: "900", color: "#111827", margin: 0 }}>شركة مزايا للتصنيع والأثاث</h1>
-            <h2 style={{ fontSize: "14px", fontWeight: "700", color: "#ea580c", marginTop: "4px", margin: 0 }}>
+            <h1 style={{ fontSize: "18px", fontWeight: "900", color: "#111827", margin: 0 }}>شركة مزايا للتصنيع والأثاث</h1>
+            <h2 style={{ fontSize: "13px", fontWeight: "700", color: "#ea580c", marginTop: "3px", margin: 0 }}>
               تقرير اليوم — {dayName} {formatDate(dateStr)}
             </h2>
           </div>
-          <div style={{ textAlign: "left", fontSize: "11px", color: "#4b5563" }}>
+          <div style={{ textAlign: "left", fontSize: "10.5px", color: "#4b5563" }}>
             <div>تاريخ الاستخراج: {new Date().toLocaleDateString("ar-EG")}</div>
             <div>إجمالي الحركات: {dayData.entries.length} حركة</div>
           </div>
         </div>
 
         {/* جدول الإحصائيات الأربعة في الـ PDF */}
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", textAlign: "center", marginBottom: "16px" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px", textAlign: "center", marginBottom: "14px" }}>
           <thead>
             <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #d1d5db" }}>
-              <th style={{ padding: "8px", border: "1px solid #e5e7eb" }}>🪙 الرصيد الافتتاحي</th>
-              <th style={{ padding: "8px", border: "1px solid #e5e7eb", color: "#166534" }}>📥 إجمالي الوارد</th>
-              <th style={{ padding: "8px", border: "1px solid #e5e7eb", color: "#9f1239" }}>📤 إجمالي المصروف</th>
-              <th style={{ padding: "8px", border: "1px solid #e5e7eb", color: "#ea580c" }}>💵 الرصيد الختامي</th>
+              <th style={{ padding: "6px", border: "1px solid #e5e7eb" }}>🪙 الرصيد الافتتاحي</th>
+              <th style={{ padding: "6px", border: "1px solid #e5e7eb", color: "#166534" }}>📥 إجمالي الوارد</th>
+              <th style={{ padding: "6px", border: "1px solid #e5e7eb", color: "#9f1239" }}>📤 إجمالي المصروف</th>
+              <th style={{ padding: "6px", border: "1px solid #e5e7eb", color: "#ea580c" }}>💵 الرصيد الختامي</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td style={{ padding: "8px", border: "1px solid #e5e7eb", fontWeight: "900", fontFamily: "monospace", fontSize: "14px" }}>{formatCurrency(dayData.opening)}</td>
-              <td style={{ padding: "8px", border: "1px solid #e5e7eb", fontWeight: "900", fontFamily: "monospace", fontSize: "14px", color: "#15803d", backgroundColor: "#f0fdf4" }}>+{formatCurrency(dayData.income)}</td>
-              <td style={{ padding: "8px", border: "1px solid #e5e7eb", fontWeight: "900", fontFamily: "monospace", fontSize: "14px", color: "#be123c", backgroundColor: "#fff1f2" }}>-{formatCurrency(dayData.expense)}</td>
-              <td style={{ padding: "8px", border: "1px solid #e5e7eb", fontWeight: "900", fontFamily: "monospace", fontSize: "14px", color: "#ea580c", backgroundColor: "#fff7ed" }}>{formatCurrency(dayData.closing)}</td>
+              <td style={{ padding: "6px", border: "1px solid #e5e7eb", fontWeight: "900", fontFamily: "monospace", fontSize: "13px" }}>{formatCurrency(dayData.opening)}</td>
+              <td style={{ padding: "6px", border: "1px solid #e5e7eb", fontWeight: "900", fontFamily: "monospace", fontSize: "13px", color: "#15803d", backgroundColor: "#f0fdf4" }}>+{formatCurrency(dayData.income)}</td>
+              <td style={{ padding: "6px", border: "1px solid #e5e7eb", fontWeight: "900", fontFamily: "monospace", fontSize: "13px", color: "#be123c", backgroundColor: "#fff1f2" }}>-{formatCurrency(dayData.expense)}</td>
+              <td style={{ padding: "6px", border: "1px solid #e5e7eb", fontWeight: "900", fontFamily: "monospace", fontSize: "13px", color: "#ea580c", backgroundColor: "#fff7ed" }}>{formatCurrency(dayData.closing)}</td>
             </tr>
           </tbody>
         </table>
 
         {/* جدول حركات اليوم في الـ PDF */}
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", textAlign: "center" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9.5px", textAlign: "center" }}>
           <thead>
             <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #d1d5db" }}>
-              <th style={{ padding: "6px 4px", border: "1px solid #e5e7eb", width: "24px" }}>#</th>
-              <th style={{ padding: "6px 4px", border: "1px solid #e5e7eb", fontWeight: "800", whiteSpace: "nowrap" }}>نوع الحركة</th>
-              <th style={{ padding: "6px 6px", border: "1px solid #e5e7eb", fontWeight: "800", textAlign: "right" }}>البيان والوصف</th>
-              <th style={{ padding: "6px 4px", border: "1px solid #e5e7eb", fontWeight: "800", whiteSpace: "nowrap" }}>الجهة / الطرف</th>
-              <th style={{ padding: "6px 4px", border: "1px solid #e5e7eb", fontWeight: "800", whiteSpace: "nowrap" }}>طريقة الدفع</th>
-              <th style={{ padding: "6px 4px", border: "1px solid #e5e7eb", fontWeight: "800", whiteSpace: "nowrap" }}>الوارد (+)</th>
-              <th style={{ padding: "6px 4px", border: "1px solid #e5e7eb", fontWeight: "800", whiteSpace: "nowrap" }}>المصروف (-)</th>
+              <th style={{ padding: "5px 3px", border: "1px solid #e5e7eb", width: "22px" }}>#</th>
+              <th style={{ padding: "5px 4px", border: "1px solid #e5e7eb", fontWeight: "800", whiteSpace: "nowrap" }}>نوع الحركة</th>
+              <th style={{ padding: "5px 6px", border: "1px solid #e5e7eb", fontWeight: "800", textAlign: "right" }}>البيان والوصف</th>
+              <th style={{ padding: "5px 4px", border: "1px solid #e5e7eb", fontWeight: "800", whiteSpace: "nowrap" }}>الجهة / الطرف</th>
+              <th style={{ padding: "5px 4px", border: "1px solid #e5e7eb", fontWeight: "800", whiteSpace: "nowrap" }}>طريقة الدفع</th>
+              <th style={{ padding: "5px 4px", border: "1px solid #e5e7eb", fontWeight: "800", whiteSpace: "nowrap" }}>الوارد (+)</th>
+              <th style={{ padding: "5px 4px", border: "1px solid #e5e7eb", fontWeight: "800", whiteSpace: "nowrap" }}>المصروف (-)</th>
             </tr>
           </thead>
           <tbody>
@@ -446,34 +446,34 @@ export default function DayReportPage() {
               const amt = fmtNum(e.amount);
               return (
                 <tr key={i} style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#f9fafb" }}>
-                  <td style={{ padding: "5px 3px", border: "1px solid #e5e7eb", color: "#6b7280", fontFamily: "monospace" }}>{i + 1}</td>
-                  <td style={{ padding: "5px 4px", border: "1px solid #e5e7eb", whiteSpace: "nowrap", fontWeight: "700" }}>{ENTRY_TYPE_LABELS[e.entry_type] || e.entry_type}</td>
-                  <td style={{ padding: "5px 6px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: "600" }}>{cleanDescription(e.description)}</td>
-                  <td style={{ padding: "5px 4px", border: "1px solid #e5e7eb", color: "#4b5563" }}>{e.party_name || "—"}</td>
-                  <td style={{ padding: "5px 4px", border: "1px solid #e5e7eb" }}>{PAYMENT_METHOD_LABELS[e.payment_method || "نقدي"] || e.payment_method || "نقدي"}</td>
-                  <td style={{ padding: "5px 4px", border: "1px solid #e5e7eb", color: "#15803d", fontWeight: "800", fontFamily: "monospace" }}>{isIncome ? formatCurrency(amt) : "—"}</td>
-                  <td style={{ padding: "5px 4px", border: "1px solid #e5e7eb", color: "#be123c", fontWeight: "800", fontFamily: "monospace" }}>{!isIncome ? formatCurrency(amt) : "—"}</td>
+                  <td style={{ padding: "4px 3px", border: "1px solid #e5e7eb", color: "#6b7280", fontFamily: "monospace" }}>{i + 1}</td>
+                  <td style={{ padding: "4px 3px", border: "1px solid #e5e7eb", whiteSpace: "nowrap", fontWeight: "700" }}>{ENTRY_TYPE_LABELS[e.entry_type] || e.entry_type}</td>
+                  <td style={{ padding: "4px 5px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: "600" }}>{cleanDescription(e.description)}</td>
+                  <td style={{ padding: "4px 3px", border: "1px solid #e5e7eb", color: "#4b5563" }}>{e.party_name || "—"}</td>
+                  <td style={{ padding: "4px 3px", border: "1px solid #e5e7eb" }}>{PAYMENT_METHOD_LABELS[e.payment_method || "نقدي"] || e.payment_method || "نقدي"}</td>
+                  <td style={{ padding: "4px 3px", border: "1px solid #e5e7eb", color: "#15803d", fontWeight: "800", fontFamily: "monospace" }}>{isIncome ? formatCurrency(amt) : "—"}</td>
+                  <td style={{ padding: "4px 3px", border: "1px solid #e5e7eb", color: "#be123c", fontWeight: "800", fontFamily: "monospace" }}>{!isIncome ? formatCurrency(amt) : "—"}</td>
                 </tr>
               );
             })}
           </tbody>
           <tfoot>
-            <tr style={{ backgroundColor: "#fef3c7", borderTop: "2px solid #d97706", fontWeight: "900", fontSize: "11px" }}>
-              <td style={{ padding: "6px 4px", border: "1px solid #fde68a" }}>Σ</td>
-              <td colSpan={4} style={{ padding: "6px 6px", border: "1px solid #fde68a", textAlign: "right" }}>إجمالي حركة اليوم ({dayData.entries.length} حركة)</td>
-              <td style={{ padding: "6px 4px", border: "1px solid #fde68a", fontFamily: "monospace", color: "#15803d" }}>+{formatCurrency(dayData.income)}</td>
-              <td style={{ padding: "6px 4px", border: "1px solid #fde68a", fontFamily: "monospace", color: "#be123c" }}>-{formatCurrency(dayData.expense)}</td>
+            <tr style={{ backgroundColor: "#fef3c7", borderTop: "2px solid #d97706", fontWeight: "900", fontSize: "10.5px" }}>
+              <td style={{ padding: "5px 3px", border: "1px solid #fde68a" }}>Σ</td>
+              <td colSpan={4} style={{ padding: "5px 5px", border: "1px solid #fde68a", textAlign: "right" }}>إجمالي حركة اليوم ({dayData.entries.length} حركة)</td>
+              <td style={{ padding: "5px 3px", border: "1px solid #fde68a", fontFamily: "monospace", color: "#15803d" }}>+{formatCurrency(dayData.income)}</td>
+              <td style={{ padding: "5px 3px", border: "1px solid #fde68a", fontFamily: "monospace", color: "#be123c" }}>-{formatCurrency(dayData.expense)}</td>
             </tr>
           </tfoot>
         </table>
       </div>
 
-      {/* تنسيقات الطباعة */}
+      {/* تنسيقات الطباعة الطولية المتصلة السلسة بدون فواصل صفحة وهمية */}
       <style jsx global>{`
         @media print {
           @page {
-            size: landscape;
-            margin: 8mm;
+            size: A4 portrait;
+            margin: 8mm 10mm;
           }
           header, aside, .btn-secondary, button, input, select, .no-print {
             display: none !important;
@@ -481,16 +481,36 @@ export default function DayReportPage() {
           body {
             background: #ffffff !important;
             color: #000000 !important;
-            font-size: 11px !important;
+            font-size: 10px !important;
+            padding: 0 !important;
+            margin: 0 !important;
           }
           main {
             padding: 0 !important;
             margin: 0 !important;
+            overflow: visible !important;
           }
           .card {
             box-shadow: none !important;
             border: 1px solid #e5e7eb !important;
-            break-inside: avoid;
+            margin-bottom: 6px !important;
+            padding: 0 !important;
+            break-inside: auto !important;
+          }
+          table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            font-size: 9.5px !important;
+          }
+          th, td {
+            padding: 3.5px 5px !important;
+            border: 1px solid #e5e7eb !important;
+          }
+          thead {
+            display: table-header-group !important;
+          }
+          tr {
+            break-inside: avoid !important;
           }
         }
       `}</style>
