@@ -62,11 +62,39 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         WHERE wdl.order_id = $1::uuid
       `, orderId).catch(() => []),
 
-      // Worker travel expenses (legacy)
-      prisma.$queryRawUnsafe<any[]>(`
-        SELECT wte.*
+      // Ensure all road expenses are migrated into journal_entries as the single source of truth
+      prisma.$executeRawUnsafe(`
+        INSERT INTO mazaya.journal_entries (id, date, entry_type, description, amount, payment_method, order_id, notes, created_by, created_at)
+        SELECT
+          wte.id,
+          wte.expense_date,
+          'مصاريف طريق',
+          CASE
+            WHEN wte.description IS NOT NULL AND wte.description != '' THEN wte.description
+            ELSE '[مصاريف طريق] مصاريف طريق مرتبطة بأوردر'
+          END,
+          wte.amount,
+          COALESCE(wte.payment_method, 'نقدي'),
+          wte.order_id,
+          wte.notes,
+          wte.created_by,
+          COALESCE(wte.created_at, NOW())
         FROM mazaya.worker_travel_expenses wte
         WHERE wte.order_id = $1::uuid
+          AND NOT EXISTS (
+            SELECT 1 FROM mazaya.journal_entries je
+            WHERE je.id = wte.id
+               OR (je.order_id = wte.order_id AND je.amount = wte.amount AND je.date = wte.expense_date AND je.entry_type IN ('مصاريف طريق', 'مصاريف الطريق'))
+          )
+        ON CONFLICT (id) DO NOTHING;
+      `, orderId).catch(() => {}),
+
+      // Road expenses directly from journal entries (unified single table)
+      prisma.$queryRawUnsafe<any[]>(`
+        SELECT id, description, amount, date AS expense_date, payment_method, notes
+        FROM mazaya.journal_entries
+        WHERE order_id = $1::uuid AND (entry_type = 'مصاريف طريق' OR entry_type = 'مصاريف الطريق')
+        ORDER BY date ASC, created_at ASC
       `, orderId).catch(() => []),
 
       // Extra costs (Paints, LED, Overhead, etc.)
@@ -81,7 +109,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         WHERE order_id = $1::uuid AND entry_type = 'نقل داخلي'
       `, orderId).catch(() => [{ total: 0 }]),
 
-      // Real road expenses from journal entries
+      // Real road expenses total from journal entries
       prisma.$queryRawUnsafe<any[]>(`
         SELECT COALESCE(SUM(amount), 0)::float8 AS total
         FROM mazaya.journal_entries
@@ -106,10 +134,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const internalTransportFromJournal = Number(internalTransportJournalR[0]?.total || 0);
     const internalTransportTotal = Math.max(Number(order.internal_transport_cost || 0), internalTransportFromJournal);
 
-    // Road expenses: take the full sum (either from worker_travel_expenses which has all 7 records, or journal entries)
-    const roadExpensesLegacy = roadExpensesR.reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0);
-    const roadExpensesJournal = Number(roadJournalR[0]?.total || 0);
-    const roadExpensesTotal = Math.max(roadExpensesLegacy, roadExpensesJournal);
+    // Road expenses: unified single source of truth from journal_entries
+    const roadExpensesTotal = Number(roadJournalR[0]?.total || 0);
 
     // Manual costs
     const installationCost = Number(order.installation_cost || 0);
