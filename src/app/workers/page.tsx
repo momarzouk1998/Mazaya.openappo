@@ -22,6 +22,7 @@ const workerFields: FieldDef[] = [
   { name: "phone", label: "رقم التواصل" },
   { name: "daily_rate", label: "اليومية العادية (ج.م)", type: "number" },
   { name: "travel_daily_rate", label: "يومية السفر (ج.م)", type: "number" },
+  { name: "wage_on_overhead", label: "احتساب الأجر على النثريات (عامل نظافة/إداري)", type: "checkbox" },
   { name: "notes", label: "ملاحظات", rows: 2 },
 ];
 
@@ -44,6 +45,7 @@ export default function WorkersPage() {
     phone: "",
     daily_rate: "",
     travel_daily_rate: "",
+    wage_on_overhead: false,
     notes: "",
   });
   const [modalError, setModalError] = useState<string | null>(null);
@@ -60,6 +62,7 @@ export default function WorkersPage() {
       phone: newWorkerForm.phone.trim() || null,
       daily_rate: newWorkerForm.daily_rate ? Number(newWorkerForm.daily_rate) : 0,
       travel_daily_rate: newWorkerForm.travel_daily_rate ? Number(newWorkerForm.travel_daily_rate) : 0,
+      wage_on_overhead: newWorkerForm.wage_on_overhead,
       notes: newWorkerForm.notes.trim() || null,
     });
     if (error) {
@@ -67,7 +70,7 @@ export default function WorkersPage() {
       return;
     }
     setShowNewWorkerModal(false);
-    setNewWorkerForm({ name: "", phone: "", daily_rate: "", travel_daily_rate: "", notes: "" });
+    setNewWorkerForm({ name: "", phone: "", daily_rate: "", travel_daily_rate: "", wage_on_overhead: false, notes: "" });
     refetch();
   }
 
@@ -183,6 +186,18 @@ export default function WorkersPage() {
                 onChange={(e) => setNewWorkerForm({ ...newWorkerForm, notes: e.target.value })}
                 placeholder="تخصص، ملاحظات..."
               />
+
+              <label className="flex items-center gap-2 py-1 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 accent-brand-orange"
+                  checked={newWorkerForm.wage_on_overhead}
+                  onChange={(e) => setNewWorkerForm({ ...newWorkerForm, wage_on_overhead: e.target.checked })}
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  احتساب الأجر على النثريات (عامل نظافة/إداري)
+                </span>
+              </label>
 
               {modalError && (
                 <div className="bg-red-50 text-red-700 p-2 rounded text-sm">{modalError}</div>
@@ -302,7 +317,14 @@ export default function WorkersPage() {
               {
                 key: "name",
                 label: "الاسم",
-                render: (r) => <span className="font-semibold text-brand-orange">{r.name}</span>,
+                render: (r) => (
+                  <span className="flex items-center gap-2">
+                    <span className="font-semibold text-brand-orange">{r.name}</span>
+                    {r.wage_on_overhead && (
+                      <span className="badge bg-purple-100 text-purple-700 border-purple-300 text-[10px]">نثريات</span>
+                    )}
+                  </span>
+                ),
               },
               { key: "phone", label: "رقم التواصل" },
               {

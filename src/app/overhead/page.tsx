@@ -12,6 +12,7 @@ import { SearchBox } from "@/components/SearchFilter"
 import { Button } from "@/components/ui/Button"
 import { exportToExcel } from "@/lib/excel"
 import { formatCurrency, formatDate } from "@/lib/format"
+import { OVERHEAD_WAGE_CATEGORY } from "@/lib/finance"
 import RowEditor, { type FieldDef } from "@/components/ui/RowEditor"
 import DateInput from "@/components/ui/DateInput"
 
@@ -51,7 +52,7 @@ export default function OverheadPage() {
   ]
 
   const filtered = useMemo(() => rows.filter((r) => {
-    if (r.worker_id) return false
+    if (r.worker_id && r.category !== OVERHEAD_WAGE_CATEGORY) return false
     const cat = String(r.category || "").trim()
     const desc = String(r.description || "").trim()
     if (EXCLUDED_CATEGORIES.includes(cat)) return false
@@ -71,7 +72,7 @@ export default function OverheadPage() {
       new Set(
         rows
           .filter((r) => {
-            if (r.worker_id) return false
+            if (r.worker_id && r.category !== OVERHEAD_WAGE_CATEGORY) return false
             const cat = String(r.category || "").trim()
             const desc = String(r.description || "").trim()
             if (EXCLUDED_CATEGORIES.includes(cat)) return false

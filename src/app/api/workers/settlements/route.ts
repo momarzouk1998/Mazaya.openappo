@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth-server';
 import prisma from '@/lib/db/prisma';
 import { auditLog } from '@/lib/audit';
+import { OVERHEAD_WAGE_CATEGORY } from '@/lib/finance';
 
 export const dynamic = 'force-dynamic';
 
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
     if (Array.isArray(worker_ids) && worker_ids.length > 0) {
       workerWhere.id = { in: worker_ids };
     }
-    const targetWorkers = await prisma.workers.findMany({ where: workerWhere, select: { id: true, name: true } });
+    const targetWorkers = await prisma.workers.findMany({ where: workerWhere, select: { id: true, name: true, wage_on_overhead: true } });
 
     if (targetWorkers.length === 0) {
       return NextResponse.json({ ok: false, error: { code: 'NOT_FOUND', message: 'لم يتم العثور على عمال للتقفيل' } }, { status: 404 });
@@ -139,11 +140,13 @@ export async function POST(request: NextRequest) {
         });
 
         // Create overhead expense & journal entry for net paid if netPayable > 0
+        // العامل المُعلَّم على النثريات: القيد ينزل 'نثريات' بدل 'أجور عمال' ويظهر في شاشة النثريات.
+        const toOverhead = (w as any).wage_on_overhead === true;
         if (netPayable > 0) {
           const journalEntry = await tx.journal_entries.create({
             data: {
               date: endDate,
-              entry_type: 'أجور عمال',
+              entry_type: toOverhead ? 'نثريات' : 'أجور عمال',
               description: `صافي أجر تقفيل أسبوعي: ${w.name}`,
               amount: netPayable,
               payment_method: 'نقدي',
@@ -153,7 +156,7 @@ export async function POST(request: NextRequest) {
           await tx.overhead_expenses.create({
             data: {
               date: endDate,
-              category: 'أجور عمال',
+              category: toOverhead ? OVERHEAD_WAGE_CATEGORY : 'أجور عمال',
               description: `صافي أجر تقفيل أسبوعي: ${w.name}`,
               amount: netPayable,
               payment_method: 'نقدي',

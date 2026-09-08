@@ -28,11 +28,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     const body = await request.json();
-    const allowed = ['name', 'phone', 'notes', 'daily_rate', 'travel_daily_rate'];
+    const allowed = ['name', 'phone', 'notes', 'daily_rate', 'travel_daily_rate', 'wage_on_overhead'];
     const data: any = {};
     for (const key of allowed) {
       if (body[key] !== undefined) {
-        data[key] = (key === 'daily_rate' || key === 'travel_daily_rate') ? Number(body[key]) : body[key];
+        if (key === 'daily_rate' || key === 'travel_daily_rate') {
+          data[key] = Number(body[key]);
+        } else if (key === 'wage_on_overhead') {
+          data[key] = body[key] === true || body[key] === 'true' || body[key] === 1 || body[key] === '1';
+        } else {
+          data[key] = body[key];
+        }
       }
     }
     if (Object.keys(data).length === 0) {

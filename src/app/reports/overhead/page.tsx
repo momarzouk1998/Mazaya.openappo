@@ -6,6 +6,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/Button";
 import { exportToExcel } from "@/lib/excel";
 import { formatCurrency } from "@/lib/format";
+import { OVERHEAD_WAGE_CATEGORY } from "@/lib/finance";
 import DateInput from "@/components/ui/DateInput";
 
 function safeFormatDate(v: any): string {
@@ -62,7 +63,7 @@ export default function OverheadReportPage() {
       ];
 
       const filteredRaw = (Array.isArray(rawList) ? rawList : []).filter((x: any) => {
-        if (x.worker_id) return false;
+        if (x.worker_id && x.category !== OVERHEAD_WAGE_CATEGORY) return false;
         const cat = String(x.category || "").trim();
         const desc = String(x.description || "").trim();
         if (EXCLUDED_CATEGORIES.includes(cat)) return false;

@@ -238,6 +238,7 @@ model workers {
   phone             String?                     @db.Text
   daily_rate        Decimal                     @default(0)
   travel_daily_rate Decimal                     @default(0)
+  wage_on_overhead  Boolean                     @default(false)
   notes             String?                     @db.Text
   deleted_at        DateTime?                   @db.Timestamptz()
   created_at        DateTime?                   @default(now()) @db.Timestamptz()

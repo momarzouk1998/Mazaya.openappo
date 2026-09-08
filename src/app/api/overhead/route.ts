@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth-server';
 import prisma from '@/lib/db/prisma';
 import { auditLog } from '@/lib/audit';
+import { OVERHEAD_WAGE_CATEGORY } from '@/lib/finance';
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,7 +45,8 @@ export async function GET(request: NextRequest) {
       'ليد',
     ];
     if (exclude_wages) {
-      conditions.push({ worker_id: null });
+      // نستبعد صفوف العمال (worker_id) إلا لو التصنيف = أجور عمال (نثريات) — دي بتظهر في شاشة النثريات.
+      conditions.push({ OR: [{ worker_id: null }, { category: OVERHEAD_WAGE_CATEGORY }] });
       conditions.push({
         OR: [
           { category: null },
@@ -129,10 +131,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // العامل المُعلَّم على النثريات: أجره/سلفته بتنزل 'نثريات' وبتظهر في شاشة النثريات.
+    let wageOnOverhead = false;
+    if (worker_id) {
+      const w = await prisma.workers.findUnique({ where: { id: worker_id }, select: { wage_on_overhead: true } });
+      wageOnOverhead = (w as any)?.wage_on_overhead === true;
+    }
+    const effectiveCategory = wageOnOverhead && worker_id ? OVERHEAD_WAGE_CATEGORY : (category || null);
+
     if (createJournal) {
       // أجور العمال بـ entry_type خاص علشان يحسب صح في المحفظة والميزانية.
       // لو category='أجور عمال' و worker_id موجود → 'أجور عمال'، غير كده 'نثريات'.
-      const isWages = category === 'أجور عمال' && Boolean(worker_id);
+      // العامل المُعلَّم على النثريات بيتجاهل ده وينزل 'نثريات'.
+      const isWages = category === 'أجور عمال' && Boolean(worker_id) && !wageOnOverhead;
       const result = await prisma.$transaction(async (tx) => {
         const journalEntry = await tx.journal_entries.create({
           data: {
@@ -149,7 +160,7 @@ export async function POST(request: NextRequest) {
         const expense = await tx.overhead_expenses.create({
           data: {
             date: date ? new Date(date) : new Date(),
-            category: category || null,
+            category: effectiveCategory,
             description: description.trim(),
             amount,
             payment_method: payment_method || null,
@@ -188,7 +199,7 @@ export async function POST(request: NextRequest) {
     const expense = await prisma.overhead_expenses.create({
       data: {
         date: date ? new Date(date) : new Date(),
-        category: category || null,
+        category: effectiveCategory,
         description: description.trim(),
         amount,
         payment_method: payment_method || null,

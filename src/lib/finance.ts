@@ -15,6 +15,11 @@
 
 export const INCOME_TYPES = ['دفعة واردة من معرض'] as const;
 export const EXPENSE_TYPES = ['مشتريات', 'شراء إكسسوارات', 'نثريات', 'أجور عمال', 'نقل داخلي', 'مصاريف دهانات', 'مصاريف ليد'] as const;
+
+// تصنيف موحّد لأجور العمال المُحتسَبة على النثريات (عمال نظافة/إداريين).
+// الـ entry_type بيفضل 'نثريات'؛ ده بيتحط في overhead_expenses.category بس عشان
+// نميّزهم عن أجور العمال العادية ونسمح لهم بالظهور في شاشة/تقرير النثريات.
+export const OVERHEAD_WAGE_CATEGORY = 'أجور عمال (نثريات)';
 export const PAYOUT_TYPES = ['دفعة صادرة لمورد'] as const;
 export const PASSTHROUGH_TYPES = ['تحويل تمريري', 'transfer'] as const;
 

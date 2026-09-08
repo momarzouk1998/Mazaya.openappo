@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   try {
     const user = await requirePermission('workers', 'add');
     const body = await request.json();
-    const { name, phone, notes, daily_rate, travel_daily_rate } = body;
+    const { name, phone, notes, daily_rate, travel_daily_rate, wage_on_overhead } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json({ ok: false, error: { code: 'VALIDATION_ERROR', message: 'اسم العامل مطلوب' } }, { status: 400 });
@@ -55,6 +55,7 @@ export async function POST(request: Request) {
         notes: notes || null,
         daily_rate: daily_rate ? Number(daily_rate) : 0,
         travel_daily_rate: travel_daily_rate ? Number(travel_daily_rate) : 0,
+        wage_on_overhead: Boolean(wage_on_overhead),
       },
     });
 

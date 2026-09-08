@@ -12,7 +12,7 @@ import { Button } from "./Button";
 import { Input, Select, Textarea } from "./Input";
 
 export type FieldDef =
-  | { name: string; label: string; type?: "text" | "number" | "date"; required?: boolean; rows?: number }
+  | { name: string; label: string; type?: "text" | "number" | "date" | "checkbox"; required?: boolean; rows?: number }
   | { name: string; label: string; options: { value: string; label: string }[]; required?: boolean };
 
 interface Props {
@@ -83,7 +83,8 @@ export default function RowEditor({
       fields.forEach(f => {
         const v = form[f.name];
         const ftype = "options" in f ? "options" : (f as any).type;
-        if (ftype === "number" && v !== "" && v != null) payload[f.name] = Number(v);
+        if (ftype === "checkbox") payload[f.name] = Boolean(v);
+        else if (ftype === "number" && v !== "" && v != null) payload[f.name] = Number(v);
         else if (v === "" || v == null) payload[f.name] = null;
         else payload[f.name] = v;
       });
@@ -165,6 +166,19 @@ export default function RowEditor({
                       onChange={e => setForm({ ...form, [f.name]: e.target.value })}
                       options={[{ value: "", label: "— اختر —" }, ...f.options]}
                     />
+                  );
+                }
+                if (f.type === "checkbox") {
+                  return (
+                    <label key={f.name} className="flex items-center gap-2 py-1 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 accent-brand-orange"
+                        checked={Boolean(form[f.name])}
+                        onChange={e => setForm({ ...form, [f.name]: e.target.checked })}
+                      />
+                      <span className="text-sm font-medium text-gray-700">{f.label}</span>
+                    </label>
                   );
                 }
                 if (f.rows) {
