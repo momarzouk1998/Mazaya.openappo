@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useUserStore } from "@/store/user-store";
 import { useApi, useApiMutation } from "@/hooks/useApi";
 import { useCan } from "@/hooks/useCan";
@@ -36,7 +36,53 @@ export default function WorkersPage() {
   const rows = data?.items ?? [];
   const expenses = ohData?.expenses ?? [];
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<"daily" | "settlements" | "adjustments" | "wages" | "workers">("daily");
+  const [tab, setTabState] = useState<"daily" | "settlements" | "adjustments" | "wages" | "workers">("daily");
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      const urlTab = sp.get("tab") as any;
+      const savedTab = localStorage.getItem("mazaya_workers_tab") as any;
+      const validTabs = ["daily", "settlements", "adjustments", "wages", "workers"];
+      if (urlTab && validTabs.includes(urlTab)) {
+        setTabState(urlTab);
+      } else if (savedTab && validTabs.includes(savedTab)) {
+        setTabState(savedTab);
+      }
+    }
+  }, []);
+
+  function setTab(newTab: "daily" | "settlements" | "adjustments" | "wages" | "workers") {
+    setTabState(newTab);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("mazaya_workers_tab", newTab);
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", newTab);
+      window.history.replaceState(null, "", url.toString());
+    }
+  }
+
+  async function handleToggleOverhead(workerId: string, nextVal: boolean) {
+    setTogglingId(workerId);
+    try {
+      const res = await fetch(`/api/workers/${workerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wage_on_overhead: nextVal }),
+      });
+      if (res.ok) {
+        refetch();
+      } else {
+        const j = await res.json().catch(() => ({}));
+        alert(j?.error?.message || "فشل تحديث حالة العامل");
+      }
+    } catch (e: any) {
+      alert(e?.message || "حدث خطأ في الاتصال");
+    } finally {
+      setTogglingId(null);
+    }
+  }
 
   // Modal State for New Worker
   const [showNewWorkerModal, setShowNewWorkerModal] = useState(false);
@@ -343,6 +389,25 @@ export default function WorkersPage() {
                 render: (r) => <span className="font-bold text-purple-700">{formatCurrency(r.total_paid)}</span>,
               },
               {
+                key: "wage_on_overhead",
+                label: "احتساب على النثريات",
+                render: (r) => (
+                  <button
+                    type="button"
+                    onClick={() => handleToggleOverhead(r.id, !r.wage_on_overhead)}
+                    disabled={!can("workers", "edit") || togglingId === r.id}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                      r.wage_on_overhead
+                        ? "bg-purple-50 text-purple-700 border-purple-300 hover:bg-purple-100 shadow-sm"
+                        : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"
+                    }`}
+                    title="انقر للتبديل الفوري بين نثريات وأجور عادية بدون فتح نافذة التعديل"
+                  >
+                    <span>{r.wage_on_overhead ? "✅ نثريات" : "⚪ أجور عادية"}</span>
+                  </button>
+                ),
+              },
+              {
                 key: "_actions",
                 label: "إجراءات",
                 render: (r) => (
@@ -354,6 +419,8 @@ export default function WorkersPage() {
                     deleteHint="لا يمكن حذف هذا العامل لوجود مصروفات مرتبطة به"
                     canEdit={can("workers", "edit")}
                     canDelete={can("workers", "delete")}
+                    refreshPage={false}
+                    onChanged={refetch}
                   />
                 ),
               },

@@ -53,8 +53,8 @@ export default function RowEditor({
   const [error, setError] = useState<string | null>(null);
 
   const refresh = () => {
-    if (refreshPage) location.reload();
-    else onChanged?.();
+    if (onChanged) onChanged();
+    else if (refreshPage) location.reload();
   };
 
   function openEdit() {
