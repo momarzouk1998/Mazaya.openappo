@@ -6,16 +6,13 @@
   --color-brand-orange-dark: #D87C2E;
   --color-brand-orange-light: #FFF3E6;
   --color-brand-cream: #FAFAF7;
-  --font-family-sans: "Cairo", system-ui, sans-serif;
-}
-
-:root {
-  --font-cairo: "Cairo", system-ui, sans-serif;
+  /* --font-cairo يُحقَن من next/font (Cairo) على وسم <html> */
+  --font-family-sans: var(--font-cairo), system-ui, sans-serif;
 }
 
 html { direction: rtl; }
 body {
-  font-family: var(--font-cairo);
+  font-family: var(--font-cairo), system-ui, sans-serif;
   background-color: #FAFAF7;
   color: #1A1A1A;
   -webkit-font-smoothing: antialiased;
