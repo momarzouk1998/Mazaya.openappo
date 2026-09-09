@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useUserStore } from "@/store/user-store";
 import { useApi } from "@/hooks/useApi";
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
 import { Button } from "@/components/ui/Button";
@@ -39,10 +38,10 @@ export default function InventoryDetailPage() {
 
   if (!initialized) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin w-8 h-8 border-4 border-brand-orange border-t-transparent rounded-full"></div></div>;
   if (!user) return null;
-  if (!item && !loading) return <DashboardLayout profile={user}><div className="card">الصنف غير موجود</div></DashboardLayout>;
+  if (!item && !loading) return <><div className="card">الصنف غير موجود</div></>;
 
   return (
-    <DashboardLayout profile={user}>
+    <>
       <PageHeader
         title={item?.item_name ?? "..."}
         subtitle={`${item?.code ?? ""} • ${item?.supplier_name ?? "—"}`}
@@ -103,6 +102,6 @@ export default function InventoryDetailPage() {
           { key: "line_total", label: "الإجمالي", render: (r: any) => <span className="font-bold">{formatCurrency(r.line_total)}</span> },
         ]}
       />
-    </DashboardLayout>
+    </>
   );
 }

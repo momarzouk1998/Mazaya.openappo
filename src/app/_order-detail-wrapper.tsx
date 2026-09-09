@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useState } from "react";
 import { useUserStore } from "@/store/user-store";
 import { useApi, useApiMutation } from "@/hooks/useApi";
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -99,7 +98,7 @@ export default function OrderDetailPage() {
   }
 
   if (!profile) return null;
-  if (!order && !loading) return <DashboardLayout profile={profile}><div className="card">⚠️ الأوردر غير موجود {error && <span className="text-sm text-red-500">— {error}</span>}</div></DashboardLayout>;
+  if (!order && !loading) return <><div className="card">⚠️ الأوردر غير موجود {error && <span className="text-sm text-red-500">— {error}</span>}</div></>;
 
   const isAdmin = profile.role === "admin";
   const showTransfers = canSeeModule(profile, "journal");
@@ -108,7 +107,7 @@ export default function OrderDetailPage() {
   const balance = transfersSum - orderTotal;
 
   return (
-    <DashboardLayout profile={profile}>
+    <>
       <PageHeader
         title={order?.order_name ?? "..."}
 	        subtitle={`${ORDER_TYPE_LABELS[order?.order_type ?? "تصنيع جديد"]} • ${order?.mazaya_customers?.name ?? "—"} • ${order?.mazaya_branches?.name ?? "—"}`}
@@ -463,6 +462,6 @@ export default function OrderDetailPage() {
           />
         </>
       )}
-    </DashboardLayout>
+    </>
   );
 }

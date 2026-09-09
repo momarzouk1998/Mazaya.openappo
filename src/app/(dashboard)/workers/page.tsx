@@ -1,0 +1,432 @@
+"use client";
+import { useEffect, useMemo, useState } from "react";
+import { useUserStore } from "@/store/user-store";
+import { useApi, useApiMutation } from "@/hooks/useApi";
+import { useCan } from "@/hooks/useCan";
+import PageHeader from "@/components/PageHeader";
+import { DataTable } from "@/components/DataTable";
+import { SearchBox, FilterBar } from "@/components/SearchFilter";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { exportToExcel } from "@/lib/excel";
+import { formatCurrency } from "@/lib/format";
+import RowEditor, { type FieldDef } from "@/components/ui/RowEditor";
+import { DailyLogsTab } from "./_daily-logs-tab";
+import { SettlementsTab } from "./_settlements-tab";
+import { AdjustmentsTab } from "./_adjustments-tab";
+import { WagesTab } from "./_wages-tab";
+
+const workerFields: FieldDef[] = [
+  { name: "name", label: "اسم العامل", required: true },
+  { name: "phone", label: "رقم التواصل" },
+  { name: "daily_rate", label: "اليومية العادية (ج.م)", type: "number" },
+  { name: "travel_daily_rate", label: "يومية السفر (ج.م)", type: "number" },
+  { name: "wage_on_overhead", label: "احتساب الأجر على النثريات (عامل نظافة/إداري)", type: "checkbox" },
+  { name: "notes", label: "ملاحظات", rows: 2 },
+];
+
+export default function WorkersPage() {
+  const { user: profile } = useUserStore();
+  const { can } = useCan();
+  const { data, loading, refetch } = useApi<{ items: any[] }>("/api/workers?limit=500");
+  const { data: ohData } = useApi<{ expenses: any[] }>("/api/overhead?limit=2000");
+  const { mutate: createWorker, loading: savingWorker } = useApiMutation();
+
+  const rows = data?.items ?? [];
+  const expenses = ohData?.expenses ?? [];
+  const [search, setSearch] = useState("");
+  const [tab, setTabState] = useState<"daily" | "settlements" | "adjustments" | "wages" | "workers">("daily");
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      const urlTab = sp.get("tab") as any;
+      const savedTab = localStorage.getItem("mazaya_workers_tab") as any;
+      const validTabs = ["daily", "settlements", "adjustments", "wages", "workers"];
+      if (urlTab && validTabs.includes(urlTab)) {
+        setTabState(urlTab);
+      } else if (savedTab && validTabs.includes(savedTab)) {
+        setTabState(savedTab);
+      }
+    }
+  }, []);
+
+  function setTab(newTab: "daily" | "settlements" | "adjustments" | "wages" | "workers") {
+    setTabState(newTab);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("mazaya_workers_tab", newTab);
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", newTab);
+      window.history.replaceState(null, "", url.toString());
+    }
+  }
+
+  async function handleToggleOverhead(workerId: string, nextVal: boolean) {
+    setTogglingId(workerId);
+    try {
+      const res = await fetch(`/api/workers/${workerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wage_on_overhead: nextVal }),
+      });
+      if (res.ok) {
+        refetch();
+      } else {
+        const j = await res.json().catch(() => ({}));
+        alert(j?.error?.message || "فشل تحديث حالة العامل");
+      }
+    } catch (e: any) {
+      alert(e?.message || "حدث خطأ في الاتصال");
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
+  // Modal State for New Worker
+  const [showNewWorkerModal, setShowNewWorkerModal] = useState(false);
+  const [newWorkerForm, setNewWorkerForm] = useState({
+    name: "",
+    phone: "",
+    daily_rate: "",
+    travel_daily_rate: "",
+    wage_on_overhead: false,
+    notes: "",
+  });
+  const [modalError, setModalError] = useState<string | null>(null);
+
+  async function handleCreateWorker(e: React.FormEvent) {
+    e.preventDefault();
+    setModalError(null);
+    if (!newWorkerForm.name.trim()) {
+      setModalError("اسم العامل مطلوب");
+      return;
+    }
+    const { error } = await createWorker("POST", "/api/workers", {
+      name: newWorkerForm.name.trim(),
+      phone: newWorkerForm.phone.trim() || null,
+      daily_rate: newWorkerForm.daily_rate ? Number(newWorkerForm.daily_rate) : 0,
+      travel_daily_rate: newWorkerForm.travel_daily_rate ? Number(newWorkerForm.travel_daily_rate) : 0,
+      wage_on_overhead: newWorkerForm.wage_on_overhead,
+      notes: newWorkerForm.notes.trim() || null,
+    });
+    if (error) {
+      setModalError(error);
+      return;
+    }
+    setShowNewWorkerModal(false);
+    setNewWorkerForm({ name: "", phone: "", daily_rate: "", travel_daily_rate: "", wage_on_overhead: false, notes: "" });
+    refetch();
+  }
+
+  const totalsByWorker = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const e of expenses) {
+      if (e.worker_id) m[e.worker_id] = (m[e.worker_id] || 0) + Number(e.amount || 0);
+    }
+    return m;
+  }, [expenses]);
+
+  const lastDateByWorker = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const e of expenses) {
+      if (!e.worker_id) continue;
+      const d = String(e.date).slice(0, 10);
+      if (!m[e.worker_id] || d > m[e.worker_id]) m[e.worker_id] = d;
+    }
+    return m;
+  }, [expenses]);
+
+  const filtered = useMemo(
+    () => rows.filter((w) => !search || w.name.toLowerCase().includes(search.toLowerCase())),
+    [rows, search]
+  );
+
+  const rowsWithStats = useMemo(
+    () =>
+      filtered.map((w) => ({
+        ...w,
+        daily_rate: Number(w.daily_rate || 0),
+        travel_daily_rate: Number(w.travel_daily_rate || 0),
+        total_paid: totalsByWorker[w.id] || 0,
+        last_paid_date: lastDateByWorker[w.id] || null,
+      })),
+    [filtered, totalsByWorker, lastDateByWorker]
+  );
+
+  if (!profile) return null;
+
+  return (
+    <>
+      <PageHeader
+        title="نظام إدارة اليوميات والعمال"
+        subtitle={rows.length + " عامل مسجل"}
+        helpTitle="العمال واليوميات"
+        helpDescription="تسجيل عمل العمال والأوردرات يوم بيوم مع تعديل سعر اليومية والسفر في صفحة واحدة، وتأكيد التقفيل الأسبوعي للعمال مع التصفير التلقائي للأسبوع الجديد."
+        backHref="/journal"
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => exportToExcel(rowsWithStats, "workers")}>
+              📥 تصدير قائمة العمال
+            </Button>
+            {can("workers", "add") && (
+              <Button onClick={() => setShowNewWorkerModal(true)}>+ عامل جديد</Button>
+            )}
+          </>
+        }
+      />
+
+      {/* مودال إضافة عامل جديد الفوري */}
+      {showNewWorkerModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4 relative animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="font-bold text-lg text-brand-orange">🧑‍🔧 إضافة عامل جديد</h3>
+              <button
+                onClick={() => setShowNewWorkerModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateWorker} className="space-y-3">
+              <Input
+                label="اسم العامل *"
+                value={newWorkerForm.name}
+                onChange={(e) => setNewWorkerForm({ ...newWorkerForm, name: e.target.value })}
+                placeholder="مثال: أحمد محمود"
+                required
+              />
+
+              <Input
+                label="رقم التواصل"
+                value={newWorkerForm.phone}
+                onChange={(e) => setNewWorkerForm({ ...newWorkerForm, phone: e.target.value })}
+                placeholder="01xxxxxxxxx"
+              />
+
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="اليومية العادية (ج.م)"
+                  type="number"
+                  step="0.01"
+                  value={newWorkerForm.daily_rate}
+                  onChange={(e) => setNewWorkerForm({ ...newWorkerForm, daily_rate: e.target.value })}
+                  placeholder="0"
+                />
+                <Input
+                  label="يومية السفر (ج.م)"
+                  type="number"
+                  step="0.01"
+                  value={newWorkerForm.travel_daily_rate}
+                  onChange={(e) => setNewWorkerForm({ ...newWorkerForm, travel_daily_rate: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
+
+              <Input
+                label="ملاحظات"
+                value={newWorkerForm.notes}
+                onChange={(e) => setNewWorkerForm({ ...newWorkerForm, notes: e.target.value })}
+                placeholder="تخصص، ملاحظات..."
+              />
+
+              <label className="flex items-center gap-2 py-1 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 accent-brand-orange"
+                  checked={newWorkerForm.wage_on_overhead}
+                  onChange={(e) => setNewWorkerForm({ ...newWorkerForm, wage_on_overhead: e.target.checked })}
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  احتساب الأجر على النثريات (عامل نظافة/إداري)
+                </span>
+              </label>
+
+              {modalError && (
+                <div className="bg-red-50 text-red-700 p-2 rounded text-sm">{modalError}</div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="secondary" onClick={() => setShowNewWorkerModal(false)}>
+                  إلغاء
+                </Button>
+                <Button type="submit" loading={savingWorker}>
+                  حفظ العامل
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* التبويبات الفائقة السلاسة */}
+      <div className="flex flex-wrap gap-2 mb-6 border-b pb-1">
+        <button
+          onClick={() => setTab("daily")}
+          className={`px-4 py-2.5 font-bold text-sm rounded-t-xl transition flex items-center gap-2 ${
+            tab === "daily"
+              ? "bg-brand-orange text-white shadow-md font-extrabold"
+              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          }`}
+        >
+          📝 التسجيل اليومي والأوردرات
+        </button>
+
+        <button
+          onClick={() => setTab("settlements")}
+          className={`px-4 py-2.5 font-bold text-sm rounded-t-xl transition flex items-center gap-2 ${
+            tab === "settlements"
+              ? "bg-brand-black text-white shadow-md font-extrabold"
+              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          }`}
+        >
+          🔒 التقفيل الأسبوعي والربط
+        </button>
+
+        <button
+          onClick={() => setTab("adjustments")}
+          className={`px-4 py-2.5 font-bold text-sm rounded-t-xl transition flex items-center gap-2 ${
+            tab === "adjustments"
+              ? "bg-brand-orange text-white shadow-md font-extrabold"
+              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          }`}
+        >
+          🎁 الخصومات والمكافآت
+        </button>
+
+        <button
+          onClick={() => setTab("wages")}
+          className={`px-4 py-2.5 font-bold text-sm rounded-t-xl transition flex items-center gap-2 ${
+            tab === "wages"
+              ? "bg-brand-black text-white shadow-md font-extrabold"
+              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          }`}
+        >
+          💸 السلف والقبض
+        </button>
+
+        <button
+          onClick={() => setTab("workers")}
+          className={`px-4 py-2.5 font-bold text-sm rounded-t-xl transition flex items-center gap-2 ${
+            tab === "workers"
+              ? "bg-brand-orange text-white shadow-md font-extrabold"
+              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          }`}
+        >
+          🧑‍🔧 دليل العمال وأسعار اليومية
+        </button>
+      </div>
+
+      {/* التبويب النشط */}
+      {tab === "daily" && <DailyLogsTab />}
+      {tab === "settlements" && <SettlementsTab />}
+      {tab === "adjustments" && <AdjustmentsTab />}
+      {tab === "wages" && <WagesTab />}
+      {tab === "workers" && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            <div className="card bg-white border-r-4 border-brand-orange">
+              <div className="text-xs text-gray-500">إجمالي العمال المسجلين</div>
+              <div className="text-2xl font-extrabold text-brand-black">{rows.length}</div>
+            </div>
+            <div className="card bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white">
+              <div className="text-xs opacity-90">إجمالي المسحوبات والأجور</div>
+              <div className="text-2xl font-extrabold">
+                {formatCurrency(Object.values(totalsByWorker).reduce((s, v) => s + v, 0))}
+              </div>
+            </div>
+            <div className="card bg-white border-r-4 border-brand-orange">
+              <div className="text-xs text-gray-500">النتائج المعروضة</div>
+              <div className="text-2xl font-bold text-brand-black">{filtered.length}</div>
+            </div>
+          </div>
+
+          <div className="card mb-4">
+            <FilterBar>
+              <div className="flex-1">
+                <SearchBox value={search} onChange={setSearch} placeholder="ابحث بالاسم..." />
+              </div>
+              <div className="text-sm text-gray-500 mr-auto">
+                النتائج: <strong>{filtered.length}</strong>
+              </div>
+            </FilterBar>
+          </div>
+
+          <DataTable
+            loading={loading}
+            rows={rowsWithStats}
+            emptyMessage="لا يوجد عمال. ابدأ بإضافة عامل."
+            columns={[
+              {
+                key: "name",
+                label: "الاسم",
+                render: (r) => (
+                  <span className="flex items-center gap-2">
+                    <span className="font-semibold text-brand-orange">{r.name}</span>
+                    {r.wage_on_overhead && (
+                      <span className="badge bg-purple-100 text-purple-700 border-purple-300 text-[10px]">نثريات</span>
+                    )}
+                  </span>
+                ),
+              },
+              { key: "phone", label: "رقم التواصل" },
+              {
+                key: "daily_rate",
+                label: "اليومية العادية",
+                render: (r) => <span className="font-bold text-gray-800">{formatCurrency(r.daily_rate)}</span>,
+              },
+              {
+                key: "travel_daily_rate",
+                label: "يومية السفر",
+                render: (r) => <span className="font-bold text-amber-700">{formatCurrency(r.travel_daily_rate)}</span>,
+              },
+              {
+                key: "total_paid",
+                label: "إجمالي المدفوعات",
+                render: (r) => <span className="font-bold text-purple-700">{formatCurrency(r.total_paid)}</span>,
+              },
+              {
+                key: "wage_on_overhead",
+                label: "احتساب على النثريات",
+                render: (r) => (
+                  <button
+                    type="button"
+                    onClick={() => handleToggleOverhead(r.id, !r.wage_on_overhead)}
+                    disabled={!can("workers", "edit") || togglingId === r.id}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                      r.wage_on_overhead
+                        ? "bg-purple-50 text-purple-700 border-purple-300 hover:bg-purple-100 shadow-sm"
+                        : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"
+                    }`}
+                    title="انقر للتبديل الفوري بين نثريات وأجور عادية بدون فتح نافذة التعديل"
+                  >
+                    <span>{r.wage_on_overhead ? "✅ نثريات" : "⚪ أجور عادية"}</span>
+                  </button>
+                ),
+              },
+              {
+                key: "_actions",
+                label: "إجراءات",
+                render: (r) => (
+                  <RowEditor
+                    row={r}
+                    apiBase="/api/workers"
+                    fields={workerFields}
+                    entityLabel="العامل"
+                    deleteHint="لا يمكن حذف هذا العامل لوجود مصروفات مرتبطة به"
+                    canEdit={can("workers", "edit")}
+                    canDelete={can("workers", "delete")}
+                    refreshPage={false}
+                    onChanged={refetch}
+                  />
+                ),
+              },
+            ]}
+          />
+        </>
+      )}
+    </>
+  );
+}

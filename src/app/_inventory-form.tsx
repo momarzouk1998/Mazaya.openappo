@@ -3,7 +3,6 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useUserStore } from "@/store/user-store"
 import { useApi, useApiMutation } from "@/hooks/useApi"
-import DashboardLayout from "@/components/layout/DashboardLayout"
 import PageHeader from "@/components/PageHeader"
 import { Input, Select, Textarea } from "@/components/ui/Input"
 import { Button } from "@/components/ui/Button"
@@ -131,7 +130,7 @@ export default function NewInventoryForm({ category }: Props) {
   const typeLabel = category === "boards" ? "خامة اللوح" : "نوع الاكسسوار"
 
   return (
-    <DashboardLayout profile={profile}>
+    <>
       <PageHeader title={category === "boards" ? "لوح جديد" : "اكسسوار جديد"} backHref={backHref} />
       <form onSubmit={onSubmit} className="card max-w-2xl space-y-4">
         <Input label="اسم الصنف (البيان) *" value={form.item_name} onChange={(e) => setForm({ ...form, item_name: e.target.value })} required />
@@ -164,7 +163,7 @@ export default function NewInventoryForm({ category }: Props) {
           <Button type="submit" loading={saving}>حفظ</Button>
         </div>
       </form>
-    </DashboardLayout>
+    </>
   )
 }
 

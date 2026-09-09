@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import { useUserStore } from "@/store/user-store";
 import { useApi } from "@/hooks/useApi";
 import { useCan } from "@/hooks/useCan";
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
 import { SearchBox } from "@/components/SearchFilter";
@@ -21,7 +20,7 @@ import {
   IncomePanel,
   InventorySearchPanel,
   WorkersReportPanel,
-} from "@/app/journal/_panels";
+} from "@/app/(dashboard)/journal/_panels";
 import DateInput from "@/components/ui/DateInput";
 
 const journalFields: FieldDef[] = [
@@ -166,7 +165,7 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
   function closePanel() { setActivePanel(null); }
 
   return (
-    <DashboardLayout profile={profile}>
+    <>
       <PageHeader
         title={showSummary ? "ملخص اليومية" : "لوحة التحكم"}
         subtitle={showSummary ? "صندوق الرصيد + ملخص الأسبوع" : "أدخل أي حركة من هنا — شراء، نثريات، وارد، بحث"}
@@ -422,6 +421,6 @@ export default function JournalPageWrapper({ showSummary = false }: { showSummar
 
         </>
       )}
-    </DashboardLayout>
+    </>
   );
 }

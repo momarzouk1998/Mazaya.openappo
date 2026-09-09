@@ -1,0 +1,191 @@
+"use client"
+import { useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
+import { useUserStore } from "@/store/user-store"
+import { useApi } from "@/hooks/useApi"
+import { useCan } from "@/hooks/useCan"
+import HubTabs, { FINANCE_TABS } from "@/components/ui/HubTabs"
+import PageHeader from "@/components/PageHeader"
+import { DataTable } from "@/components/DataTable"
+import { SearchBox } from "@/components/SearchFilter"
+import { Button } from "@/components/ui/Button"
+import { exportToExcel } from "@/lib/excel"
+import { formatCurrency, formatDate } from "@/lib/format"
+import { OVERHEAD_WAGE_CATEGORY } from "@/lib/finance"
+import RowEditor, { type FieldDef } from "@/components/ui/RowEditor"
+import DateInput from "@/components/ui/DateInput"
+
+const overheadFields: FieldDef[] = [
+  { name: "date", label: "التاريخ", type: "date", required: true },
+  { name: "description", label: "البيان", required: true },
+  { name: "amount", label: "المبلغ", type: "number", required: true },
+  { name: "notes", label: "ملاحظات", rows: 2 },
+]
+
+export default function OverheadPage() {
+  const router = useRouter()
+  const { user: profile } = useUserStore()
+  const { can } = useCan()
+  const { data, loading } = useApi<{ expenses: any[]; items?: any[] }>("/api/overhead?limit=500&exclude_wages=true")
+  const rows: any[] = data?.expenses ?? data?.items ?? []
+  const [search, setSearch] = useState("")
+  const [fromDate, setFromDate] = useState("")
+  const [toDate, setToDate] = useState("")
+  const [categoryFilter, setCategoryFilter] = useState("")
+  const [filterOpen, setFilterOpen] = useState(false)
+
+  const activeFiltersCount = [categoryFilter, fromDate, toDate].filter(Boolean).length
+
+  const EXCLUDED_CATEGORIES = [
+    'أجور عمال',
+    'يوميات عمال',
+    'نقل داخلي',
+    'نقل',
+    'مصاريف طريق',
+    'مصاريف الطريق',
+    'طريق',
+    'مصاريف دهانات',
+    'دهانات',
+    'مصاريف ليد',
+    'ليد',
+  ]
+
+  const filtered = useMemo(() => rows.filter((r) => {
+    if (r.worker_id && r.category !== OVERHEAD_WAGE_CATEGORY) return false
+    const cat = String(r.category || "").trim()
+    const desc = String(r.description || "").trim()
+    if (EXCLUDED_CATEGORIES.includes(cat)) return false
+    if (cat.includes("طريق") || cat.includes("دهان") || cat.includes("ليد") || cat.includes("نقل")) return false
+    if (desc.includes("[مصاريف طريق]") || desc.includes("[نقل داخلي]") || desc.includes("[دهانات]") || desc.includes("[ليد]")) return false
+    const rDate = String(r.date ?? "").slice(0, 10)
+    const matchSearch = !search || desc.toLowerCase().includes(search.toLowerCase())
+    const matchCategory = !categoryFilter || cat === categoryFilter
+    const matchDate = (!fromDate || rDate >= fromDate) && (!toDate || rDate <= toDate)
+    return matchSearch && matchCategory && matchDate
+  }), [rows, search, categoryFilter, fromDate, toDate])
+
+  const total = filtered.reduce((s, r) => s + Number(r.amount ?? 0), 0)
+
+  const uniqueCategories = useMemo(() => {
+    return Array.from(
+      new Set(
+        rows
+          .filter((r) => {
+            if (r.worker_id && r.category !== OVERHEAD_WAGE_CATEGORY) return false
+            const cat = String(r.category || "").trim()
+            const desc = String(r.description || "").trim()
+            if (EXCLUDED_CATEGORIES.includes(cat)) return false
+            if (cat.includes("طريق") || cat.includes("دهان") || cat.includes("ليد") || cat.includes("نقل")) return false
+            if (desc.includes("[مصاريف طريق]") || desc.includes("[نقل داخلي]")) return false
+            return Boolean(cat)
+          })
+          .map((r) => r.category)
+          .filter((c) => Boolean(c))
+      )
+    ).sort()
+  }, [rows])
+
+  function clearFilters() {
+    setCategoryFilter("")
+    setFromDate("")
+    setToDate("")
+  }
+
+  if (!profile) return null
+
+  return (
+    <>
+      <PageHeader title="النثريات" subtitle="مصاريف تشغيل المصنع العامة" helpTitle="النثريات" helpDescription="نثريات عامة، كهرباء، شحن، إلخ. أجور العمال بتتسجل من صفحة العمال." backHref="/finances" actions={can('overhead', 'add') ? <Button onClick={() => router.push("/overhead/new")}>+ نثريات جديدة</Button> : undefined} />
+
+      <HubTabs tabs={FINANCE_TABS} />
+
+      {/* كارد الإجمالي الوحيد */}
+      <div className="mb-4">
+        <div className="card bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white hover:shadow-elevated transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm opacity-90 font-medium">إجمالي النثريات</div>
+              <div className="text-4xl font-extrabold mt-1">{formatCurrency(total)}</div>
+              <div className="text-xs opacity-80 mt-1">
+                {filtered.length} سجل
+                {categoryFilter && ` • تصنيف: ${categoryFilter}`}
+                {(fromDate || toDate) && ` • فترة: ${fromDate || "البداية"} → ${toDate || "اليوم"}`}
+              </div>
+            </div>
+            <div className="text-6xl opacity-30">💵</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="card mb-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex-1 min-w-[200px]"><SearchBox value={search} onChange={setSearch} placeholder="ابحث في البيان..." /></div>
+          <Button variant="secondary" onClick={() => setFilterOpen(true)} className="relative">
+            تصفية
+            {activeFiltersCount > 0 && <span className="absolute -top-2 -right-2 bg-brand-orange text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{activeFiltersCount}</span>}
+          </Button>
+          <Button variant="secondary" onClick={() => exportToExcel(filtered as any, "overhead")}>تصدير</Button>
+        </div>
+      </div>
+
+      {filterOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setFilterOpen(false)}>
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">تصفية النثريات</h2>
+              <button onClick={() => setFilterOpen(false)} className="p-1 hover:bg-gray-100 rounded-lg">✕</button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">التصنيف</label>
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg bg-white"
+                >
+                  <option value="">كل التصنيفات</option>
+                  {uniqueCategories.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">من تاريخ</label>
+                  <DateInput value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">إلى تاريخ</label>
+                  <DateInput value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                </div>
+              </div>
+
+              {activeFiltersCount > 0 && (
+                <div className="text-xs text-brand-orange-dark bg-brand-orange-light border border-brand-orange/20 p-2 rounded">
+                  تم تطبيق {activeFiltersCount} فلتر — الإجمالي سيتحدث تلقائياً
+                </div>
+              )}
+            </div>
+            <div className="flex justify-between gap-2 pt-4 mt-4 border-t">
+              <Button variant="secondary" onClick={clearFilters}>مسح الفلاتر</Button>
+              <Button onClick={() => setFilterOpen(false)}>تطبيق</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <DataTable
+        loading={loading}
+        rows={filtered}
+        emptyMessage="لا توجد نثريات"
+        columns={[
+          { key: "date", label: "التاريخ", render: (r) => formatDate(r.date) },
+          { key: "category", label: "التصنيف", render: (r) => r.category ? <span className="badge bg-purple-100 text-purple-700 border-purple-300">{r.category}</span> : "-" },
+          { key: "description", label: "البيان" },
+          { key: "amount", label: "المبلغ", render: (r) => <span className="font-bold text-red-600">{formatCurrency(Number(r.amount ?? 0))}</span> },
+          { key: "notes", label: "ملاحظات" },
+          { key: "_actions", label: "إجراءات", render: (r) => <RowEditor row={r} apiBase="/api/overhead" fields={overheadFields} entityLabel="النثريات" deleteHint="لا يمكن حذف هذه الحركة لأنها مرتبطة بحركة يومية" canEdit={can('overhead', 'edit')} canDelete={can('overhead', 'delete')} /> },
+        ]}
+      />
+    </>
+  )
+}

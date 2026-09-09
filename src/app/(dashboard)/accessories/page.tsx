@@ -1,0 +1,166 @@
+"use client"
+import { useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { useUserStore } from "@/store/user-store"
+import { useApi } from "@/hooks/useApi"
+import { useCan } from "@/hooks/useCan"
+import HubTabs, { INVENTORY_TABS } from "@/components/ui/HubTabs"
+import PageHeader from "@/components/PageHeader"
+import { DataTable } from "@/components/DataTable"
+import { SearchBox, FilterBar } from "@/components/SearchFilter"
+import { Button } from "@/components/ui/Button"
+import { exportToExcel } from "@/lib/excel"
+import { formatCurrency } from "@/lib/format"
+import RowEditor, { type FieldDef } from "@/components/ui/RowEditor"
+import DateInput from "@/components/ui/DateInput";
+
+const accessoryFields: FieldDef[] = [
+  { name: "item_name", label: "اسم الصنف", required: true },
+  { name: "type", label: "النوع" },
+  { name: "unit_price", label: "سعر الوحدة", type: "number" },
+  { name: "quantity_in", label: "الكمية المبدئية", type: "number" },
+  { name: "notes", label: "ملاحظات", rows: 2 },
+]
+
+export default function AccessoriesPage() {
+  const router = useRouter()
+  const { user: profile } = useUserStore()
+  const { can } = useCan()
+  const { data, loading } = useApi<{ items: any[] }>("/api/accessories?limit=500")
+  const { data: suppliersData } = useApi<{ items: any[] }>("/api/suppliers?limit=500")
+  const rows = data?.items ?? []
+  const suppliers = suppliersData?.items ?? []
+  const [search, setSearch] = useState("")
+  const [supplierFilter, setSupplierFilter] = useState("")
+  const [typeFilter, setTypeFilter] = useState("")
+  const [availableOnly, setAvailableOnly] = useState(false)
+  const [fromDate, setFromDate] = useState("")
+  const [toDate, setToDate] = useState("")
+  const [filterOpen, setFilterOpen] = useState(false)
+
+  const types = useMemo(() => {
+    const set = new Set<string>()
+    rows.forEach((r: any) => { if (r.type) set.add(r.type) })
+    return Array.from(set).sort()
+  }, [rows])
+
+  const activeFiltersCount = [supplierFilter, typeFilter, availableOnly ? "1" : "", fromDate, toDate].filter(Boolean).length
+
+  function clearFilters() {
+    setSupplierFilter(""); setTypeFilter(""); setAvailableOnly(false); setFromDate(""); setToDate("")
+  }
+
+  const filtered = useMemo(() => rows.filter((a: any) => {
+    const matchSearch = !search || a.item_name.toLowerCase().includes(search.toLowerCase()) || (a.code ?? "").toLowerCase().includes(search.toLowerCase())
+    const matchSup = !supplierFilter || String(a.supplier_id) === supplierFilter
+    const matchType = !typeFilter || a.type === typeFilter
+    const matchAvail = !availableOnly || a.quantity_remaining > 0
+    const aDate = String(a.date_added ?? "").slice(0, 10)
+    const matchFrom = !fromDate || aDate >= fromDate
+    const matchTo = !toDate || aDate <= toDate
+    return matchSearch && matchSup && matchType && matchAvail && matchFrom && matchTo
+  }), [rows, search, supplierFilter, typeFilter, availableOnly, fromDate, toDate])
+
+  if (!profile) return null
+
+  return (
+    <>
+      <PageHeader title="مخزون الاكسسوارات" subtitle={rows.length + " صنف إجمالي"} helpTitle="مخزون الاكسسوارات" helpDescription="إدارة مفصلات، سكك درج، مجاري، كاوتش، إلخ. الشراء والإضافة الجديدة من صفحة اليومية." backHref="/inventory-hub" actions={
+        <Button variant="secondary" onClick={() => exportToExcel(filtered.map(({ id, supplier_name, total_price, ...rest }: any) => rest as any), "accessories_inventory")}>📥 تصدير</Button>
+      } />
+
+      <HubTabs tabs={INVENTORY_TABS} />
+      {/* إجمالي المخزون */}
+      {rows.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+          <div className="card bg-white border-r-4 border-brand-orange">
+            <div className="text-xs text-gray-500">إجمالي الداخل</div>
+            <div className="text-2xl font-extrabold text-brand-black">{filtered.reduce((s: number, a: any) => s + Number(a.quantity_in ?? 0), 0)}</div>
+          </div>
+          <div className="card bg-white border-r-4 border-brand-orange">
+            <div className="text-xs text-gray-500">إجمالي المستخدم</div>
+            <div className="text-2xl font-extrabold text-brand-black">{filtered.reduce((s: number, a: any) => s + Number(a.quantity_used ?? 0), 0)}</div>
+          </div>
+          <div className="card bg-white border-r-4 border-brand-orange">
+            <div className="text-xs text-gray-500">إجمالي المتبقي</div>
+            <div className="text-2xl font-extrabold text-brand-black">{filtered.reduce((s: number, a: any) => s + Number(a.quantity_remaining ?? 0), 0)}</div>
+          </div>
+          <div className="card bg-white border-r-4 border-brand-orange">
+            <div className="text-xs text-gray-500">عدد الأصناف</div>
+            <div className="text-2xl font-extrabold text-brand-black">{filtered.length}</div>
+          </div>
+          <div className="col-span-2 md:col-span-1 card bg-gradient-to-br from-brand-orange to-brand-orange-dark text-white">
+            <div className="text-xs opacity-90">قيمة المخزون</div>
+            <div className="text-2xl font-extrabold">{formatCurrency(filtered.reduce((s: number, a: any) => s + (Number(a.unit_price ?? 0) * Number(a.quantity_remaining ?? 0)), 0))}</div>
+          </div>
+        </div>
+      )}
+      <div className="card mb-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex-1 min-w-[200px]"><SearchBox value={search} onChange={setSearch} placeholder="ابحث بالاسم أو الكود..." /></div>
+          <Button variant="secondary" onClick={() => setFilterOpen(true)} className="relative">تصفية{activeFiltersCount > 0 && <span className="absolute -top-2 -right-2 bg-brand-orange text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{activeFiltersCount}</span>}</Button>
+          <div className="text-sm text-gray-500 mr-auto">النتائج: <strong>{filtered.length}</strong></div>
+        </div>
+      </div>
+
+      {filterOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setFilterOpen(false)}>
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">تصفية الاكسسوارات</h2>
+              <button onClick={() => setFilterOpen(false)} className="p-1 hover:bg-gray-100 rounded-lg">✕</button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">المورد</label>
+                <select value={supplierFilter} onChange={(e) => setSupplierFilter(e.target.value)} className="w-full px-3 py-2 border rounded-lg bg-white">
+                  <option value="">كل الموردين</option>
+                  {suppliers.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">النوع</label>
+                <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="w-full px-3 py-2 border rounded-lg bg-white">
+                  <option value="">كل الأنواع</option>
+                  {types.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">من تاريخ</label>
+                  <DateInput value={fromDate} onChange={(e) => setFromDate(e.target.value)} placeholder="يوم/شهر/سنة" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">إلى تاريخ</label>
+                  <DateInput value={toDate} onChange={(e) => setToDate(e.target.value)} placeholder="يوم/شهر/سنة" />
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-sm cursor-pointer bg-gray-50 p-3 rounded-lg">
+                <input type="checkbox" checked={availableOnly} onChange={(e) => setAvailableOnly(e.target.checked)} className="accent-brand-orange w-4 h-4" />
+                <span className="font-medium">المتوفر فقط (لديه مخزون)</span>
+              </label>
+              {activeFiltersCount > 0 && <div className="text-xs text-brand-orange-dark bg-brand-orange-light border border-brand-orange/20 p-2 rounded">تم تطبيق {activeFiltersCount} فلتر</div>}
+            </div>
+            <div className="flex justify-between gap-2 pt-4 mt-4 border-t">
+              <Button variant="secondary" onClick={clearFilters}>مسح الفلاتر</Button>
+              <Button onClick={() => setFilterOpen(false)}>تطبيق</Button>
+            </div>
+          </div>
+        </div>
+      )}
+        <DataTable loading={loading} rows={filtered} emptyMessage="لا توجد اكسسوارات." columns={[
+        { key: "item_name", label: "البيان", render: (r: any) => <Link href={"/accessories/" + r.id} className="text-brand-orange hover:underline font-medium">{r.item_name}</Link> },
+        { key: "type", label: "النوع" },
+        { key: "supplier_name", label: "المورد" },
+        { key: "unit_price", label: "السعر", render: (r: any) => formatCurrency(Number(r.unit_price ?? 0)) },
+        { key: "quantity_in", label: "الداخل", render: (r: any) => Number(r.quantity_in ?? 0) },
+        { key: "quantity_used", label: "المستخدم", render: (r: any) => Number(r.quantity_used ?? 0) },
+        { key: "quantity_remaining", label: "المتبقي", render: (r: any) => <span className={Number(r.quantity_remaining ?? 0) > 0 ? "font-bold text-green-600" : "text-gray-400"}>{Number(r.quantity_remaining ?? 0)}</span> },
+        { key: "total_price", label: "الإجمالي", render: (r: any) => <span className="font-bold">{formatCurrency(Number(r.total_price ?? 0))}</span> },
+        { key: "_actions", label: "إجراءات", render: (r: any) => <RowEditor row={r} apiBase="/api/accessories" fields={accessoryFields} entityLabel="الاكسسوار" deleteHint="لا يمكن حذف هذا الصنف لأنه مُستخدم في أوردرات أو مُسجّل في اليومية" canEdit={can('accessories_inventory', 'edit')} canDelete={can('accessories_inventory', 'delete')} /> },
+      ]} />
+    </>
+  )
+}
+

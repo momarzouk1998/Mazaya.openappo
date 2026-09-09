@@ -4,14 +4,20 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import Logo from "@/components/ui/Logo";
 import { PWAInstallButton } from "@/components/PWAInstallButton";
-import { ALL_MODULES, type CurrentProfile } from "@/lib/auth";
+import { ALL_MODULES } from "@/lib/auth";
+import { useUserStore } from "@/store/user-store";
 
-interface Props { profile: CurrentProfile; children: React.ReactNode; }
+interface Props { children: React.ReactNode; }
 
-export default function DashboardLayout({ profile, children }: Props) {
+export default function DashboardLayout({ children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user: profile } = useUserStore();
+
+  // مفروض يكون متعبى من الـ SSR hydration في الـ root layout، لكن لو لسه
+  // بيتحمل (أول تحميل قبل الـ hydration) منعرضش القائمة قبل ما نعرف صلاحيات المستخدم
+  if (!profile) return null;
 
   // الكل (أدمن وموظف) بيشوف اللي في visible_modules بس.
   // الاستثناء: الموديولات adminOnly (المستخدمين) — دي تظهر للأدمن دايماً عشان يديرها،

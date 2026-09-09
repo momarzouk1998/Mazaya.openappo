@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUserStore } from "@/store/user-store";
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/PageHeader";
 import { Input, Select, Textarea } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -48,7 +47,7 @@ export default function NewEntityForm({ title, backHref, table, fields, successR
 
   if (!profile) return null;
   return (
-    <DashboardLayout profile={profile}>
+    <>
       <PageHeader title={title} backHref={backHref} />
       <form onSubmit={onSubmit} className="card max-w-2xl space-y-4">
         {fields.map(f => {
@@ -62,6 +61,6 @@ export default function NewEntityForm({ title, backHref, table, fields, successR
           <Button type="submit" loading={saving}>حفظ</Button>
         </div>
       </form>
-    </DashboardLayout>
+    </>
   );
 }
