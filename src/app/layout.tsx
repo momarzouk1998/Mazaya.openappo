@@ -39,8 +39,10 @@ export const viewport: Viewport = {
   themeColor: "#F2994A",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // viewport-fit=cover: يخلّي env(safe-area-inset-*) يشتغل على الأجهزة ذات النوتش
+  // في وضع standalone. اتشال maximumScale/userScalable — كانوا بيمنعوا pinch-zoom
+  // (مخالفة WCAG 2.5.5). زوم iOS عند الكتابة متحلول من حجم خط الإدخال (globals.css).
+  viewportFit: "cover",
 };
 
 /**

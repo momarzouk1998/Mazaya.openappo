@@ -20,6 +20,16 @@ body {
 
 * { box-sizing: border-box; }
 
+/* موبايل فقط: أي حقل إدخال أصغر من 16px بيخلّي iOS Safari يزوّم الصفحة عند
+   الفوكس ومابيرجعش. نثبّت 16px للحقول على الموبايل بس — الديسكتوب مايتأثرش. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: #f1f1f1; }
 ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 5px; }
