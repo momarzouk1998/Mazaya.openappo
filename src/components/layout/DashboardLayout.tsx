@@ -84,7 +84,7 @@ export default function DashboardLayout({ children }: Props) {
 
       <div className="flex-1 flex flex-col min-w-0">
         <header
-          className="bg-white border-b border-gray-200 sticky top-0 z-20 px-4 py-3 flex items-center justify-between"
+          className="relative bg-white border-b border-gray-200 sticky top-0 z-20 px-4 py-3 flex items-center justify-between"
           style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
         >
           <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-lg hover:bg-gray-100">
@@ -92,7 +92,17 @@ export default function DashboardLayout({ children }: Props) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
+
+          {/* اسم البرنامج في نص الهيدر — الهاتف فقط */}
+          <span className="sm:hidden absolute left-1/2 -translate-x-1/2 inline-block max-w-[58vw] truncate text-center font-extrabold text-brand-black text-sm pointer-events-none">
+            مصنع مزايا للأثاث
+          </span>
+
           <div className="flex items-center gap-3">
+            {/* اللوجو على الشمال خالص — الهاتف فقط */}
+            <span className="sm:hidden shrink-0">
+              <Logo size={30} withText={false} />
+            </span>
             <Link
               href="/profile"
               className="hidden sm:flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 rounded-lg transition text-sm"
