@@ -93,14 +93,14 @@ export default function DashboardLayout({ children }: Props) {
             </svg>
           </button>
 
-          {/* اسم البرنامج في نص الهيدر — الهاتف فقط */}
-          <span className="sm:hidden absolute left-1/2 -translate-x-1/2 inline-block max-w-[58vw] truncate text-center font-extrabold text-brand-black text-sm pointer-events-none">
+          {/* اسم البرنامج في نص الهيدر — يظهر مع زرار المنيو (موبايل + تابلت) */}
+          <span className="lg:hidden absolute left-1/2 -translate-x-1/2 inline-block max-w-[58vw] truncate text-center font-extrabold text-brand-black text-sm pointer-events-none">
             مصنع مزايا للأثاث
           </span>
 
           <div className="flex items-center gap-3">
-            {/* اللوجو على الشمال خالص — الهاتف فقط */}
-            <span className="sm:hidden shrink-0">
+            {/* اللوجو على الشمال خالص — يظهر مع زرار المنيو (موبايل + تابلت) */}
+            <span className="lg:hidden shrink-0">
               <Logo size={30} withText={false} />
             </span>
             <Link
