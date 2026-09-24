@@ -11,7 +11,7 @@
 
 // Bump this version on every SW change. The activate handler deletes
 // every cache that doesn't match, so users get the new SW immediately.
-const CACHE = "mazaya-v3";
+const CACHE = "mazaya-v4";
 const PRECACHE_URLS = [
   "/manifest.json",
   "/logo.png",
@@ -107,14 +107,14 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE).then((c) => c.put(req, clone)).catch(() => {});
         }
         return res;
-      } catch {
-        // Both cache miss and network failure — return a valid Response
-        // (never undefined, which would throw inside respondWith).
-        return new Response("", {
-          status: 503,
-          statusText: "Service Unavailable",
-          headers: { "Content-Type": "text/plain; charset=utf-8" },
-        });
+      } catch (err) {
+        // شبكة فشلت (مثلاً تنقّل بين واي فاي/بيانات على الموبايل) ومفيش نسخة
+        // كاش. قبل كده كنا بنرجّع Response وهمي بـ status:503 — ده كان بيبان
+        // في الكونسول والـ Network tab كأنه "السيرفر واقع" وهو شغّال تمام،
+        // لأن الرد ده مصنوع محلياً في المتصفح ومش راجع من أي سيرفر.
+        // نسيب respondWith يرفض بشكل طبيعي → خطأ شبكة حقيقي (net::ERR_FAILED)
+        // بدل رد HTTP مزيّف يوهم بعطل في السيرفر.
+        throw err;
       }
     })(),
   );
